@@ -1,0 +1,32 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0a0a0e;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Courier New", monospace;
+}
+
+#frame {
+  text-align: center;
+}
+
+#screen {
+  width: 960px;
+  height: 540px;
+  max-width: 96vw;
+  max-height: 80vh;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+  box-shadow: 0 0 60px rgba(200, 120, 40, 0.15);
+}
+
+#help {
+  margin-top: 12px;
+  color: #7a6a55;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
