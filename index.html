@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elara Vane — Digital Product &amp; Interaction Designer</title>
+  <meta name="description" content="Portfolio of Elara Vane, a digital product and interaction designer crafting interfaces people can feel." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23C6F542'/></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Preloader -->
+  <div class="preloader" id="preloader" aria-hidden="true">
+    <div class="preloader__inner">
+      <span class="preloader__count" id="preloaderCount">0</span>
+      <span class="preloader__label">Elara Vane — Portfolio</span>
+    </div>
+  </div>
+
+  <!-- Custom cursor -->
+  <div class="cursor" id="cursor" aria-hidden="true">
+    <div class="cursor__dot"></div>
+    <div class="cursor__ring"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="header" id="header">
+    <a class="header__logo" href="#top" data-cursor="hover">
+      <span class="header__logo-mark"></span>
+      <span class="header__logo-text">Elara&nbsp;Vane</span>
+    </a>
+    <nav class="header__nav" aria-label="Primary">
+      <a href="#work" data-cursor="hover">Work</a>
+      <a href="#about" data-cursor="hover">About</a>
+      <a href="#services" data-cursor="hover">Services</a>
+      <a href="#contact" data-cursor="hover">Contact</a>
+    </nav>
+    <a class="header__pill" href="#contact" data-cursor="hover">
+      <span class="header__pill-dot"></span>
+      Available for work
+    </a>
+    <button class="header__burger" id="burger" aria-label="Open menu" aria-expanded="false" aria-controls="menu">
+      <span></span><span></span>
+    </button>
+  </header>
+
+  <!-- Fullscreen mobile menu -->
+  <div class="menu" id="menu" aria-hidden="true">
+    <nav class="menu__nav" aria-label="Menu">
+      <a href="#work" class="menu__link"><em>01</em>Work</a>
+      <a href="#about" class="menu__link"><em>02</em>About</a>
+      <a href="#services" class="menu__link"><em>03</em>Services</a>
+      <a href="#contact" class="menu__link"><em>04</em>Contact</a>
+    </nav>
+    <div class="menu__foot">
+      <a href="mailto:hello@elaravane.studio">hello@elaravane.studio</a>
+      <span>Amsterdam, NL</span>
+    </div>
+  </div>
+
+  <main id="top">
+
+    <!-- Hero -->
+    <section class="hero" id="hero">
+      <canvas class="hero__canvas" id="webgl" aria-hidden="true"></canvas>
+      <div class="hero__content">
+        <p class="hero__eyebrow" data-split="lines">Digital Product &amp; Interaction Designer</p>
+        <h1 class="hero__title" aria-label="Elara Vane">
+          <span class="hero__title-line" data-split="chars">ELARA</span>
+          <span class="hero__title-line hero__title-line--accent" data-split="chars">VANE</span>
+        </h1>
+        <div class="hero__meta">
+          <p class="hero__tagline" data-split="lines">I design interfaces people can feel —<br />calm, precise &amp; quietly bold.</p>
+          <p class="hero__location" data-split="lines">Currently in Amsterdam<br />working worldwide</p>
+        </div>
+      </div>
+      <div class="hero__scroll" aria-hidden="true">
+        <span class="hero__scroll-line"></span>
+        <span class="hero__scroll-text">Scroll</span>
+      </div>
+    </section>
+
+    <!-- Marquee -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track" id="marqueeTrack">
+        <span class="marquee__item">Interaction Design<i>✦</i>Design Systems<i>✦</i>Product Strategy<i>✦</i>Motion &amp; Prototyping<i>✦</i></span>
+        <span class="marquee__item">Interaction Design<i>✦</i>Design Systems<i>✦</i>Product Strategy<i>✦</i>Motion &amp; Prototyping<i>✦</i></span>
+      </div>
+    </div>
+
+    <!-- Work -->
+    <section class="work section" id="work">
+      <header class="section__head">
+        <p class="section__label" data-split="lines">Selected Work</p>
+        <h2 class="section__title" data-split="lines">Projects with<br />a point of view</h2>
+        <span class="section__count">(2019 — 2026)</span>
+      </header>
+
+      <div class="work__grid">
+        <a class="project" href="#contact" data-cursor="view">
+          <figure class="project__media project__media--pulse">
+            <div class="project__art"><span></span><span></span><span></span><span></span></div>
+            <div class="project__veil"></div>
+          </figure>
+          <div class="project__info">
+            <span class="project__index">01</span>
+            <h3 class="project__name">Pulse — Health OS</h3>
+            <p class="project__tags">Product Design · Design System · iOS</p>
+          </div>
+        </a>
+
+        <a class="project" href="#contact" data-cursor="view">
+          <figure class="project__media project__media--orbit">
+            <div class="project__art"><span></span><span></span><span></span></div>
+            <div class="project__veil"></div>
+          </figure>
+          <div class="project__info">
+            <span class="project__index">02</span>
+            <h3 class="project__name">Orbit Bank</h3>
+            <p class="project__tags">Fintech · UX Research · Mobile App</p>
+          </div>
+        </a>
+
+        <a class="project" href="#contact" data-cursor="view">
+          <figure class="project__media project__media--field">
+            <div class="project__art"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="project__veil"></div>
+          </figure>
+          <div class="project__info">
+            <span class="project__index">03</span>
+            <h3 class="project__name">Fieldnotes AI</h3>
+            <p class="project__tags">AI Tools · Interaction Design · Web</p>
+          </div>
+        </a>
+
+        <a class="project" href="#contact" data-cursor="view">
+          <figure class="project__media project__media--halo">
+            <div class="project__art"><span></span><span></span><span></span></div>
+            <div class="project__veil"></div>
+          </figure>
+          <div class="project__info">
+            <span class="project__index">04</span>
+            <h3 class="project__name">Halo Audio</h3>
+            <p class="project__tags">Brand · E-commerce · Art Direction</p>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section class="about section" id="about">
+      <p class="section__label" data-split="lines">About</p>
+      <p class="about__statement" id="aboutStatement">
+        For eight years I have helped ambitious teams turn complex problems
+        into products that feel effortless. My work sits where strategy,
+        systems and motion meet — designed with intent, built to last.
+      </p>
+      <ul class="about__stats">
+        <li><strong data-count="8">0</strong><span>Years of practice</span></li>
+        <li><strong data-count="47">0</strong><span>Products shipped</span></li>
+        <li><strong data-count="12">0</strong><span>Design awards</span></li>
+      </ul>
+    </section>
+
+    <!-- Services -->
+    <section class="services section" id="services">
+      <header class="section__head">
+        <p class="section__label" data-split="lines">Services</p>
+        <h2 class="section__title" data-split="lines">What I do<br />best</h2>
+        <span class="section__count">(04)</span>
+      </header>
+      <ul class="services__list">
+        <li class="service" data-cursor="hover">
+          <span class="service__index">01</span>
+          <h3 class="service__name">Product Design</h3>
+          <p class="service__desc">End-to-end design of digital products — from first sketch to polished, shippable interface.</p>
+        </li>
+        <li class="service" data-cursor="hover">
+          <span class="service__index">02</span>
+          <h3 class="service__name">Design Systems</h3>
+          <p class="service__desc">Scalable component libraries and tokens that keep large teams fast and consistent.</p>
+        </li>
+        <li class="service" data-cursor="hover">
+          <span class="service__index">03</span>
+          <h3 class="service__name">Interaction &amp; Motion</h3>
+          <p class="service__desc">Micro-interactions and motion language that make products feel alive, never decorated.</p>
+        </li>
+        <li class="service" data-cursor="hover">
+          <span class="service__index">04</span>
+          <h3 class="service__name">Creative Direction</h3>
+          <p class="service__desc">A clear visual point of view across brand, web and product — one coherent story.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Contact / Footer -->
+    <footer class="contact section" id="contact">
+      <p class="section__label" data-split="lines">Contact</p>
+      <a class="contact__cta" href="mailto:hello@elaravane.studio" data-cursor="hover">
+        <span class="contact__cta-line" data-split="chars">LET’S</span>
+        <span class="contact__cta-line contact__cta-line--accent" data-split="chars">TALK</span>
+      </a>
+      <div class="contact__grid">
+        <div class="contact__col">
+          <span class="contact__col-label">Email</span>
+          <a href="mailto:hello@elaravane.studio" data-cursor="hover">hello@elaravane.studio</a>
+        </div>
+        <div class="contact__col">
+          <span class="contact__col-label">Socials</span>
+          <a href="#top" data-cursor="hover">Dribbble</a>
+          <a href="#top" data-cursor="hover">LinkedIn</a>
+          <a href="#top" data-cursor="hover">Instagram</a>
+        </div>
+        <div class="contact__col">
+          <span class="contact__col-label">Studio</span>
+          <span>Herengracht 420<br />Amsterdam, NL</span>
+        </div>
+      </div>
+      <div class="contact__bottom">
+        <span>© 2026 Elara Vane. All rights reserved.</span>
+        <span id="localTime">AMS —:—</span>
+        <a href="#top" data-cursor="hover">Back to top ↑</a>
+      </div>
+    </footer>
+
+  </main>
+
+  <script src="vendor/gsap.min.js"></script>
+  <script src="vendor/ScrollTrigger.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
