@@ -145,6 +145,15 @@
       for (const [code, atk] of Object.entries(ATTACK_KEYS)) {
         if (Input.justPressed(code)) player.startAttack(atk);
       }
+
+      // travel stance: turn and run in the direction of movement;
+      // fight stance: keep facing the opponent (moving away is a retreat)
+      if (!player.busy) {
+        if (player.stance === "travel" && move !== 0) player.turnTo(move);
+        else if (player.stance === "fight" && engaged) {
+          player.turnTo(engaged.f.x > player.x ? 1 : -1);
+        }
+      }
     }
 
     player.update(dt, player.busy ? 0 : move);

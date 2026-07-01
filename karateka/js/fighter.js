@@ -40,6 +40,15 @@ class Fighter {
     this.pts = null;
   }
 
+  /* Turn to face dir (+1/-1), blending through a neutral upright pose so the
+   * horizontal mirror flip doesn't visually pop. */
+  turnTo(dir) {
+    if (this.facing === dir) return;
+    this.facing = dir;
+    this.prevPose = Anim.sample("travel_idle", 0);
+    this.blendT = 0;
+  }
+
   setAnim(name, restart = false) {
     if (this.anim === name && !restart) return;
     this.prevPose = this.pose;
@@ -115,8 +124,8 @@ class Fighter {
     if (this.state === "idle" || this.state === "move") {
       if (move !== 0) {
         const speed = this.stance === "travel"
-          ? (move * this.facing > 0 ? this.speedRun : this.speedWalk) // forward = run, back = walk
-          : this.speedWalk * (move * this.facing > 0 ? 1 : 0.75);     // fight stance: shuffle
+          ? this.speedRun                                          // travel: facing follows movement, always a run
+          : this.speedWalk * (move * this.facing > 0 ? 1 : 0.75);  // fight stance: shuffle, backward slightly slower
         this.vx = move * speed;
         this.state = "move";
         this.setAnim(this.stance === "travel"

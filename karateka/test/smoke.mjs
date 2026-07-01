@@ -37,6 +37,27 @@ const game = (page) => page.evaluate(() => ({
   estate: window.__game.enemies.map((e) => e.f.state),
 }));
 
+// ---- scenario 0: walking left turns the player around (no moonwalking) ----
+{
+  const { page, errors } = await newGame();
+  await page.evaluate(() => { window.__game.player.x = 600; });
+  await page.keyboard.down("ArrowLeft");
+  await page.waitForTimeout(700);
+  const left = await page.evaluate(() => ({
+    facing: window.__game.player.facing, anim: window.__game.player.anim, x: window.__game.player.x,
+  }));
+  await page.keyboard.up("ArrowLeft");
+  check("player turns to face left and runs", left.facing === -1 && left.anim === "run" && left.x < 600,
+    `facing=${left.facing} anim=${left.anim} x=${left.x.toFixed(0)}`);
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(400);
+  const right = await page.evaluate(() => window.__game.player.facing);
+  await page.keyboard.up("ArrowRight");
+  check("player turns back to face right", right === 1, `facing=${right}`);
+  check("no JS errors in scenario 0", errors.length === 0, errors.join("; "));
+  await page.close();
+}
+
 // ---- scenario 1: fight the first guard to a knockout, then advance ----
 {
   const { page, errors } = await newGame();

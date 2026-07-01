@@ -25,7 +25,7 @@ script tags rather than ES modules.
 
 | Key | Action |
 | --- | --- |
-| ← / → | walk / run (travel stance), shuffle (fighting stance) |
+| ← / → | run (travel stance — the player turns to face the direction of travel), shuffle (fighting stance — the player keeps facing the opponent, so moving away is a retreat) |
 | Space | toggle stance: running ⇄ fighting |
 | J / K / L | punch high / mid / low |
 | U / I / O | kick high / mid / low |
