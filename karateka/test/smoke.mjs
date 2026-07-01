@@ -54,6 +54,18 @@ const game = (page) => page.evaluate(() => ({
   const right = await page.evaluate(() => window.__game.player.facing);
   await page.keyboard.up("ArrowRight");
   check("player turns back to face right", right === 1, `facing=${right}`);
+
+  // fighting stance with no opponent engaged: still turn, don't moonwalk
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(300);
+  await page.keyboard.down("ArrowLeft");
+  await page.waitForTimeout(500);
+  const fs = await page.evaluate(() => ({
+    facing: window.__game.player.facing, stance: window.__game.player.stance,
+  }));
+  await page.keyboard.up("ArrowLeft");
+  check("unengaged fighting stance also turns around", fs.stance === "fight" && fs.facing === -1,
+    `stance=${fs.stance} facing=${fs.facing}`);
   check("no JS errors in scenario 0", errors.length === 0, errors.join("; "));
   await page.close();
 }

@@ -146,12 +146,14 @@
         if (Input.justPressed(code)) player.startAttack(atk);
       }
 
-      // travel stance: turn and run in the direction of movement;
-      // fight stance: keep facing the opponent (moving away is a retreat)
+      // Facing: with an opponent engaged in fighting stance, keep facing it
+      // (moving away is a retreat). Otherwise turn toward the movement
+      // direction — never walk backwards outside combat.
       if (!player.busy) {
-        if (player.stance === "travel" && move !== 0) player.turnTo(move);
-        else if (player.stance === "fight" && engaged) {
+        if (player.stance === "fight" && engaged) {
           player.turnTo(engaged.f.x > player.x ? 1 : -1);
+        } else if (move !== 0) {
+          player.turnTo(move);
         }
       }
     }
