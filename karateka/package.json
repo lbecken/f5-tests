@@ -1,0 +1,13 @@
+{
+  "name": "fortress-of-akuma",
+  "version": "1.0.0",
+  "description": "A Karateka (1984)-style side-scrolling martial arts game for the browser",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8321",
+    "test": "node test/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.45.0"
+  }
+}
