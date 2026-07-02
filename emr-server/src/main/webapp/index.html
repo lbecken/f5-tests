@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Riverside Medical Center EMR (playground)</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; line-height: 1.5; color: #1c2733; }
+    code { background: #eef2f6; padding: 0.1rem 0.35rem; border-radius: 4px; }
+    li { margin: 0.35rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Riverside Medical Center EMR</h1>
+  <p>This is the <strong>server</strong> half of the FHIR playground. Useful endpoints
+     (all relative to this context path):</p>
+  <ul>
+    <li><a href="fhir/metadata">fhir/metadata</a> &mdash; the CapabilityStatement (what this server can do)</li>
+    <li><a href="fhir/Patient">fhir/Patient</a> &mdash; search all patients</li>
+    <li><a href="fhir/Patient?family=diaz">fhir/Patient?family=diaz</a> &mdash; search by family name</li>
+    <li><a href="fhir/Encounter?status=in-progress">fhir/Encounter?status=in-progress</a> &mdash; current inpatient census</li>
+    <li><a href="fhir/Observation?patient=1">fhir/Observation?patient=1</a> &mdash; results for a patient</li>
+    <li><code>GET messages/next</code> &mdash; pop the next outbound FHIR message Bundle</li>
+    <li><a href="messages/pending">messages/pending</a> &mdash; queued message count</li>
+    <li><code>POST simulate/admit | discharge | lab</code> &mdash; generate clinical activity</li>
+  </ul>
+  <p>The friendly way to consume all of this is the <em>ward-dashboard</em> webapp.</p>
+</body>
+</html>
