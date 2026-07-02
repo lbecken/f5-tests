@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="https://jakarta.ee/xml/ns/persistence"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="https://jakarta.ee/xml/ns/persistence
+                                 https://jakarta.ee/xml/ns/persistence/persistence_3_0.xsd"
+             version="3.0">
+
+    <!--
+      RESOURCE_LOCAL because Tomcat ships no JTA transaction manager.
+      Transactions are handled by the @Transactional CDI interceptor
+      (com.example.app.persistence). See README for real-JTA options.
+
+      The JDBC host is "postgres" - the docker-compose service name -
+      because Tomcat itself runs inside the compose network.
+    -->
+    <persistence-unit name="primaryPU" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <class>com.example.app.entity.Person</class>
+        <exclude-unlisted-classes>false</exclude-unlisted-classes>
+
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://postgres:5432/appdb"/>
+            <property name="jakarta.persistence.jdbc.user" value="app"/>
+            <property name="jakarta.persistence.jdbc.password" value="app"/>
+
+            <!-- HikariCP connection pool -->
+            <property name="hibernate.connection.provider_class"
+                      value="org.hibernate.hikaricp.internal.HikariCPConnectionProvider"/>
+            <property name="hibernate.hikari.maximumPoolSize" value="10"/>
+            <property name="hibernate.hikari.minimumIdle" value="2"/>
+
+            <!-- Dev-friendly schema management; switch to 'validate' + Flyway/Liquibase for production -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="update"/>
+
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+            <property name="hibernate.highlight_sql" value="true"/>
+        </properties>
+    </persistence-unit>
+</persistence>

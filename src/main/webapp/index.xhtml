@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:p="http://primefaces.org/ui">
+
+<h:head>
+    <title>Jakarta EE 9 on Tomcat 10.1 (Docker)</title>
+</h:head>
+
+<h:body>
+    <h1>Jakarta EE 9 + JSF + PrimeFaces + CDI + JPA/Hibernate + PostgreSQL</h1>
+
+    <h:form id="form">
+        <p:growl id="growl" showDetail="true" life="4000"/>
+
+        <p:panel header="Add person" style="max-width: 40rem">
+            <p:panelGrid columns="2" layout="flex" styleClass="ui-noborder">
+                <p:outputLabel for="name" value="Name"/>
+                <p:inputText id="name" value="#{personBean.newPerson.name}" required="true"/>
+
+                <p:outputLabel for="email" value="E-mail"/>
+                <p:inputText id="email" value="#{personBean.newPerson.email}"/>
+            </p:panelGrid>
+
+            <p:commandButton value="Save" action="#{personBean.add}"
+                             update="form" icon="pi pi-check" style="margin-top:1rem"/>
+        </p:panel>
+
+        <p:dataTable id="table" value="#{personBean.persons}" var="p"
+                     emptyMessage="No persons yet - add one above."
+                     style="max-width: 40rem; margin-top: 1rem">
+            <p:column headerText="Id" width="60">#{p.id}</p:column>
+            <p:column headerText="Name">#{p.name}</p:column>
+            <p:column headerText="E-mail">#{p.email}</p:column>
+            <p:column width="80">
+                <p:commandButton icon="pi pi-trash" action="#{personBean.delete(p)}"
+                                 update="form" styleClass="ui-button-danger ui-button-flat"/>
+            </p:column>
+        </p:dataTable>
+    </h:form>
+</h:body>
+</html>

@@ -1,0 +1,41 @@
+# OPTIONAL image: Tomcat 10.1 on JetBrains Runtime 21 + HotswapAgent.
+#
+# The JetBrains Runtime (JBR) is an OpenJDK fork with "Enhanced Class
+# Redefinition" - the modern successor of DCEVM, which was never ported
+# beyond JDK 17 as a standalone patch. Combined with HotswapAgent it lets
+# the debugger hot-swap STRUCTURAL changes (added/removed methods, fields,
+# new anonymous classes) and its plugins refresh Hibernate, Weld/CDI and
+# JSF/Mojarra metadata - so most edits need no redeploy at all.
+#
+# Enable it in docker-compose.yml:  dockerfile: Dockerfile.jbr-hotswap
+#
+# NOTE: pinned download URLs go stale over time. Current releases:
+#   JBR:          https://github.com/JetBrains/JetBrainsRuntime/releases
+#   HotswapAgent: https://github.com/HotswapProjects/HotswapAgent/releases
+# Override at build time, e.g.:
+#   docker compose build --build-arg JBR_URL=... tomcat
+FROM tomcat:10.1-jdk21-temurin
+
+ARG JBR_URL=https://cache-redirector.jetbrains.com/intellij-jbr/jbrsdk-21.0.5-linux-x64-b631.28.tar.gz
+ARG HOTSWAP_AGENT_URL=https://github.com/HotswapProjects/HotswapAgent/releases/download/2.0.1/hotswap-agent-2.0.1.jar
+
+# Install the JetBrains Runtime and make it the JVM Tomcat runs on
+RUN set -eux; \
+    mkdir -p /opt/jbr; \
+    curl -fsSL "$JBR_URL" | tar -xz --strip-components=1 -C /opt/jbr; \
+    /opt/jbr/bin/java -version
+
+ENV JAVA_HOME=/opt/jbr
+ENV PATH=/opt/jbr/bin:$PATH
+
+# HotswapAgent "fatjar" installation: the JBR looks for it in
+# $JAVA_HOME/lib/hotswap/hotswap-agent.jar when -XX:HotswapAgent=fatjar is set
+RUN set -eux; \
+    mkdir -p /opt/jbr/lib/hotswap; \
+    curl -fsSL -o /opt/jbr/lib/hotswap/hotswap-agent.jar "$HOTSWAP_AGENT_URL"
+
+ENV CATALINA_OPTS="-XX:+AllowEnhancedClassRedefinition -XX:HotswapAgent=fatjar"
+
+RUN rm -rf /usr/local/tomcat/webapps/* /usr/local/tomcat/webapps.dist
+
+EXPOSE 8080 8000

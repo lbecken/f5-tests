@@ -1,0 +1,61 @@
+# Development stack: Tomcat 10.1 (Java 21) + PostgreSQL 16.
+#
+#   docker compose up -d --build      start everything
+#   docker compose logs -f tomcat     follow Tomcat logs
+#   docker compose down               stop (add -v to wipe the database)
+#
+# Ports on your host:
+#   8080  -> Tomcat HTTP        http://localhost:8080/
+#   8000  -> JDWP remote debug  (attach Eclipse here)
+#   5432  -> PostgreSQL         (for pgAdmin/DBeaver/Eclipse Data Tools)
+#
+# The app is deployed by Gradle into ../docker/deploy which is bind-mounted
+# as Tomcat's webapps directory: run `./gradlew deploy` before first start.
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jakartaee-postgres
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  tomcat:
+    build:
+      context: ./tomcat
+      # Default image: plain Temurin JDK 21 (standard JVM hotswap of method
+      # bodies via the Eclipse debugger). For enhanced hotswap (add/remove
+      # methods & fields without redeploy) switch to the JetBrains Runtime +
+      # HotswapAgent image:
+      #   dockerfile: Dockerfile.jbr-hotswap
+      dockerfile: Dockerfile
+    container_name: jakartaee-tomcat
+    command: ["catalina.sh", "jpda", "run"]
+    environment:
+      JPDA_ADDRESS: "*:8000"
+      JPDA_TRANSPORT: dt_socket
+      # Extra JVM flags can go here, e.g.:
+      # CATALINA_OPTS: "-Xmx1g"
+    ports:
+      - "8080:8080"
+      - "8000:8000"
+    volumes:
+      - ./deploy:/usr/local/tomcat/webapps
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

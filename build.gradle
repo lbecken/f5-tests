@@ -1,0 +1,146 @@
+/*
+ * Jakarta EE 9 web application, deployed to Tomcat 10.1 running in Docker.
+ *
+ * Tomcat is a servlet container, not a full Jakarta EE server, so everything
+ * beyond Servlet/EL/WebSocket is bundled inside the WAR:
+ *   - JSF 3.0 (Mojarra)          -> org.glassfish:jakarta.faces
+ *   - PrimeFaces (jakarta build) -> org.primefaces:primefaces :jakarta
+ *   - CDI 3.0 (Weld)             -> weld-servlet-shaded
+ *   - JPA 3.0 (Hibernate 6.1)    -> hibernate-core (+ HikariCP pool)
+ *   - Bean Validation 3.0        -> hibernate-validator
+ *
+ * Versions are pinned to the Jakarta EE 9 baseline (jakarta.* namespace,
+ * spec versions Servlet 5.0 / JSF 3.0 / CDI 3.0 / JPA 3.0). Tomcat 10.1
+ * implements EE 10 specs, which are backward compatible with EE 9 apps.
+ */
+
+plugins {
+    id 'war'
+    id 'eclipse-wtp'
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Provided by Tomcat 10.1 at runtime - never bundle these in the WAR
+    providedCompile 'jakarta.servlet:jakarta.servlet-api:5.0.0'
+    providedCompile 'jakarta.el:jakarta.el-api:4.0.0'
+    providedCompile 'jakarta.websocket:jakarta.websocket-api:2.0.0'
+
+    // JSF 3.0 - Mojarra (API + implementation in one artifact)
+    implementation 'org.glassfish:jakarta.faces:3.0.5'
+
+    // PrimeFaces - the 'jakarta' classifier is the jakarta.* namespace build
+    implementation 'org.primefaces:primefaces:13.0.10:jakarta'
+
+    // CDI 3.0 - Weld servlet integration (self-registers on Tomcat)
+    implementation 'org.jboss.weld.servlet:weld-servlet-shaded:4.0.3.Final'
+
+    // JPA 3.0 - Hibernate ORM 6.1 (last line aligned with JPA 3.0 / EE 9)
+    implementation 'org.hibernate.orm:hibernate-core:6.1.7.Final'
+    implementation 'org.hibernate.orm:hibernate-hikaricp:6.1.7.Final'
+
+    // Bean Validation 3.0
+    implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
+
+    // PostgreSQL JDBC driver
+    implementation 'org.postgresql:postgresql:42.7.3'
+
+    // Logging (Weld/Hibernate log through SLF4J)
+    implementation 'org.slf4j:slf4j-jdk14:1.7.36'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // -parameters is required for CDI/JSF to see method parameter names,
+    // and -g keeps full debug info so breakpoints and hotswap work well.
+    options.compilerArgs += ['-parameters']
+    options.debug = true
+}
+
+test {
+    useJUnitPlatform()
+}
+
+/* ---------------------------------------------------------------------------
+ * Deployment into the Docker-mounted webapps directory.
+ *
+ * docker/deploy/ is bind-mounted as /usr/local/tomcat/webapps inside the
+ * container. The app is deployed EXPLODED as ROOT/ (context path "/") so
+ * individual files can be synced without re-copying a WAR.
+ *
+ *   ./gradlew deploy      full (re)deploy - Tomcat reloads the context
+ *                         because WEB-INF/web.xml gets a new timestamp
+ *                         (it is a WatchedResource). Use after structural
+ *                         Java changes that JVM hotswap cannot apply.
+ *
+ *   ./gradlew syncStatic  fast-path: copies only webapp resources
+ *                         (.xhtml, css, js, images) WITHOUT touching
+ *                         web.xml, so Tomcat does NOT reload and your
+ *                         debug/hotswap session stays alive.
+ * ------------------------------------------------------------------------- */
+
+def deployRoot = layout.projectDirectory.dir('docker/deploy/ROOT')
+
+tasks.register('deploy', Sync) {
+    group = 'docker deployment'
+    description = 'Builds the app and syncs the exploded WAR into docker/deploy/ROOT (Tomcat reloads the context).'
+    dependsOn tasks.named('war')
+    from({ zipTree(tasks.war.archiveFile) })
+    into deployRoot
+}
+
+tasks.register('syncStatic', Copy) {
+    group = 'docker deployment'
+    description = 'Copies only static webapp resources (xhtml/css/js/...) without triggering a Tomcat context reload.'
+    from('src/main/webapp') {
+        exclude 'WEB-INF/web.xml'
+    }
+    into deployRoot
+}
+
+tasks.register('undeploy', Delete) {
+    group = 'docker deployment'
+    description = 'Removes the deployed application from docker/deploy.'
+    delete deployRoot
+}
+
+/* ---------------------------------------------------------------------------
+ * Eclipse integration.
+ *
+ * Import via File > Import > Gradle > Existing Gradle Project (Buildship).
+ * The eclipse-wtp configuration below also makes the project a valid WTP
+ * "Dynamic Web Module" so it can be added to a Tomcat server in the
+ * Eclipse "Servers" view (the local-Tomcat alternative described in the
+ * README).
+ * ------------------------------------------------------------------------- */
+
+eclipse {
+    project {
+        comment = 'Jakarta EE 9 + Tomcat 10.1 (Docker) + Gradle sample project'
+    }
+    wtp {
+        facet {
+            facets = []
+            facet name: 'jst.java', version: '21'
+            facet name: 'jst.web', version: '5.0'
+        }
+        component {
+            contextPath = '/'
+        }
+    }
+}

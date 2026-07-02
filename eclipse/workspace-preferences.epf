@@ -1,0 +1,28 @@
+file_export_version=3.0
+# ---------------------------------------------------------------------------
+# Eclipse WORKSPACE preferences for this project.
+# Import via: File > Import > General > Preferences > select this file
+#             > check "Import all" > Finish
+#
+# What it sets:
+#  - Java compiler compliance 21
+#  - UTF-8 workspace encoding, Unix line endings
+#  - Build automatically + refresh workspace on access/native hooks
+#    (needed so hotswap picks up classes right after you save)
+#  - Debug: hot code replace warnings visible instead of silently failing
+# ---------------------------------------------------------------------------
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.compliance=21
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.source=21
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.targetPlatform=21
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.debug.lineNumber=generate
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.debug.localVariable=generate
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.debug.sourceFile=generate
+/instance/org.eclipse.jdt.core/org.eclipse.jdt.core.compiler.codegen.methodParameters=generate
+/instance/org.eclipse.core.resources/encoding=UTF-8
+/instance/org.eclipse.core.resources/refresh.enabled=true
+/instance/org.eclipse.core.resources/description.autobuilding=true
+/instance/org.eclipse.core.runtime/line.separator=\n
+/instance/org.eclipse.jdt.debug.ui/org.eclipse.jdt.debug.ui.alert_hcr_failed=true
+/instance/org.eclipse.jdt.debug.ui/org.eclipse.jdt.debug.ui.alert_hcr_not_supported=true
+/instance/org.eclipse.jdt.debug.ui/org.eclipse.jdt.debug.ui.alert_obsolete_methods=true
+/instance/org.eclipse.debug.ui/org.eclipse.debug.ui.auto_remove_old_launches=true
