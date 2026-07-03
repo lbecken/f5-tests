@@ -26,9 +26,22 @@ services:
       DB_PASSWORD: emr
       # The dashboard reaches the EMR inside the same Tomcat:
       EMR_BASE_URL: http://localhost:8080/emr
+      # --- step 3: the EMR enforces Keycloak-issued tokens ---
+      # Set AUTH_ENABLED to "false" to run the API open again.
+      AUTH_ENABLED: "true"
+      # Tokens minted inside the compose network carry the first issuer;
+      # tokens you fetch from the host (localhost:8085) carry the second.
+      AUTH_ISSUER: http://keycloak:8080/realms/riverside,http://localhost:8085/realms/riverside
+      AUTH_JWKS_URL: http://keycloak:8080/realms/riverside/protocol/openid-connect/certs
+      # ... and the dashboard authenticates with client credentials:
+      OAUTH_TOKEN_URL: http://keycloak:8080/realms/riverside/protocol/openid-connect/token
+      OAUTH_CLIENT_ID: ward-dashboard
+      OAUTH_CLIENT_SECRET: dashboard-secret-change-me
     depends_on:
       db:
         condition: service_healthy
+      keycloak:
+        condition: service_started
 
   # ---- step 2: HL7 v2 -> FHIR via an interface engine ----
 

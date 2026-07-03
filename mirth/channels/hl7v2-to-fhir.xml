@@ -173,7 +173,14 @@
         <proxyAddress/>
         <proxyPort/>
         <method>post</method>
-        <headers class="linked-hash-map"/>
+        <headers class="linked-hash-map">
+          <entry>
+            <string>Authorization</string>
+            <list>
+              <string>${authHeader}</string>
+            </list>
+          </entry>
+        </headers>
         <parameters class="linked-hash-map"/>
         <useHeadersVariable>false</useHeadersVariable>
         <headersVariable/>
@@ -217,6 +224,47 @@
 
 var EVENT_SYSTEM = 'https://riverside-medical.example.org/fhir/message-events';
 var MRN_SYSTEM = 'https://riverside-medical.example.org/mrn';
+
+// --- OAuth2 client-credentials token for the EMR (Keycloak) ---
+// The interface engine authenticates like any other backend service. The
+// token is cached in the global channel map until shortly before expiry.
+// Fail-soft: when Keycloak is unreachable we send no token, which still
+// works against an EMR running with AUTH_ENABLED=false.
+var TOKEN_URL = 'http://keycloak:8080/realms/riverside/protocol/openid-connect/token';
+var CLIENT_ID = 'mirth-gateway';
+var CLIENT_SECRET = 'mirth-secret-change-me';
+
+function getAuthorizationHeader() {
+    try {
+        var now = java.lang.System.currentTimeMillis();
+        var cached = globalChannelMap.get('kcToken');
+        var expiry = globalChannelMap.get('kcTokenExpiry');
+        if (cached != null &amp;&amp; expiry != null &amp;&amp; now &lt; expiry - 30000) {
+            return 'Bearer ' + cached;
+        }
+        var conn = new java.net.URL(TOKEN_URL).openConnection();
+        conn.setRequestMethod('POST');
+        conn.setDoOutput(true);
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        conn.setRequestProperty('Content-Type', 'application/x-www-form-urlencoded');
+        var body = 'grant_type=client_credentials&amp;client_id=' + CLIENT_ID
+                + '&amp;client_secret=' + CLIENT_SECRET;
+        var os = conn.getOutputStream();
+        os.write(new java.lang.String(body).getBytes('UTF-8'));
+        os.close();
+        var response = org.apache.commons.io.IOUtils.toString(conn.getInputStream(), 'UTF-8');
+        var token = JSON.parse(response);
+        globalChannelMap.put('kcToken', token.access_token);
+        globalChannelMap.put('kcTokenExpiry', now + token.expires_in * 1000);
+        return 'Bearer ' + token.access_token;
+    } catch (e) {
+        logger.warn('Could not fetch access token from Keycloak (' + e + '); sending without token');
+        return '';
+    }
+}
+
+channelMap.put('authHeader', getAuthorizationHeader());
 
 var messageType = msg['MSH']['MSH.9']['MSH.9.1'].toString();   // ADT / ORU
 var trigger = msg['MSH']['MSH.9']['MSH.9.2'].toString();       // A01 / A03 / R01

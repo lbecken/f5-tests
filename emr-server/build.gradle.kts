@@ -26,6 +26,10 @@ dependencies {
 
     implementation("com.fasterxml.jackson.core:jackson-databind:$jacksonVersion")
 
+    // OAuth2 resource server: JWT validation against Keycloak's JWKS
+    implementation("com.auth0:java-jwt:4.4.0")
+    implementation("com.auth0:jwks-rsa:0.22.1")
+
     // Logging (HAPI uses slf4j)
     implementation("org.slf4j:slf4j-simple:2.0.13")
 

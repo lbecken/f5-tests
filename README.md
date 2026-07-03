@@ -145,10 +145,60 @@ ADT^A01/A03, ORU^R01 ──► MLLP :6661                                       
 - **Keycloak** (`keycloak` compose service, <http://localhost:8085>, admin
   `admin`/`admin`) — imports the `riverside` realm with a confidential
   `ward-dashboard` client (client-credentials) and a `fhir-user` role.
-  This is the identity layer SMART on FHIR builds on. Wiring token
-  *enforcement* into the EMR (a JWT-validating filter on `/fhir/*`) is the
-  next step and intentionally not done yet, so the playground keeps working
-  without tokens while you explore Keycloak.
+  This is the identity layer SMART on FHIR builds on; step 3 below turns
+  on token enforcement.
+
+## Step 3: the EMR enforces OAuth2 tokens (tag `fhir-v2.1` = before this)
+
+The EMR now acts as an **OAuth2 resource server**: every call to
+`/fhir/*`, `/messages/*` and `/simulate/*` needs a Bearer token issued by
+Keycloak's `riverside` realm. This is the security model real FHIR APIs
+use (SMART on FHIR is OAuth2/OIDC plus healthcare-specific scopes and
+launch flows on top).
+
+How the pieces authenticate:
+
+- **EMR** (`BearerAuthFilter` + `TokenValidator`): validates the RS256
+  signature against the realm's published keys (JWKS), the expiry, and the
+  issuer. Rejections are FHIR-style: `401` + `OperationOutcome` +
+  `WWW-Authenticate`. `GET /fhir/metadata` stays public — per the spec the
+  CapabilityStatement SHOULD be openly readable, it's how SMART clients
+  discover endpoints. Config: `AUTH_ENABLED`, `AUTH_ISSUER` (comma-separated
+  — the same realm has different issuer URLs from inside the compose network
+  vs. the host), `AUTH_JWKS_URL`. Default is **off**, so the playground
+  still runs without Keycloak; compose turns it **on**.
+- **Ward dashboard** (`TokenClient`): fetches tokens with the OAuth2
+  **client_credentials** grant (service-to-service, no user involved) and
+  caches them until shortly before expiry. The HAPI client attaches them via
+  `BearerTokenAuthInterceptor`; the raw feed/simulate calls get the header too.
+- **Mirth** (`mirth-gateway` client): the transformer fetches and caches a
+  token the same way before POSTing to `$process-message` — interface
+  engines are just another service account. It fails soft (sends no token)
+  if Keycloak is down, which still works against an EMR with
+  `AUTH_ENABLED=false`.
+
+Try it from the host:
+
+```bash
+# 401 + OperationOutcome:
+curl -i http://localhost:8084/emr/fhir/Patient
+
+# get a token from Keycloak (note: issuer will be localhost:8085):
+TOKEN=$(curl -s -X POST http://localhost:8085/realms/riverside/protocol/openid-connect/token \
+  -d 'grant_type=client_credentials&client_id=ward-dashboard&client_secret=dashboard-secret-change-me' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])')
+
+# 200:
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8084/emr/fhir/Patient | head
+
+# decode the token to see what the EMR validates (three base64url parts):
+echo $TOKEN | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool
+```
+
+Natural next steps from here, if you want to keep going: SMART **scopes**
+(`system/Patient.read` instead of all-or-nothing), the SMART **app launch**
+(authorization-code flow with the `nurse.riley` user instead of service
+accounts), or FHIR **Subscriptions** to replace the polling feed.
 
 ## Things to try
 

@@ -19,6 +19,21 @@
       }
     },
     {
+      "clientId": "mirth-gateway",
+      "name": "Mirth Connect (v2 gateway)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "mirth-secret-change-me",
+      "defaultClientScopes": ["basic"],
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    },
+    {
       "clientId": "emr-fhir-api",
       "name": "EMR FHIR API (resource server)",
       "enabled": true,

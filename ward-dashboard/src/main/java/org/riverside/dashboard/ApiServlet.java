@@ -168,7 +168,8 @@ public class ApiServlet extends HttpServlet {
     // ---- message feed ----
 
     private ObjectNode nextMessage() throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(EmrConnection.uri("/messages/next")).GET().build();
+        HttpRequest request = EmrConnection.authorize(
+                HttpRequest.newBuilder(EmrConnection.uri("/messages/next")).GET()).build();
         HttpResponse<String> response = EmrConnection.http()
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -243,7 +244,8 @@ public class ApiServlet extends HttpServlet {
 
     private void proxy(HttpServletResponse resp, String method, String path)
             throws IOException, InterruptedException {
-        HttpRequest.Builder builder = HttpRequest.newBuilder(EmrConnection.uri(path));
+        HttpRequest.Builder builder = EmrConnection.authorize(
+                HttpRequest.newBuilder(EmrConnection.uri(path)));
         if (method.equals("POST")) {
             builder.POST(HttpRequest.BodyPublishers.noBody());
         }
