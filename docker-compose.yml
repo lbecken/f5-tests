@@ -30,5 +30,40 @@ services:
       db:
         condition: service_healthy
 
+  # ---- step 2: HL7 v2 -> FHIR via an interface engine ----
+
+  mirth:
+    image: nextgenhealthcare/connect:4.5.2
+    ports:
+      - "8444:8443" # Mirth Administrator / REST API (https, admin/admin)
+      - "6661:6661" # MLLP listener of the HL7v2->FHIR channel
+    volumes:
+      - mirthdata:/opt/connect/appdata
+    depends_on:
+      - app
+
+  # One-shot: imports + deploys the channel through Mirth's REST API.
+  mirth-deploy:
+    image: curlimages/curl:8.10.1
+    volumes:
+      - ./mirth:/mirth:ro
+    entrypoint: ["/bin/sh", "/mirth/deploy.sh"]
+    depends_on:
+      - mirth
+
+  # ---- step 2: identity provider (OAuth2 / SMART-on-FHIR direction) ----
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8085:8080" # admin console + riverside realm
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
 volumes:
   dbdata:
+  mirthdata:

@@ -96,6 +96,60 @@ set environment variables before starting Tomcat:
 The tests seed the same data into H2 and exercise the FHIR mapping, the
 clinical simulator and the message builder end to end.
 
+## Step 2: HL7 v2 → FHIR through a real interface engine
+
+Tag `fhir-v1` marks the pure-FHIR version. On top of it, the stack now
+includes the classic real-world integration job — an upstream system that
+only speaks HL7 v2, an interface engine translating it, and an identity
+provider for the OAuth2/SMART direction:
+
+```
+v2-sender (CLI)          Mirth Connect                EMR                     dashboard
+ADT^A01/A03, ORU^R01 ──► MLLP :6661                                           feed shows the
+  pipes & hats           channel "HL7v2 to FHIR      POST /emr/fhir/          translated message
+                         gateway": MSH/PID/PV1/OBX ► $process-message ──► DB ► arriving
+                         → FHIR message Bundle       upsert patient by MRN,
+                         (mirth/transformer.js)      open/close encounter,
+                                                     store observation
+```
+
+- **`v2-sender`** — a tiny dependency-free CLI playing the upstream clinic
+  system: builds real v2.5 messages and sends them over MLLP
+  (`<VT>…<FS><CR>` framing, hand-rolled so you can see there's no magic):
+  ```bash
+  ./gradlew :v2-sender:run --args="admit"       # ADT^A01
+  ./gradlew :v2-sender:run --args="lab"         # ORU^R01
+  ./gradlew :v2-sender:run --args="discharge"   # ADT^A03
+  # non-default host/port: --args="lab --host localhost --port 6661"
+  ```
+  Some of its MRNs match seeded patients (identity match), others are new —
+  those get auto-registered by the EMR, like a real unknown-patient ADT.
+- **Mirth Connect** (`mirth` compose service, admin UI at
+  <https://localhost:8444>, login `admin`/`admin`) — the `mirth-deploy`
+  one-shot service imports and deploys `mirth/channels/hl7v2-to-fhir.xml`
+  via Mirth's REST API on startup. The interesting part is the destination
+  transformer, kept readable at [`mirth/transformer.js`](mirth/transformer.js):
+  segment-by-segment v2 parsing (PID→Patient, PV1→Encounter, OBX→Observation)
+  into a FHIR message Bundle. *Note: the channel export is hand-written and
+  not yet verified against a running Mirth — if the import complains, create
+  a channel manually (TCP Listener :6661, MLLP, HL7v2 inbound → HTTP Sender
+  POST `http://app:8080/emr/fhir/$process-message`, content
+  `${fhirMessage}`, content type `application/fhir+json`) and paste
+  `transformer.js` as a destination JavaScript transformer step.*
+- **`$process-message`** — the EMR now implements FHIR's standard inbound
+  messaging operation. It upserts the patient by MRN, opens/closes
+  encounters, stores lab results, and answers with a FHIR ACK message
+  (MessageHeader.response) — the FHIR mirror of a v2 ACK. Everything
+  ingested also lands in the outbox, so a v2 admission sent by the CLI
+  re-emerges on the ward dashboard seconds later: the full round trip.
+- **Keycloak** (`keycloak` compose service, <http://localhost:8085>, admin
+  `admin`/`admin`) — imports the `riverside` realm with a confidential
+  `ward-dashboard` client (client-credentials) and a `fhir-user` role.
+  This is the identity layer SMART on FHIR builds on. Wiring token
+  *enforcement* into the EMR (a JWT-validating filter on `/fhir/*`) is the
+  next step and intentionally not done yet, so the playground keeps working
+  without tokens while you explore Keycloak.
+
 ## Things to try
 
 Open the dashboard, hit **Start polling**, then press the simulate buttons and

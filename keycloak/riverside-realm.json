@@ -1,0 +1,46 @@
+{
+  "realm": "riverside",
+  "enabled": true,
+  "displayName": "Riverside Medical Center",
+  "clients": [
+    {
+      "clientId": "ward-dashboard",
+      "name": "Ward Dashboard (backend)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "dashboard-secret-change-me",
+      "defaultClientScopes": ["basic"],
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    },
+    {
+      "clientId": "emr-fhir-api",
+      "name": "EMR FHIR API (resource server)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "bearerOnly": true
+    }
+  ],
+  "users": [
+    {
+      "username": "nurse.riley",
+      "enabled": true,
+      "firstName": "Riley",
+      "lastName": "Chen",
+      "email": "riley.chen@riverside-medical.example.org",
+      "credentials": [{ "type": "password", "value": "changeme", "temporary": false }],
+      "realmRoles": ["fhir-user"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "fhir-user", "description": "May read clinical data via the FHIR API" }
+    ]
+  }
+}

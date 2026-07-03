@@ -4,7 +4,6 @@ plugins {
 
 subprojects {
     apply(plugin = "java")
-    apply(plugin = "war")
 
     group = "org.riverside"
     version = "0.1.0"

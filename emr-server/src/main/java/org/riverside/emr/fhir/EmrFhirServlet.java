@@ -30,6 +30,10 @@ public class EmrFhirServlet extends RestfulServer {
                 new EncounterProvider(repository),
                 new ObservationProvider(repository)));
 
+        // POST /fhir/$process-message - inbound messaging (used by Mirth).
+        registerProvider(new ProcessMessageProvider(
+                new org.riverside.emr.ingest.IngestService(repository)));
+
         // Pretty HTML when a browser asks for it - handy for exploring.
         registerInterceptor(new ResponseHighlighterInterceptor());
         setDefaultPrettyPrint(true);

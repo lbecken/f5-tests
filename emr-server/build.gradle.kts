@@ -1,3 +1,7 @@
+plugins {
+    war
+}
+
 val hapiFhirVersion: String by project
 val hibernateVersion: String by project
 val postgresVersion: String by project

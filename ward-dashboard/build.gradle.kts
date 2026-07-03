@@ -1,3 +1,7 @@
+plugins {
+    war
+}
+
 val hapiFhirVersion: String by project
 val servletApiVersion: String by project
 val jacksonVersion: String by project
