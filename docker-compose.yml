@@ -14,12 +14,12 @@ services:
       retries: 10
     # Expose only if you want to inspect the data with psql from the host:
     ports:
-      - "5432:5432"
+      - "5434:5432"
 
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "8084:8080"
     environment:
       DB_URL: jdbc:postgresql://db:5432/emr
       DB_USER: emr
