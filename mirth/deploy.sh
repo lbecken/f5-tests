@@ -28,7 +28,17 @@ curl -ksf -u "${MIRTH_USER}:${MIRTH_PASS}" -H "X-Requested-With: OpenAPI" \
     --data-binary "@${CHANNEL_FILE}" >/dev/null
 
 echo "Deploying channel ..."
-curl -ksf -u "${MIRTH_USER}:${MIRTH_PASS}" -H "X-Requested-With: OpenAPI" \
-    -X POST "${MIRTH_URL}/api/channels/${CHANNEL_ID}/_deploy" >/dev/null
+# returnErrors=true makes Mirth report deployment problems in the response
+# instead of only logging them server-side.
+response=$(curl -ks -u "${MIRTH_USER}:${MIRTH_PASS}" -H "X-Requested-With: OpenAPI" \
+    -X POST "${MIRTH_URL}/api/channels/${CHANNEL_ID}/_deploy?returnErrors=true" \
+    -w "\n%{http_code}")
+status=$(printf '%s' "$response" | tail -n 1)
+body=$(printf '%s' "$response" | sed '$d')
+if [ "$status" -ge 300 ] 2>/dev/null || [ -z "$status" ]; then
+    echo "Channel deployment FAILED (HTTP ${status}):"
+    echo "$body"
+    exit 1
+fi
 
 echo "Channel imported and deployed. MLLP listener on port 6661."

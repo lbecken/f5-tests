@@ -130,12 +130,12 @@ ADT^A01/A03, ORU^R01 ──► MLLP :6661                                       
   via Mirth's REST API on startup. The interesting part is the destination
   transformer, kept readable at [`mirth/transformer.js`](mirth/transformer.js):
   segment-by-segment v2 parsing (PID→Patient, PV1→Encounter, OBX→Observation)
-  into a FHIR message Bundle. *Note: the channel export is hand-written and
-  not yet verified against a running Mirth — if the import complains, create
-  a channel manually (TCP Listener :6661, MLLP, HL7v2 inbound → HTTP Sender
-  POST `http://app:8080/emr/fhir/$process-message`, content
-  `${fhirMessage}`, content type `application/fhir+json`) and paste
-  `transformer.js` as a destination JavaScript transformer step.*
+  into a FHIR message Bundle. *Note: the channel export is hand-written —
+  if importing or deploying it ever fails, create a channel manually
+  (TCP Listener :6661, MLLP, HL7v2 inbound → HTTP Sender POST
+  `http://app:8080/emr/fhir/$process-message`, content `${fhirMessage}`,
+  content type `application/fhir+json`) and paste `transformer.js` as a
+  destination JavaScript transformer step.*
 - **`$process-message`** — the EMR now implements FHIR's standard inbound
   messaging operation. It upserts the patient by MRN, opens/closes
   encounters, stores lab results, and answers with a FHIR ACK message
