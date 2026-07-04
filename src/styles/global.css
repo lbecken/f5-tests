@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --primary: #6b4226;
+  --secondary: #2b2118;
+  --accent: #c9a24b;
+  --bg: #14100c;
+  --paper: #ece0c4;
+  --ink: #201509;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: radial-gradient(ellipse at top, color-mix(in srgb, var(--bg) 85%, var(--primary) 15%), var(--bg) 70%);
+  color: var(--paper);
+  font-family: 'IM Fell English', serif;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .display-font {
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.02em;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 50%, transparent); border-radius: 6px; }
+
+/* ---------- Card flip ---------- */
+.card-scene {
+  perspective: 1600px;
+}
+
+.card-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+  transform-style: preserve-3d;
+}
+
+.card-flip.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.card-face.back {
+  transform: rotateY(180deg);
+}
+
+/* ---------- generic panel ---------- */
+.panel {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--paper) 96%, var(--primary) 4%), var(--paper));
+  color: var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.55em 1.1em;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+.btn.secondary {
+  background: transparent;
+  color: var(--paper);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper) 40%, transparent);
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; transform: none; }
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.shake { animation: shake 0.5s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.4s ease both; }
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 rgba(201,162,75,0); }
+  50% { box-shadow: 0 0 24px rgba(201,162,75,0.55); }
+}
+.glow { animation: glow 2.2s ease-in-out infinite; }

@@ -1,0 +1,180 @@
+.puzzle-widget { display: flex; flex-direction: column; gap: 0.8rem; }
+.puzzle-prompt { font-style: italic; opacity: 0.85; margin: 0; }
+
+/* Cipher */
+.cipher-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.3rem;
+  letter-spacing: 0.12em;
+  background: rgba(0,0,0,0.06);
+  border-radius: 8px;
+  padding: 0.8em 1em;
+  word-break: break-word;
+}
+.cipher-key-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 0.3em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+}
+.cipher-key-cell { text-align: center; background: rgba(0,0,0,0.05); border-radius: 4px; padding: 0.3em 0; }
+.cipher-key-cell b { display: block; color: var(--primary); }
+
+/* Symbol counter */
+.symbol-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.4rem;
+  background: rgba(0,0,0,0.05);
+  border-radius: 8px;
+  padding: 0.8rem;
+}
+.symbol-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.5);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s ease;
+  font-size: 1.3rem;
+}
+.symbol-cell.tallied { background: color-mix(in srgb, var(--accent) 40%, white); transform: scale(0.92); }
+.symbol-tally { font-size: 0.85rem; opacity: 0.75; }
+
+/* Mirror */
+.mirror-box {
+  font-family: 'IM Fell English', serif;
+  font-size: 1.5rem;
+  padding: 1rem;
+  background: rgba(0,0,0,0.06);
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.4s ease;
+}
+.mirror-box.flipped { transform: scaleX(-1); }
+
+/* Color mixer */
+.mixer-stage {
+  position: relative;
+  height: 200px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mixer-circle {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+  cursor: grab;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.7rem;
+}
+.mixer-legend {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+}
+.mixer-legend-item { display: flex; align-items: center; gap: 0.4em; }
+.mixer-swatch { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+
+/* Maze */
+.maze-svg { width: 100%; height: auto; background: rgba(0,0,0,0.05); border-radius: 8px; }
+.maze-node { cursor: pointer; }
+.maze-node.visited circle { fill: var(--accent); }
+.maze-node.start circle { fill: #2f7a3d; }
+.maze-node.end circle { fill: #8a1f1f; }
+
+/* Logic grid */
+.logic-clues { list-style: none; padding: 0; margin: 0 0 0.6rem; }
+.logic-clues li { padding: 0.3em 0; border-bottom: 1px dashed rgba(0,0,0,0.12); font-size: 0.88rem; }
+.logic-grid-table { border-collapse: collapse; font-size: 0.8rem; }
+.logic-grid-table th, .logic-grid-table td { border: 1px solid rgba(0,0,0,0.15); padding: 0.35em 0.5em; text-align: center; }
+.logic-grid-table td { cursor: pointer; user-select: none; width: 2.2em; }
+.logic-grid-table td.mark-yes { background: color-mix(in srgb, #2f7a3d 30%, white); }
+.logic-grid-table td.mark-no { background: color-mix(in srgb, #8a1f1f 20%, white); }
+
+/* Morse / audio */
+.morse-strip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  padding: 0.6em;
+}
+
+/* Fold */
+.fold-scene { perspective: 1200px; }
+.fold-card {
+  position: relative;
+  height: 200px;
+  transform-style: preserve-3d;
+  transition: transform 0.9s cubic-bezier(.4,.2,.2,1);
+}
+.fold-half {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+.fold-top { background: rgba(0,0,0,0.05); transform-origin: bottom center; }
+.fold-card.folded .fold-top { transform: rotateX(-165deg); }
+.fold-bottom { background: rgba(0,0,0,0.1); }
+
+/* Overlay */
+.overlay-stage {
+  position: relative;
+  height: 220px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.06);
+}
+.overlay-base, .overlay-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.6rem;
+}
+.overlay-layer {
+  cursor: grab;
+  mix-blend-mode: multiply;
+  background: rgba(255,255,255,0.001);
+}
+
+/* Sequence */
+.sequence-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  flex-wrap: wrap;
+}
+.sequence-item {
+  min-width: 2.4em;
+  text-align: center;
+  background: rgba(0,0,0,0.06);
+  border-radius: 6px;
+  padding: 0.3em 0.4em;
+}
+.sequence-item.blank { border: 2px dashed var(--primary); opacity: 0.7; }

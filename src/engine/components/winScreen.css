@@ -1,0 +1,24 @@
+.win-screen {
+  width: min(560px, 100%);
+  padding: 2rem 2.2rem;
+  text-align: center;
+}
+.win-title {
+  font-size: 2rem;
+  margin: 0 0 1rem;
+  color: #1f6b2f;
+}
+.win-body { line-height: 1.6; margin-bottom: 1.4rem; }
+.win-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.8rem;
+  margin-bottom: 1.6rem;
+}
+.win-stats div {
+  background: rgba(0,0,0,0.06);
+  border-radius: 8px;
+  padding: 0.7rem;
+}
+.win-stats span { display: block; font-size: 0.72rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 0.06em; }
+.win-stats strong { font-size: 1.2rem; }

@@ -1,0 +1,51 @@
+.booklet {
+  width: min(640px, 100%);
+  max-height: 84vh;
+  padding: 1.6rem 1.9rem;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--paper) 96%, var(--primary) 4%), var(--paper));
+  background-image:
+    repeating-linear-gradient(180deg, rgba(0,0,0,0.02) 0 28px, transparent 28px 56px),
+    linear-gradient(160deg, color-mix(in srgb, var(--paper) 96%, var(--primary) 4%), var(--paper));
+}
+
+.booklet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(0,0,0,0.15);
+  padding-bottom: 0.6rem;
+}
+
+.booklet-page {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 220px;
+  padding: 0.4rem 0.2rem 1rem;
+}
+
+.booklet-page-title {
+  margin: 0 0 0.6rem;
+}
+
+.booklet-page-body {
+  line-height: 1.6;
+  font-size: 1.05rem;
+}
+
+.booklet-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(0,0,0,0.15);
+  padding-top: 0.7rem;
+}
+
+.booklet-page-count {
+  font-family: 'JetBrains Mono', monospace;
+  opacity: 0.6;
+  font-size: 0.85rem;
+}

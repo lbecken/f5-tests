@@ -1,0 +1,76 @@
+.game-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.game-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  background: rgba(0,0,0,0.35);
+  border-bottom: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.game-hud-title { display: flex; align-items: center; gap: 1rem; }
+.game-hud-title h1 { margin: 0; font-size: 1.3rem; color: var(--accent); }
+
+.game-hud-actions { display: flex; align-items: center; gap: 0.8rem; }
+.game-timer { font-size: 1rem; opacity: 0.85; }
+
+.game-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .game-layout { grid-template-columns: 1fr; }
+}
+
+.game-main-toolbar {
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 1.2rem;
+}
+
+.game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  position: sticky;
+  top: 80px;
+  align-self: start;
+}
+
+.decoder-panel {
+  padding: 1rem 1rem 1.2rem;
+  text-align: center;
+}
+.decoder-panel h3 { margin: 0 0 0.6rem; font-size: 1rem; }
+
+.decoder-modal {
+  width: min(420px, 100%);
+  padding: 1.4rem;
+}
+
+.decoy-log {
+  margin-top: 1.5rem;
+  padding: 1rem 1.2rem;
+}
+.decoy-log h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.decoy-log-entry {
+  font-style: italic;
+  opacity: 0.8;
+  font-size: 0.85rem;
+  margin: 0.3em 0;
+}
