@@ -1,0 +1,4 @@
+# pip install -r requirements-clearvoice.txt
+clearvoice
+soundfile
+numpy

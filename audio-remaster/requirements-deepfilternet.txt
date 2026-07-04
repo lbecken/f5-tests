@@ -1,0 +1,7 @@
+# pip install -r requirements-deepfilternet.txt
+# (torch is not pulled in automatically by deepfilternet — list it explicitly)
+torch
+torchaudio
+deepfilternet
+soundfile
+numpy

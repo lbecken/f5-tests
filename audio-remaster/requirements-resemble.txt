@@ -1,0 +1,10 @@
+# pip install -r requirements-resemble.txt
+#
+# NOTE (macOS): resemble-enhance depends on deepspeed, which may fail to
+# build on macOS. If it does, install without deps and add what's needed:
+#   pip install resemble-enhance --no-deps
+#   pip install torch torchaudio librosa celluloid matplotlib omegaconf \
+#       pandas ptflops rich resampy tabulate
+resemble-enhance
+soundfile
+numpy
