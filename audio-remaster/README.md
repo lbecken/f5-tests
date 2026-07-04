@@ -175,3 +175,24 @@ downloads between runs.
 - A 1-hour lecture takes roughly: `deepfilternet` minutes on CPU;
   `clearvoice` ~10–20 min on M4 Max; `resemble` up to a few hours on
   CPU/MPS (use `--nfe 32` to speed it up).
+
+---
+
+## Development notes
+
+Verified in CI-like sandbox testing:
+
+- Full pipeline (extract → enhance → loudnorm → mux) end-to-end with the
+  `ffmpeg` backend on synthetic noisy mp4/mp3, including preview mode,
+  `--audio-only`, `--keep-wav`; output durations and stream codecs checked
+  (video stream is bit-identical stream copy, audio AAC 192k).
+- `deepfilternet` backend import verified against **latest** torch
+  (2.12) / torchaudio (2.11): the PyPI `deepfilternet` release still imports
+  the removed `torchaudio.backend.common`, so `remaster.py` ships a small
+  compatibility shim (`_shim_torchaudio_backend`) — no need to pin old torch.
+- Chunk/crossfade logic unit-tested: identity enhancer reconstructs input to
+  <1e-5, wrong-length model outputs are tolerated, single-chunk path works.
+- Actual model inference (weight downloads) could not run in the sandbox
+  (no network access to GitHub/HF model hosts); first run on your machine
+  downloads weights automatically. Smoke-test with a 30 s preview slice:
+  `python remaster.py lecture.mp4 --backend deepfilternet --start 300 --duration 30`

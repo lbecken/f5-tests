@@ -1,5 +1,7 @@
 # pip install -r requirements-deepfilternet.txt
 # (torch is not pulled in automatically by deepfilternet — list it explicitly)
+# Latest torch/torchaudio are fine: remaster.py includes a shim for the
+# torchaudio.backend module that new torchaudio removed.
 torch
 torchaudio
 deepfilternet

@@ -178,8 +178,39 @@ def pick_device(requested):
 # mono float32 numpy array to a mono float32 numpy array at the same rate.
 # ---------------------------------------------------------------------------
 
+def _shim_torchaudio_backend():
+    """The deepfilternet release on PyPI (0.5.6) imports
+    torchaudio.backend.common.AudioMetaData, removed in newer torchaudio.
+    Recreate that module path so DeepFilterNet works with current torch."""
+    try:
+        from torchaudio.backend.common import AudioMetaData  # noqa: F401
+        return
+    except ImportError:
+        pass
+    import types
+    import torchaudio
+    meta = getattr(torchaudio, "AudioMetaData", None)
+    if meta is None:
+        from dataclasses import dataclass
+
+        @dataclass
+        class meta:  # minimal stand-in; df only uses it for type info
+            sample_rate: int
+            num_frames: int
+            num_channels: int
+            bits_per_sample: int
+            encoding: str
+    backend = types.ModuleType("torchaudio.backend")
+    common = types.ModuleType("torchaudio.backend.common")
+    common.AudioMetaData = meta
+    backend.common = common
+    sys.modules["torchaudio.backend"] = backend
+    sys.modules["torchaudio.backend.common"] = common
+
+
 def make_backend_deepfilternet(args):
     import torch
+    _shim_torchaudio_backend()
     from df.enhance import enhance, init_df
     model, df_state, _ = init_df()  # downloads DeepFilterNet3 on first run
 
