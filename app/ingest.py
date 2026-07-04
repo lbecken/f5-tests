@@ -11,6 +11,7 @@ import hashlib
 import html
 import re
 import threading
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -136,6 +137,18 @@ def _iter_markdown_headings(text: str):
         i += 1
 
 
+# A heading whose exact (level, title) repeats this many times is a page
+# banner (e.g. the book title re-printed at the top of every chapter), not
+# real structure.
+BANNER_MIN_REPEATS = 5
+# "Paper 92" / "Chapter 7" style headings: structural number, usually followed
+# by a sibling heading carrying the actual title.
+_NUMBERED_UNIT_RE = re.compile(r"^(?:Paper|Chapter|Part)\s+0*(\d{1,4})\s*$", re.IGNORECASE)
+# Titles like "4. The Gift of Revelation" / "5․ The Great Religious Leaders"
+# (the one-dot-leader ․ appears in HTML-derived markdown).
+_LEADING_NUM_RE = re.compile(r"^0*(\d{1,3})\s*[.․·:)]\s*\S")
+
+
 def parse_markdown(text: str, doc_name: str, chunk_chars: int, overlap: int) -> ParsedDocument:
     # Build a flat sequence of (level, title, body_lines).
     raw: list[tuple[int, str, list[str]]] = []
@@ -155,53 +168,119 @@ def parse_markdown(text: str, doc_name: str, chunk_chars: int, overlap: int) -> 
     if cur is not None:
         raw.append(cur)
 
-    if lead and any(ln.strip() for ln in lead):
-        raw.insert(0, (1, "Front Matter" if raw else doc_name, lead))
+    # Collapse repeated banner headings: drop the heading, keep its body with
+    # the preceding section (usually just inter-page navigation cruft).
+    counts = Counter((lvl, ttl) for lvl, ttl, _ in raw)
+    collapsed: list[tuple[int, str, list[str]]] = []
+    for lvl, ttl, body in raw:
+        if counts[(lvl, ttl)] >= BANNER_MIN_REPEATS:
+            (collapsed[-1][2] if collapsed else lead).extend(body)
+        else:
+            collapsed.append((lvl, ttl, body))
 
-    return _build_document(
-        [(lvl, ttl, "\n".join(body)) for lvl, ttl, body in raw],
-        chunk_chars,
-        overlap,
-        strip=True,
-    )
+    if lead and any(ln.strip() for ln in lead):
+        # Same level as the shallowest real heading, so front matter is a
+        # sibling of the top sections, never their parent (banner collapse can
+        # leave the whole document at level 2+).
+        top_level = min((lvl for lvl, _, _ in collapsed), default=1)
+        collapsed.insert(0, (top_level, "Front Matter" if collapsed else doc_name, lead))
+
+    # Merge "Paper N" + following same-level title heading into one section
+    # whose explicit path component is N, so citations match the document's
+    # own numbering.
+    entries = [(lvl, ttl, "\n".join(body)) for lvl, ttl, body in collapsed]
+    flat: list[tuple[int, str, str, int | None]] = []
+    i = 0
+    while i < len(entries):
+        lvl, ttl, body = entries[i]
+        m = _NUMBERED_UNIT_RE.match(ttl)
+        if m and not body.strip() and i + 1 < len(entries) and entries[i + 1][0] == lvl:
+            num = int(m.group(1))
+            _, nxt_title, nxt_body = entries[i + 1]
+            flat.append((lvl, f"{ttl}: {nxt_title}", nxt_body, num))
+            i += 2
+            continue
+        flat.append((lvl, ttl, body, int(m.group(1)) if m else None))
+        i += 1
+
+    return _build_document(flat, chunk_chars, overlap, strip=True)
 
 
 # ---------------------------------------------------------------------------
 # Shared tree + chunk building
 # ---------------------------------------------------------------------------
+def _assign_ordinals(flat: list[tuple]) -> tuple[list[int | None], list[int]]:
+    """Compute each entry's parent index and path component.
+
+    The path component is the document's own number when known (an explicit
+    "Paper N" merge or a "4. Title" prefix); other siblings get the lowest
+    free sequential ordinals. Explicit numbers are reserved first across the
+    whole sibling group so an unnumbered section appearing earlier in the file
+    can never steal a numbered sibling's slot.
+    """
+    parents: list[int | None] = []
+    stack: list[tuple[int, int]] = []  # (level, entry_index)
+    for i, tup in enumerate(flat):
+        level = tup[0]
+        while stack and stack[-1][0] >= level:
+            stack.pop()
+        parents.append(stack[-1][1] if stack else None)
+        stack.append((level, i))
+
+    def explicit_of(tup) -> int | None:
+        if len(tup) > 3 and tup[3] is not None:
+            return tup[3]
+        m = _LEADING_NUM_RE.match(tup[1])
+        return int(m.group(1)) if m else None
+
+    groups: dict[int | None, list[int]] = {}
+    for i, p in enumerate(parents):
+        groups.setdefault(p, []).append(i)
+
+    ords = [0] * len(flat)
+    for kids in groups.values():
+        used: set[int] = set()
+        chosen: dict[int, int] = {}
+        for i in kids:
+            e = explicit_of(flat[i])
+            if e is not None and e not in used:
+                used.add(e)
+                chosen[i] = e
+        nxt = 1
+        for i in kids:
+            if i in chosen:
+                ords[i] = chosen[i]
+                continue
+            while nxt in used:
+                nxt += 1
+            used.add(nxt)
+            ords[i] = nxt
+    return parents, ords
+
+
 def _build_document(
-    flat: list[tuple[int, str, str]],
+    flat: list[tuple],
     chunk_chars: int,
     overlap: int,
     *,
     strip: bool,
 ) -> ParsedDocument:
-    """Turn a flat ``[(level, title, body)]`` list into sections+chunks."""
+    """Turn a flat ``[(level, title, body[, explicit_num])]`` list into sections+chunks."""
     doc = ParsedDocument()
-    # stack of (level, section_idx, child_count)
-    stack: list[list[Any]] = []
+    parents, ords = _assign_ordinals(flat)
     seq = 0
 
-    for level, title, body in flat:
-        while stack and stack[-1][0] >= level:
-            stack.pop()
-        parent_idx = stack[-1][1] if stack else None
-        if stack:
-            stack[-1][2] += 1
-            ord_ = stack[-1][2]
-            path = f"{doc.sections[parent_idx].path}.{ord_}"
-        else:
-            # top-level ordinal
-            ord_ = sum(1 for s in doc.sections if s.parent_idx is None) + 1
-            path = str(ord_)
+    for idx, tup in enumerate(flat):
+        level, title, body = tup[0], tup[1], tup[2]
+        parent_idx = parents[idx]
+        ord_ = ords[idx]
+        path = f"{doc.sections[parent_idx].path}.{ord_}" if parent_idx is not None else str(ord_)
 
-        idx = len(doc.sections)
         text = strip_html(body) if strip else body
         section = ParsedSection(
             level=level, title=title, path=path, parent_idx=parent_idx, ord=ord_, body=text
         )
         doc.sections.append(section)
-        stack.append([level, idx, 0])
 
         for ctext in chunk_text(text, chunk_chars, overlap):
             doc.chunks.append(ParsedChunk(section_idx=idx, seq=seq, text=ctext))
@@ -230,16 +309,27 @@ def chunk_text(text: str, chunk_chars: int, overlap: int) -> list[str]:
                 units.append(p[i : i + chunk_chars])
 
     chunks: list[str] = []
-    cur = ""
+    cur: list[str] = []
+    cur_len = 0
     for u in units:
-        if cur and len(cur) + 2 + len(u) > chunk_chars:
-            chunks.append(cur)
-            tail = cur[-overlap:] if overlap > 0 else ""
-            cur = (tail + "\n\n" + u).strip() if tail else u
+        if cur and cur_len + 2 + len(u) > chunk_chars:
+            # Never end a chunk on a paragraph that introduces what follows
+            # (ends with ':'): carry it into the next chunk so a list is never
+            # separated from its lead-in.
+            carry: list[str] = []
+            if len(cur) > 1 and cur[-1].rstrip().endswith(":"):
+                carry = [cur.pop()]
+            chunks.append("\n\n".join(cur))
+            if carry:
+                cur = carry + [u]
+            else:
+                tail = chunks[-1][-overlap:] if overlap > 0 else ""
+                cur = ([tail] if tail else []) + [u]
         else:
-            cur = (cur + "\n\n" + u).strip() if cur else u
-    if cur.strip():
-        chunks.append(cur)
+            cur.append(u)
+        cur_len = sum(len(x) for x in cur) + 2 * (len(cur) - 1)
+    if cur and "\n\n".join(cur).strip():
+        chunks.append("\n\n".join(cur))
     return chunks
 
 

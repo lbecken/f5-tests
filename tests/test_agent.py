@@ -74,3 +74,39 @@ def test_agent_stops_on_should_stop(db, cfg):
     tools = Tools(db, cfg)
     gen = agent.run(cfg, tools, [{"role": "user", "content": "hi"}], chat_fn=chat_fn, should_stop=lambda: True)
     assert list(gen) == []
+
+
+def test_agent_retries_on_invented_citations(db, cfg):
+    """A first answer citing a nonexistent section triggers one corrective round."""
+    calls = {"n": 0}
+
+    def chat_fn(model, messages, tools=None, stream=False, options=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return {"message": {"content": "Fake answer [book.md §99.99 Invented Title]."}}
+        # After the corrective user message, answer without citations.
+        assert any("do NOT exist" in (m.get("content") or "") for m in messages if m.get("role") == "user")
+        return {"message": {"content": "I could not find this in the documents."}}
+
+    tools = Tools(db, cfg)
+    events = list(agent.run(cfg, tools, [{"role": "user", "content": "q"}], chat_fn=chat_fn))
+    names = [e["event"] for e in events]
+    assert names.count("tool_call") == 1  # the check_citations event
+    assert [e for e in events if e["event"] == "tool_call"][0]["data"]["name"] == "check_citations"
+    final = [e for e in events if e["event"] == "final"][0]
+    assert final["data"]["content"] == "I could not find this in the documents."
+    assert calls["n"] == 2
+
+
+def test_agent_accepts_valid_citations_without_retry(db, cfg):
+    with db.transaction() as conn:
+        conn.execute("INSERT INTO documents(name, source_path, format, content_hash, status) VALUES ('b.md','/x','md','h1','ready')")
+        conn.execute("INSERT INTO sections(doc_id, parent_id, level, title, path, ord) VALUES (1, NULL, 1, 'T', '92.4', 4)")
+
+    def chat_fn(model, messages, tools=None, stream=False, options=None):
+        return {"message": {"content": "Grounded [b.md §92.4 T]."}}
+
+    tools = Tools(db, cfg)
+    events = list(agent.run(cfg, tools, [{"role": "user", "content": "q"}], chat_fn=chat_fn))
+    assert [e["event"] for e in events if e["event"] == "tool_call"] == []
+    assert [e for e in events if e["event"] == "final"][0]["data"]["content"] == "Grounded [b.md §92.4 T]."

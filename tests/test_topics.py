@@ -87,3 +87,19 @@ def test_import_warns_about_missing_documents(db):
     imported = topics.get_topic(db, result["topic_id"])
     assert imported["documents"] == []
     assert imported["messages"][0]["content"] == "hi"
+
+
+def test_invalid_citations_flags_title_mismatch_on_real_path(db, cfg):
+    from app.tools import Tools
+    with db.transaction() as conn:
+        conn.execute("INSERT INTO documents(name, source_path, format, content_hash, status) VALUES ('b.md','/x','md','h9','ready')")
+        conn.execute("INSERT INTO sections(doc_id, parent_id, level, title, path, ord) VALUES (1, NULL, 2, 'Paper 70: The Evolution of Human Government', '70', 70)")
+        conn.execute("INSERT INTO sections(doc_id, parent_id, level, title, path, ord) VALUES (1, NULL, 3, '4․ The Gift of Revelation', '92.4', 4)")
+    t = Tools(db, cfg)
+    # fabricated title on a real path -> flagged
+    assert t.invalid_citations("x [b.md §70 The Adam and Eve Story] y")
+    # matching title (subset of real, numbers/stopwords ignored) -> ok
+    assert t.invalid_citations("x [b.md §92.4 The Gift of Revelation] y") == []
+    assert t.invalid_citations("x [b.md §70 Evolution of Human Government] y") == []
+    # nonexistent path -> flagged
+    assert t.invalid_citations("x [b.md §99.99 Whatever] y")

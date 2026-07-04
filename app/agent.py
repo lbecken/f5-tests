@@ -15,7 +15,9 @@ SYSTEM_PROMPT = """You are DocStudy, a study assistant for a specific set of doc
 
 Rules:
 - Use the provided tools (search, read_section, get_toc, find_similar, list_documents) to ground every claim in the documents. Do NOT answer from prior knowledge about the document's contents.
-- ALWAYS cite sources inline as [DocName §path Title] using the citation strings returned by the tools.
+- Never state a document fact you have not seen in tool output. If a retrieved passage announces an answer but is cut off before giving it (e.g. it ends with "as follows:"), you MUST call read_section on that section (or search again) to see the full text BEFORE answering.
+- If after searching and reading you cannot find the answer in the documents, say so plainly instead of guessing.
+- ALWAYS cite sources inline as [DocName §path Title] using the citation strings returned by the tools. Never invent a citation; only cite sections that appeared in tool output.
 - When asked to "explain at depth levels", structure the answer as Beginner / Intermediate / Advanced.
 - You may include diagrams using ```mermaid fenced code blocks.
 - You may propose exercises or study questions when helpful.
@@ -125,52 +127,81 @@ def run(
 ) -> Iterator[dict[str, Any]]:
     chat_fn = chat_fn or _default_chat_fn(cfg.ollama_host)
     should_stop = should_stop or (lambda: False)
-    options = {"num_ctx": cfg.num_ctx}
+    # Low temperature: this is grounded QA, not creative writing.
+    options = {"num_ctx": cfg.num_ctx, "temperature": 0.1}
     model = cfg.chat_model
 
     convo: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     convo.extend(trim_history(history, cfg.num_ctx))
 
-    # --- tool-resolution rounds -------------------------------------------
-    for _round in range(MAX_TOOL_ROUNDS):
+    citation_checked = False
+    while True:
+        # --- tool-resolution rounds ---------------------------------------
+        content: str | None = None
+        for _round in range(MAX_TOOL_ROUNDS):
+            if should_stop():
+                return
+            resp = chat_fn(model, convo, tools=tools.schemas, stream=False, options=options)
+            msg = _message(resp)
+            tcs = _get(msg, "tool_calls", None)
+            if not tcs:
+                # The model answered; keep it (don't pay for a regeneration).
+                content = _content(msg)
+                break
+            convo.append(_assistant_msg_for_convo(msg))
+            for tc in tcs:
+                if should_stop():
+                    return
+                name, args = parse_tool_call(tc)
+                yield {"event": "tool_call", "data": {"name": name, "args": args}}
+                result, summary = tools.dispatch(name, args)
+                yield {"event": "tool_result", "data": {"name": name, "summary": summary}}
+                convo.append({"role": "tool", "name": name, "content": json.dumps(result, ensure_ascii=False)})
+
+        # Before showing the answer, verify its citations exist; send the
+        # model back (once) if it fabricated any. Only possible on the
+        # non-streamed path, but that is the common one.
+        if content and content.strip() and not citation_checked:
+            citation_checked = True
+            bad = tools.invalid_citations(content)
+            if bad and not should_stop():
+                yield {"event": "tool_call", "data": {"name": "check_citations", "args": {}}}
+                yield {"event": "tool_result", "data": {
+                    "name": "check_citations",
+                    "summary": f"{len(bad)} invented citation(s): {', '.join(bad[:4])}",
+                }}
+                convo.append({"role": "assistant", "content": content})
+                convo.append({"role": "user", "content": (
+                    "Citation check failed. These cited sections do NOT exist in the "
+                    f"document(s): {', '.join(bad)}. Your answer contained unverified "
+                    "claims. Use the tools (search, get_toc, read_section) to find the "
+                    "actual text, then rewrite the answer citing only sections that "
+                    "appear in tool output. If the documents do not contain the answer, "
+                    "say so."
+                )})
+                continue
+
+        if content and content.strip():
+            yield {"event": "token", "data": {"text": content}}
+            yield {"event": "final", "data": {"content": content}}
+            return
+
+        # --- forced streamed answer (tool-round cap hit or empty reply) ----
         if should_stop():
             return
-        resp = chat_fn(model, convo, tools=tools.schemas, stream=False, options=options)
-        msg = _message(resp)
-        tcs = _get(msg, "tool_calls", None)
-        if not tcs:
-            # The model already answered; don't pay for a second generation.
-            content = _content(msg)
-            if content.strip():
-                yield {"event": "token", "data": {"text": content}}
-                yield {"event": "final", "data": {"content": content}}
-                return
-            break
-        convo.append(_assistant_msg_for_convo(msg))
-        for tc in tcs:
-            if should_stop():
-                return
-            name, args = parse_tool_call(tc)
-            yield {"event": "tool_call", "data": {"name": name, "args": args}}
-            result, summary = tools.dispatch(name, args)
-            yield {"event": "tool_result", "data": {"name": name, "summary": summary}}
-            convo.append({"role": "tool", "name": name, "content": json.dumps(result, ensure_ascii=False)})
+        full_parts: list[str] = []
+        try:
+            stream = chat_fn(model, convo, tools=None, stream=True, options=options)
+            for chunk in stream:
+                if should_stop():
+                    break
+                token = _content(_message(chunk))
+                if token:
+                    full_parts.append(token)
+                    yield {"event": "token", "data": {"text": token}}
+        except Exception as exc:  # noqa: BLE001
+            yield {"event": "error", "data": {"detail": f"{type(exc).__name__}: {exc}"}}
+            return
 
-    # --- final streamed answer (no tools) ---------------------------------
-    if should_stop():
+        yield {"event": "final", "data": {"content": "".join(full_parts)}}
         return
-    full_parts: list[str] = []
-    try:
-        stream = chat_fn(model, convo, tools=None, stream=True, options=options)
-        for chunk in stream:
-            if should_stop():
-                break
-            token = _content(_message(chunk))
-            if token:
-                full_parts.append(token)
-                yield {"event": "token", "data": {"text": token}}
-    except Exception as exc:  # noqa: BLE001
-        yield {"event": "error", "data": {"detail": f"{type(exc).__name__}: {exc}"}}
-        return
-
-    yield {"event": "final", "data": {"content": "".join(full_parts)}}
