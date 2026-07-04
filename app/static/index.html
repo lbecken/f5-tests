@@ -1,0 +1,88 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocStudy</title>
+<link rel="stylesheet" href="/static/style.css">
+
+<div id="app">
+  <aside id="sidebar">
+    <header class="sidebar-head">
+      <h1>DocStudy</h1>
+      <div id="config-status" class="config-status" title="Backend / model status"></div>
+    </header>
+
+    <section class="panel" id="topics-panel">
+      <div class="panel-head">
+        <h2>Topics</h2>
+        <div class="panel-head-actions">
+          <button id="new-topic-btn" class="btn btn-primary btn-sm" type="button">+ New</button>
+          <button id="import-btn" class="btn btn-ghost btn-sm" type="button" title="Import topic from file">Import</button>
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </div>
+      </div>
+      <ul id="topics-list" class="topics-list"></ul>
+    </section>
+
+    <section class="panel" id="documents-panel">
+      <div class="panel-head">
+        <h2>Documents</h2>
+      </div>
+      <div class="add-doc">
+        <div class="add-doc-row">
+          <input type="text" id="doc-path" class="text-input" placeholder="Server file path…" autocomplete="off">
+          <button id="add-path-btn" class="btn btn-sm" type="button">Add</button>
+        </div>
+        <div class="add-doc-row">
+          <button id="upload-btn" class="btn btn-ghost btn-sm btn-block" type="button">Upload file…</button>
+          <input type="file" id="upload-file" hidden>
+        </div>
+      </div>
+      <ul id="documents-list" class="documents-list"></ul>
+    </section>
+  </aside>
+
+  <main id="main">
+    <header id="main-header" class="main-header" hidden>
+      <div class="main-header-title">
+        <h2 id="active-topic-name"></h2>
+        <div id="topic-docs-badges" class="topic-docs-badges"></div>
+      </div>
+      <div class="main-header-actions">
+        <button id="rename-topic-btn" class="btn btn-ghost btn-sm" type="button">Rename</button>
+        <button id="export-topic-btn" class="btn btn-ghost btn-sm" type="button">Export</button>
+        <button id="delete-topic-btn" class="btn btn-ghost btn-sm btn-danger" type="button">Delete</button>
+      </div>
+    </header>
+
+    <div id="messages" class="messages"></div>
+
+    <div id="composer" class="composer" hidden>
+      <textarea id="composer-input" class="composer-input" rows="1"
+        placeholder="Ask something about your documents…  (Enter to send, Shift+Enter for newline)"></textarea>
+      <div class="composer-buttons">
+        <button id="send-btn" class="btn btn-primary" type="button">Send</button>
+        <button id="stop-btn" class="btn btn-danger" type="button" hidden>Stop</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- New / rename topic modal -->
+<div id="modal-backdrop" class="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modal-title">New topic</h3>
+    <label class="field-label" for="modal-topic-name">Name</label>
+    <input type="text" id="modal-topic-name" class="text-input" placeholder="e.g. Chapter 3 study">
+    <div class="field-label">Documents this topic covers</div>
+    <div id="modal-docs" class="modal-docs"></div>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="btn btn-ghost" type="button">Cancel</button>
+      <button id="modal-save" class="btn btn-primary" type="button">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/mermaid.min.js"></script>
+<script src="/static/app.js"></script>
