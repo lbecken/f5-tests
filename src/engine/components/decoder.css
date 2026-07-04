@@ -9,7 +9,10 @@
   position: relative;
   width: 100%;
   max-width: 360px;
-  aspect-ratio: 1 / 1.08;
+  /* height, not aspect-ratio: the canvas box below is forced perfectly square via its
+     own aspect-ratio, and needs a fixed-height ancestor to size against (this wrapper
+     uses position:absolute faces for the flip animation, so it can't just be "auto"). */
+  height: 440px;
   transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(.4,.2,.2,1);
 }
@@ -33,7 +36,8 @@
 
 .decoder-canvas-box {
   width: 100%;
-  flex: 1;
+  aspect-ratio: 1 / 1;
+  flex: none;
   border-radius: 50%;
   overflow: hidden;
   box-shadow: 0 0 0 6px #1a130b, 0 10px 30px rgba(0,0,0,0.5);
