@@ -344,5 +344,16 @@ async def api_post_message(topic_id: int, request: Request):
 
 # ---------------------------------------------------------------------------
 # Static frontend (mounted last so /api/* wins). Tolerates a missing/empty dir.
+# no-cache = browsers must revalidate before reusing a cached copy, so a
+# truncated asset (e.g. cached during a disk-full incident) can't stick.
+@app.middleware("http")
+async def _static_no_cache(request: Request, call_next):
+    response = await call_next(request)
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
+
 # ---------------------------------------------------------------------------
 app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True, check_dir=False), name="static")
