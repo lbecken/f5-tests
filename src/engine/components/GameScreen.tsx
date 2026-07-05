@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ThemeManifest } from '../types'
 import { useGameStore, useThemeSave } from '../store'
-import { ambientEngine, playChime } from '../audio'
+import { ambientEngine, playChime, playVoice } from '../audio'
+import { blueVoice, themeMusic } from '../assets'
 import { DrawnBoard } from './DrawnBoard'
 import { PuzzleModal } from './PuzzleModal'
 import { DeckBrowser } from './DeckBrowser'
@@ -47,7 +48,7 @@ export function GameScreen({ theme, onExit }: { theme: ThemeManifest; onExit: ()
   const progress = totalRed ? solvedCount / totalRed : 0
 
   useEffect(() => {
-    if (musicOn) ambientEngine.start(theme.music, progress)
+    if (musicOn) ambientEngine.start({ ...theme.music, tracks: theme.music.tracks ?? themeMusic(theme.id) }, progress)
     else ambientEngine.stop()
     return () => ambientEngine.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,7 +146,10 @@ export function GameScreen({ theme, onExit }: { theme: ThemeManifest; onExit: ()
           const pending = save.pendingBlue
           if (pending) {
             const blue = theme.blueCards[pending.blueId]
-            if (pending.result === 'correct' && blue && (blue.unlocksBooklet?.length || blue.outcome === 'win')) {
+            const narration = blueVoice(theme.id, pending.blueId)
+            if (narration) {
+              window.setTimeout(() => playVoice(narration), 500)
+            } else if (pending.result === 'correct' && blue && (blue.unlocksBooklet?.length || blue.outcome === 'win')) {
               playChime('story')
             } else if (pending.result === 'correct') {
               playChime('correct')

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ThemeManifest } from '../types'
-import { playVoice, stopVoice } from '../audio'
+import { playVoice, stopVoice, playChime } from '../audio'
+import { themeArt, pageVoice } from '../assets'
 import './booklet.css'
 
 interface BookletProps {
@@ -25,6 +26,8 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
   if (!open) return null
   const page = pages[Math.min(pageIdx, pages.length - 1)]
   const Body = page?.body
+  const narration = page ? (page.narrationUrl ?? pageVoice(theme.id, page.id)) : undefined
+  const pageArt = page ? themeArt(theme.id, 'page', page.id) : undefined
 
   return (
     <div className="deck-modal-overlay" onClick={onClose}>
@@ -38,7 +41,7 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
             <>
               <h3 className="display-font booklet-page-title">
                 {page.title}
-                {page.narrationUrl && (
+                {narration && (
                   <button
                     className="btn secondary booklet-listen"
                     onClick={() => {
@@ -46,7 +49,7 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
                         stopVoice()
                         setSpeaking(false)
                       } else {
-                        const el = playVoice(page.narrationUrl!)
+                        const el = playVoice(narration!)
                         el.onended = () => setSpeaking(false)
                         setSpeaking(true)
                       }
@@ -56,6 +59,7 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
                   </button>
                 )}
               </h3>
+              {pageArt && <img className="booklet-page-art" src={pageArt} alt="" />}
               <div className="booklet-page-body">
                 <Body />
               </div>
@@ -63,14 +67,14 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
           )}
         </div>
         <div className="booklet-nav">
-          <button className="btn secondary" disabled={pageIdx === 0} onClick={() => setPageIdx((i) => Math.max(0, i - 1))}>
+          <button className="btn secondary" disabled={pageIdx === 0} onClick={() => { playChime('page'); setPageIdx((i) => Math.max(0, i - 1)) }}>
             ← Previous
           </button>
           <span className="booklet-page-count">{pageIdx + 1} / {pages.length}</span>
           <button
             className="btn secondary"
             disabled={pageIdx >= pages.length - 1}
-            onClick={() => setPageIdx((i) => Math.min(pages.length - 1, i + 1))}
+            onClick={() => { playChime('page'); setPageIdx((i) => Math.min(pages.length - 1, i + 1)) }}
           >
             Next →
           </button>

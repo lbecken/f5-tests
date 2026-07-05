@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ThemeManifest } from '../types'
+import { themeArt } from '../assets'
 import './objectTray.css'
 
 interface ObjectTrayProps {
@@ -23,9 +24,10 @@ export function ObjectTray({ theme, inventory }: ObjectTrayProps) {
             const obj = theme.objects[id]
             if (!obj) return null
             const Icon = obj.icon
+            const art = themeArt(theme.id, 'obj', id)
             return (
               <button key={id} className="object-chip" onClick={() => setExamine(id)} title={obj.name}>
-                <Icon />
+                {art ? <img src={art} alt="" className="object-chip-art" /> : <Icon />}
                 <span>{obj.name}</span>
               </button>
             )
@@ -40,7 +42,9 @@ export function ObjectTray({ theme, inventory }: ObjectTrayProps) {
               <h2 className="display-font">{item.name}</h2>
               <button className="btn secondary" onClick={() => setExamine(null)}>Close</button>
             </div>
-            <div className="object-examine-art"><item.icon /></div>
+            <div className="object-examine-art">
+              {themeArt(theme.id, 'obj', examine!) ? <img src={themeArt(theme.id, 'obj', examine!)} alt="" /> : <item.icon />}
+            </div>
             <p>{item.description}</p>
             {Detail && (
               <div className="object-examine-detail">

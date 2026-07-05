@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import type { ThemeManifest } from '../types'
 import { FlipCard, CardBack, LockedCardBack } from './Card'
 import { LockIcon } from '../icons'
+import { themeArt } from '../assets'
 import './deckBrowser.css'
 
 interface DeckBrowserProps {
@@ -64,6 +65,7 @@ export function DeckBrowser({ theme, deck, open, onClose, unlockedIds, drawnIds,
                         deck={deck}
                         accent={theme.palette.accent}
                         icon={deck === 'red' ? <LockIcon symbol={theme.redCards[id].symbol} /> : undefined}
+                        bgUrl={themeArt(theme.id, 'deck', deck)}
                       />
                     ) : (
                       <LockedCardBack label="" />

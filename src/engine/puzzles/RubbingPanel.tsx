@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { playChime } from '../audio'
 import '../puzzles/puzzles.css'
 
 interface RubbingPanelProps {
@@ -59,7 +60,7 @@ export function RubbingPanel({ prompt, hidden, maskColor = '#3a3126', maskLabel 
         <canvas
           ref={canvasRef}
           className="rubbing-mask"
-          onPointerDown={(e) => { rubbing.current = true; (e.target as HTMLElement).setPointerCapture(e.pointerId); rub(e) }}
+          onPointerDown={(e) => { rubbing.current = true; playChime('rub'); (e.target as HTMLElement).setPointerCapture(e.pointerId); rub(e) }}
           onPointerMove={rub}
           onPointerUp={() => { rubbing.current = false }}
         />

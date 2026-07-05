@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { playChime } from '../audio'
 import '../puzzles/puzzles.css'
 
 interface WeighItem {
@@ -33,12 +34,14 @@ export function ScalePanel({ prompt, items }: ScalePanelProps) {
 
   const tilt = Math.max(-9, Math.min(9, (right - left) * 1.2))
 
-  const cycle = (id: string) =>
+  const cycle = (id: string) => {
+    playChime('scale')
     setPans((p) => {
       const cur = p[id]
       const next = cur === null ? 'left' : cur === 'left' ? 'right' : null
       return { ...p, [id]: next }
     })
+  }
 
   const panItems = (side: 'left' | 'right') => items.filter((i) => pans[i.id] === side)
 

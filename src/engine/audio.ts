@@ -5,6 +5,12 @@ import sfxTear from '../assets/sfx/tear.mp3'
 import sfxCorrect from '../assets/sfx/correct.mp3'
 import sfxWrong from '../assets/sfx/wrong.mp3'
 import sfxWin from '../assets/sfx/win.mp3'
+import sfxFold from '../assets/sfx/fold.mp3'
+import sfxRub from '../assets/sfx/rub.mp3'
+import sfxScale from '../assets/sfx/scale.mp3'
+import sfxPage from '../assets/sfx/page.mp3'
+import sfxHint from '../assets/sfx/hint.mp3'
+import sfxStory from '../assets/sfx/story.mp3'
 
 /** Procedurally generated, looping ambient bed — no audio files required, just
  * oscillators, a slow filter, and a sparse generative sequence per theme mood.
@@ -226,8 +232,14 @@ const SFX_FILES: Partial<Record<string, string>> = {
   correct: sfxCorrect,
   wrong: sfxWrong,
   win: sfxWin,
+  fold: sfxFold,
+  rub: sfxRub,
+  scale: sfxScale,
+  page: sfxPage,
+  hint: sfxHint,
+  story: sfxStory,
 }
-const SFX_VOLUME: Record<string, number> = { tick: 0.35, draw: 0.45, tear: 0.55, correct: 0.55, wrong: 0.4, win: 0.6 }
+const SFX_VOLUME: Record<string, number> = { tick: 0.35, draw: 0.45, tear: 0.55, correct: 0.55, wrong: 0.4, win: 0.6, fold: 0.5, rub: 0.35, scale: 0.4, page: 0.4, hint: 0.45, story: 0.5 }
 
 /** One-shot narration/voice clip player — only one speaks at a time. */
 let voiceEl: HTMLAudioElement | null = null
@@ -247,7 +259,7 @@ export function stopVoice() {
 
 /** Short one-shot UI stingers. 'story' is the four-note act motif played when a
  * blue card advances the narrative; 'tick' is the decoder ring snapping home. */
-export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' | 'tick' | 'tear' | 'win') {
+export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' | 'tick' | 'tear' | 'win' | 'fold' | 'rub' | 'scale' | 'page') {
   const file = SFX_FILES[kind]
   if (file) {
     const el = new Audio(file)

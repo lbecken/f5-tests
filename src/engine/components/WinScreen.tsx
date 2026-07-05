@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ThemeManifest } from '../types'
 import { playChime, playVoice, stopVoice } from '../audio'
+import { themeArt } from '../assets'
 import './winScreen.css'
 
 function formatTime(ms: number) {
@@ -54,6 +55,7 @@ export function WinScreen({ theme, elapsedMs, hintsUsed, wrongAttempts, onMenu }
             {speaking ? '◼ Stop' : '🔊 Hear the ending'}
           </button>
         )}
+        {themeArt(theme.id, 'page', 'win') && <img className="win-art" src={themeArt(theme.id, 'page', 'win')} alt="" />}
         <div className="win-body"><Win /></div>
         <div className="win-stats">
           <div><span>Time</span><strong>{formatTime(elapsedMs)}</strong></div>

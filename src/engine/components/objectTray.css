@@ -54,3 +54,6 @@
 }
 .object-examine-art svg { width: 5rem; height: 5rem; margin: 0.6rem auto; }
 .object-examine-detail { margin-top: 0.8rem; }
+
+.object-chip-art { width: 2.4em; height: 2.4em; object-fit: contain; border-radius: 6px; }
+.object-examine-art img { width: 9rem; height: 9rem; object-fit: contain; margin: 0.6rem auto; border-radius: 10px; display: block; }

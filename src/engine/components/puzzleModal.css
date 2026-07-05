@@ -42,3 +42,12 @@
   color: #1f6b2f;
   font-weight: 600;
 }
+
+.puzzle-card-art {
+  width: 100%;
+  max-height: 190px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.1);
+}

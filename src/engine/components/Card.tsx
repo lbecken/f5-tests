@@ -35,15 +35,20 @@ export function CardBack({
   deck,
   accent,
   icon,
+  bgUrl,
 }: {
   label: string
   deck: 'red' | 'blue' | 'green'
   accent: string
   icon?: ReactNode
+  bgUrl?: string
 }) {
   const deckColor = deck === 'red' ? '#7a1f1f' : deck === 'blue' ? '#1f3f6b' : '#1f5c34'
+  const bg = bgUrl
+    ? `url(${bgUrl}) center / cover no-repeat`
+    : `linear-gradient(155deg, ${deckColor}, ${deckColor}dd)`
   return (
-    <div className="card-back" style={{ background: `linear-gradient(155deg, ${deckColor}, ${deckColor}dd)`, borderColor: accent }}>
+    <div className="card-back" style={{ background: bg, borderColor: accent }}>
       <div className="card-back-frame" style={{ borderColor: accent }}>
         <div className="card-back-icon" style={{ color: accent }}>{icon}</div>
         <div className="card-back-label" style={{ color: accent }}>{label}</div>

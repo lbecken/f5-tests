@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ThemeManifest } from '../types'
 import { useGameStore, useThemeSave } from '../store'
 import { LockIcon } from '../icons'
+import { themeArt } from '../assets'
 import { HintPanel } from './HintPanel'
 import { CodeEntry } from './CodeEntry'
 import './puzzleModal.css'
@@ -41,6 +42,9 @@ export function PuzzleModal({ theme, redId, onClose, onOpenDecoder }: PuzzleModa
         </div>
 
         <div className="puzzle-modal-body">
+          {themeArt(theme.id, 'card', red.id) && (
+            <img className="puzzle-card-art" src={themeArt(theme.id, 'card', red.id)} alt="" />
+          )}
           <div className="puzzle-stage">
             <red.component solved={drawn.solved} inventory={save?.inventory ?? []} />
           </div>

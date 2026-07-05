@@ -22,3 +22,12 @@
 }
 .win-stats span { display: block; font-size: 0.72rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 0.06em; }
 .win-stats strong { font-size: 1.2rem; }
+
+.win-art {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+}

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { playChime } from '../audio'
 import '../puzzles/puzzles.css'
 
 interface FoldPanelProps {
@@ -22,7 +23,7 @@ export function FoldPanel({ prompt, topContent, bottomContent, foldedContent }: 
           <div className="fold-half fold-top">{topContent}</div>
         </div>
       </div>
-      <button className="btn secondary" onClick={() => setFolded((v) => !v)}>
+      <button className="btn secondary" onClick={() => { playChime('fold'); setFolded((v) => !v) }}>
         {folded ? 'Unfold the card' : 'Fold the card in half'}
       </button>
     </div>
