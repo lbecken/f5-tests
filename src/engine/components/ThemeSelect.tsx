@@ -31,6 +31,14 @@ export function ThemeSelect({ themes, onPlay, hasSave, onReset }: ThemeSelectPro
                   <div className="theme-box-art"><t.coverArt /></div>
                   <h2 className="display-font">{t.title}</h2>
                   <p className="theme-tagline">{t.tagline}</p>
+                  <div className="theme-difficulty" title={`Difficulty ${t.difficulty}/5`}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <span key={n} className={n <= Math.round(t.difficulty) ? 'lock on' : 'lock'}>🔒</span>
+                    ))}
+                    <span className="theme-difficulty-label">
+                      {t.difficulty <= 2.5 ? 'middle' : t.difficulty <= 3.5 ? 'experienced' : 'expert'}
+                    </span>
+                  </div>
                   <span className="theme-examine-hint">click box to examine</span>
                 </div>
                 <div className="theme-box-face back" onClick={() => setExamined(null)}>

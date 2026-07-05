@@ -9,9 +9,11 @@ export type LockSymbol =
   | 'feather' | 'compass'
 
 export interface PuzzleRenderProps {
-  /** Called by the puzzle widget once the player has derived the answer symbols/digits,
-   * before they dial the decoder / type a code. Purely for flavor state (e.g. "solved locally");  */
   solved: boolean
+  /** Object ids currently in the player's item tray — lets puzzles gate their
+   * interactions on possessing a specific item (mirror, lamp, lens…), the way
+   * physical EXIT puzzles need a strange item from the box. */
+  inventory: string[]
 }
 
 export interface RedCard {
@@ -28,6 +30,8 @@ export interface RedCard {
   inputMode: 'decoder' | 'text'
   /** Optional flavor hint shown near the code-entry field */
   entryHint?: string
+  /** 1 = warm-up, 2 = solid, 3 = devious. Shown as pips on the card. */
+  difficulty?: 1 | 2 | 3
 }
 
 export interface BlueCard {
@@ -89,7 +93,11 @@ export interface AmbientProfile {
   waveform: OscillatorType
   tempoMs: number
   filterFreq: number
-  mood: 'mechanical' | 'cold' | 'eerie'
+  mood: 'mechanical' | 'cold' | 'eerie' | 'deco' | 'ancient'
+  /** Optional produced audio files (looping OGG/MP3). When present they replace the
+   * procedural bed: `main` loops during play, `finale` takes over past ~75% progress,
+   * `win` plays once on escape. See docs/PRODUCTION.md for the asset pipeline. */
+  tracks?: Partial<Record<'main' | 'finale' | 'win', string>>
 }
 
 export interface ThemeManifest {
@@ -97,6 +105,8 @@ export interface ThemeManifest {
   title: string
   tagline: string
   synopsis: string
+  /** Overall box difficulty, 1 (novice) – 5 (expert), shown as padlocks on the box. */
+  difficulty: number
   palette: ThemePalette
   coverArt: ComponentType
   boxClue: ComponentType

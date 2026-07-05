@@ -5,8 +5,10 @@ import { GameScreen } from './engine/components/GameScreen'
 import { clockmakerTheme } from './themes/clockmaker/theme'
 import { abyssalTheme } from './themes/abyssal/theme'
 import { witchTheme } from './themes/witch/theme'
+import { zephyrTheme } from './themes/zephyr/theme'
+import { ninthSealTheme } from './themes/ninthseal/theme'
 
-const THEMES = [clockmakerTheme, abyssalTheme, witchTheme]
+const THEMES = [clockmakerTheme, witchTheme, abyssalTheme, zephyrTheme, ninthSealTheme]
 
 export default function App() {
   const currentThemeId = useGameStore((s) => s.currentThemeId)

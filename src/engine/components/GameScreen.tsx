@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ThemeManifest } from '../types'
 import { useGameStore, useThemeSave } from '../store'
-import { ambientEngine } from '../audio'
+import { ambientEngine, playChime } from '../audio'
 import { DrawnBoard } from './DrawnBoard'
 import { PuzzleModal } from './PuzzleModal'
 import { DeckBrowser } from './DeckBrowser'
@@ -42,11 +42,20 @@ export function GameScreen({ theme, onExit }: { theme: ThemeManifest; onExit: ()
     document.documentElement.style.setProperty('--ink', theme.palette.ink)
   }, [theme])
 
+  const solvedCount = save ? Object.values(save.drawnRed).filter((d) => d.solved).length : 0
+  const totalRed = Object.keys(theme.redCards).length
+  const progress = totalRed ? solvedCount / totalRed : 0
+
   useEffect(() => {
-    if (musicOn) ambientEngine.start(theme.music)
+    if (musicOn) ambientEngine.start(theme.music, progress)
     else ambientEngine.stop()
     return () => ambientEngine.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [musicOn, theme])
+
+  useEffect(() => {
+    ambientEngine.setIntensity(progress)
+  }, [progress])
 
   useEffect(() => {
     const id = window.setInterval(() => tick(1000), 1000)
@@ -132,7 +141,18 @@ export function GameScreen({ theme, onExit }: { theme: ThemeManifest; onExit: ()
         unlockedIds={[]}
         drawnIds={save.solvedBluePile}
         highlightId={save.pendingBlue?.blueId ?? null}
-        onDraw={() => revealBlue(theme)}
+        onDraw={() => {
+          const pending = save.pendingBlue
+          if (pending) {
+            const blue = theme.blueCards[pending.blueId]
+            if (pending.result === 'correct' && blue && (blue.unlocksBooklet?.length || blue.outcome === 'win')) {
+              playChime('story')
+            } else if (pending.result === 'correct') {
+              playChime('correct')
+            }
+          }
+          revealBlue(theme)
+        }}
       />
 
       <Booklet theme={theme} unlockedIds={save.bookletUnlocked} open={bookletOpen} onClose={() => setBookletOpen(false)} />

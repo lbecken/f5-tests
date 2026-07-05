@@ -31,13 +31,18 @@ export function PuzzleModal({ theme, redId, onClose, onOpenDecoder }: PuzzleModa
           <div className="puzzle-modal-title">
             <LockIcon symbol={red.symbol} color={theme.palette.primary} />
             <h2 className="display-font">{red.letter}. {red.title}</h2>
+            {red.difficulty && (
+              <span className="puzzle-difficulty" title={`Difficulty ${red.difficulty}/3`}>
+                {'●'.repeat(red.difficulty)}{'○'.repeat(3 - red.difficulty)}
+              </span>
+            )}
           </div>
           <button className="btn secondary" onClick={onClose}>Close</button>
         </div>
 
         <div className="puzzle-modal-body">
           <div className="puzzle-stage">
-            <red.component solved={drawn.solved} />
+            <red.component solved={drawn.solved} inventory={save?.inventory ?? []} />
           </div>
 
           {!drawn.solved ? (

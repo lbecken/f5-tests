@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
-import { MorsePanel, CipherPanel, SymbolCounter, MirrorPanel, LogicGridPanel, SequencePanel, OverlayPanel } from '../../engine/puzzles'
+import {
+  MorsePanel, CipherPanel, SymbolCounter, MirrorPanel, LogicGridPanel,
+  LensPanel, ConstellationPanel, DialGauge,
+} from '../../engine/puzzles'
+import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
   return (
@@ -57,6 +61,7 @@ export const abyssalTheme: ThemeManifest = {
   tagline: 'Four kilometres down, something sealed every door but yours.',
   synopsis:
     'You wake from cryo-sleep to a dead station and a very much awake AI. Repair the airlock protocol and get out before Station 7 finishes whatever it started without you.',
+  difficulty: 3.5,
   palette: { primary: '#1f4f5f', secondary: '#0b1c22', accent: '#4fd1c5', bg: '#04090b', paper: '#dbeff0', ink: '#08262b' },
   coverArt: CoverArt,
   boxClue: BoxClue,
@@ -73,17 +78,31 @@ export const abyssalTheme: ThemeManifest = {
     {
       id: 'intro-2', order: 1, title: 'Station Protocol', body: () => (
         <Page>
-          <p>Every system on Station 7 confirms itself the same way: solve the diagnostic, derive a code or word, and log it. The station's terminal (the Answer Deck) will confirm it and unlock whatever comes next.</p>
-          <p>Some diagnostics resolve to raw symbols rather than numbers — for those, the airlock's manual override dial (three concentric rings) translates symbol to digit. Three tiers of MERIDIAN's own troubleshooting notes (Hint Cards) are filed under each system's icon, if you need them.</p>
+          <p>Every system on Station 7 confirms itself the same way: solve the diagnostic, derive a code or word, and log it at the terminal (the Answer Deck). Wrong codes sometimes return their own log pages. MERIDIAN files everything.</p>
+          <p>Symbol diagnostics route through the airlock's manual override dial — three concentric rings. Its housing has a reverse side; station engineering never etched anything without cause. Three tiers of troubleshooting notes are filed under each system's icon.</p>
         </Page>
       ),
     },
   ],
 
   storyPages: {
-    'log-found': { id: 'log-found', order: 2, title: 'The Last Log', body: () => <Page><p>Dr. Kaia Reyes, lead researcher. Her final log, half-encrypted out of habit, mentions a containment breach she calls "routine" three separate times.</p></Page> },
-    'valves-found': { id: 'valves-found', order: 3, title: 'Manual Override', body: () => <Page><p>The reactor deck has a manual valve trio, hand-stamped with the same icons as the airlock dial. Someone built this station expecting the AI to fail exactly like this.</p></Page> },
-    'oxygen-found': { id: 'oxygen-found', order: 4, title: 'Recalculating', body: () => <Page><p>MERIDIAN's voice changes pitch slightly. "Oxygen reserves: recalculated. Recommend expedience." It sounds, almost, like it's rooting for you.</p></Page> },
+    'log-found': {
+      id: 'log-found', order: 2, title: 'The Last Log', body: () => (
+        <Page>
+          <p>The drawer holds a stack of personal logs, half-encrypted out of habit, and a laminated crew roster:</p>
+          <p className="mono" style={{ fontSize: '0.9rem' }}>
+            STATION 7 — ACTIVE ROSTER<br />
+            T. OKAFOR — systems<br />
+            K. REYES — lead researcher<br />
+            M. SANTOS — medical<br />
+            J. PIRET — geology
+          </p>
+          <p>One of them wrote the final entry. The signature is five digits of keypad cipher.</p>
+        </Page>
+      ),
+    },
+    'valves-found': { id: 'valves-found', order: 3, title: 'Manual Override', body: () => <Page><p>The reactor deck has a manual valve trio, hand-stamped with the same icons as the airlock dial — and a brass plate: "BLEED IN ORDER OF PRESSURE. HIGHEST FIRST, TO THE OUTER RING." Someone built this station expecting the AI to fail exactly like this.</p></Page> },
+    'oxygen-found': { id: 'oxygen-found', order: 4, title: 'Recalculating', body: () => <Page><p>MERIDIAN's voice changes pitch slightly. "Oxygen reserves: recalculated. Recommend expedience." It sounds, almost, like it's rooting for you. The observation dome above the airlock has begun to clear of frost.</p></Page> },
   },
 
   winPage: {
@@ -101,120 +120,175 @@ export const abyssalTheme: ThemeManifest = {
 
   redCards: {
     A: {
-      id: 'A', letter: 'A', title: 'First Light', symbol: 'wave', inputMode: 'text',
+      id: 'A', letter: 'A', title: 'First Light', symbol: 'wave', inputMode: 'text', difficulty: 1,
       solution: 'meridian',
       entryHint: 'Enter the decoded word.',
       component: () => <MorsePanel prompt="A comm buzzer under the console keeps repeating the same pattern. Press play and decode it." message="MERIDIAN" />,
     },
     B: {
-      id: 'B', letter: 'B', title: "Dr. Reyes's Log", symbol: 'key', inputMode: 'text',
+      id: 'B', letter: 'B', title: 'The Signed Log', symbol: 'key', inputMode: 'text', difficulty: 2,
       solution: 'reyes',
-      entryHint: 'Enter the decoded name.',
+      entryHint: 'Enter the surname that fits the cipher.',
       component: () => (
         <CipherPanel
-          prompt="An old habit of Dr. Reyes's: she encrypted her personal logs with an old phone keypad cipher (A-C=2, D-F=3, …). The signature at the bottom of this entry:"
+          prompt="The final log entry ends with five digits — an old phone-keypad cipher, one digit per letter. Four crew members could have written it. The roster in your story booklet knows which surnames are even possible."
           cipherText="7 3 9 3 7"
           keyMap={KEYPAD_CIPHER}
         />
       ),
     },
     C: {
-      id: 'C', letter: 'C', title: 'Warning Grid', symbol: 'eye', inputMode: 'text',
+      id: 'C', letter: 'C', title: 'Warning Grid', symbol: 'eye', inputMode: 'text', difficulty: 2,
       solution: '11',
-      entryHint: 'Enter the number of amber warning lights you counted.',
+      entryHint: 'Enter the number of logged faults.',
       component: () => (
         <SymbolCounter
-          prompt="The reactor status board is a wall of small indicator lights — mostly steady green, but not all of them."
+          prompt="The reactor status board is a wall of indicator lights. MERIDIAN wants a fault count before it will open the deck hatch."
           targetGlyph="🟠"
-          cells={['🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟢','🟢']}
+          cells={[
+            '🟢','🟠','🟢',{ glyph: '🟠', blink: true },'🟠','🟢',
+            '🟠','🟢','🟢','🟠','🟢','🟠',
+            { glyph: '🟠', blink: true },'🟠','🟢','🟢','🟠','🟢',
+            '🟠','🟢',{ glyph: '🟠', blink: true },'🟠','🟢','🟠',
+            '🟢','🟢','🟠',{ glyph: '🟠', blink: true },'🟢','🟢',
+          ]}
+          fine={'Maintenance standing order, taped to the board: "LOG STEADY FAULTS ONLY. A FLICKERING LIGHT IS A DYING BULB, NOT A FAULT."'}
         />
       ),
     },
     D: {
-      id: 'D', letter: 'D', title: 'Manual Valve Trio', symbol: 'gear', inputMode: 'decoder',
+      id: 'D', letter: 'D', title: 'Manual Valve Trio', symbol: 'gear', inputMode: 'decoder', difficulty: 2,
       solution: '105',
-      entryHint: 'Set the decoder: outer ring to the gear, middle ring to the key, inner ring to the wave.',
+      entryHint: 'Bleed order = ring order. Read the gauges, then the dial windows.',
       component: () => (
-        <p className="puzzle-prompt">
-          Three manual valves on the reactor deck are hand-stamped with a gear, a key, and a wave.
-          Set the airlock override dial the same way — outer to gear, middle to key, inner to wave — and read the number.
-        </p>
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            Three manual valves, each stamped with an icon and wearing a pressure gauge.
+            The brass plate is adamant: <em>"BLEED IN ORDER OF PRESSURE. HIGHEST FIRST, TO THE
+            OUTER RING; LOWEST LAST, TO THE HEART."</em>
+          </p>
+          <div className="gauge-row">
+            <div style={{ textAlign: 'center' }}>
+              <LockIcon symbol="key" size={26} />
+              <DialGauge label="valve · key" value={45} max={100} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <LockIcon symbol="wave" size={26} />
+              <DialGauge label="valve · wave" value={10} max={100} />
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <LockIcon symbol="gear" size={26} />
+              <DialGauge label="valve · gear" value={80} max={100} />
+            </div>
+          </div>
+        </div>
       ),
     },
     E: {
-      id: 'E', letter: 'E', title: 'Inverted HUD', symbol: 'compass', inputMode: 'text',
+      id: 'E', letter: 'E', title: 'Inverted HUD', symbol: 'compass', inputMode: 'text', difficulty: 1,
       solution: 'kaia',
-      entryHint: 'Enter the word once it reads correctly.',
-      component: () => <MirrorPanel prompt="A diagnostic camera feed is running mirrored — a known fault on the aft units. A name is signed across the bottom of the frozen frame." mirroredText="KAIA" />,
+      entryHint: 'Enter the first name signed on the frame.',
+      component: () => <MirrorPanel prompt="A diagnostic camera feed is frozen, running mirrored — a known fault on the aft units. Something is signed across the bottom of the frame." mirroredText="KAIA · DR" />,
     },
     F: {
-      id: 'F', letter: 'F', title: 'Crew Manifest', symbol: 'skull', inputMode: 'text',
+      id: 'F', letter: 'F', title: 'Crew Manifest', symbol: 'skull', inputMode: 'text', difficulty: 3,
       solution: 'four',
-      entryHint: 'Enter the occupied cabin number, spelled out as a word.',
+      entryHint: 'Enter the occupied cabin, spelled out as a word.',
       component: () => (
         <LogicGridPanel
-          prompt="Four cabins, one still shows a heat signature on the manifest map. A maintenance note lists what's known:"
+          prompt="Four cabins. The manifest map shows one still drawing life support, but the sensor column is corrupted. The maintenance notes survive:"
           clues={[
-            'Cabin One reads cold — its occupant evacuated on the last supply run.',
-            'Cabin Two and Cabin Three both show frost damage and no power.',
+            'The occupied cabin has an even number.',
+            "Cabin Two's heater failed the day the frost came — nothing has drawn power there since.",
             'Exactly one cabin still draws life-support power.',
-            'That cabin is not Cabin One, Two, or Three.',
+            'Cabin One evacuated its occupant on the final supply run.',
+            'Cabin Three logged frost damage the same week as its neighbor Cabin Two.',
           ]}
           rows={['Cabin One', 'Cabin Two', 'Cabin Three', 'Cabin Four']}
-          cols={['Cold', 'Frost', 'No Power', 'Occupied']}
+          cols={['Evacuated', 'Frost', 'No Power', 'Occupied']}
         />
       ),
     },
     G: {
-      id: 'G', letter: 'G', title: 'Pressure Cycle', symbol: 'clock', inputMode: 'text',
+      id: 'G', letter: 'G', title: 'Pressure Ritual', symbol: 'clock', inputMode: 'text', difficulty: 2,
       solution: '55',
-      entryHint: 'Enter the missing number.',
-      component: () => <SequencePanel prompt="A pressure gauge log, cycling in a familiar pattern:" items={['5', '8', '13', '21', '34', '?']} />,
+      entryHint: "Enter day six's predicted reading.",
+      component: () => (
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            Five days of pressure readings, one gauge per day. MERIDIAN refuses to stabilize
+            the cycle until you predict day six. "The pattern is organic," it adds, unhelpfully.
+          </p>
+          <div className="gauge-row">
+            <DialGauge label="day 1" value={5} max={60} ticks={6} size={92} />
+            <DialGauge label="day 2" value={8} max={60} ticks={6} size={92} />
+            <DialGauge label="day 3" value={13} max={60} ticks={6} size={92} />
+            <DialGauge label="day 4" value={21} max={60} ticks={6} size={92} />
+            <DialGauge label="day 5" value={34} max={60} ticks={6} size={92} />
+          </div>
+        </div>
+      ),
     },
     H: {
-      id: 'H', letter: 'H', title: 'Thermal Bloom', symbol: 'flame', inputMode: 'text',
+      id: 'H', letter: 'H', title: 'Thermal Bloom', symbol: 'flame', inputMode: 'text', difficulty: 3,
       solution: 'oxygen',
-      entryHint: 'Read the highlighted letters in order and enter the word.',
-      component: () => (
-        <OverlayPanel
-          prompt="A thermal readout is layered over the deck schematic. Drag the warm-signature layer aside to read the lettered conduit labels underneath."
-          base={
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.7, textAlign: 'left' }}>
-              Deck schematic, conduits A through F, all nominal.{' '}
-              <b style={{ color: '#c23b3b' }}>O</b>utflow valve{' '}
-              <b style={{ color: '#c23b3b' }}>X</b>-braced against pressure,{' '}
-              <b style={{ color: '#c23b3b' }}>Y</b>ield tested twice,{' '}
-              <b style={{ color: '#c23b3b' }}>G</b>askets replaced last cycle,{' '}
-              <b style={{ color: '#c23b3b' }}>E</b>mergency shutoff primed,{' '}
-              <b style={{ color: '#c23b3b' }}>N</b>ozzle cleared of debris.
-            </p>
+      entryHint: 'Enter the six letters, hottest conduit first.',
+      component: ({ inventory }) => (
+        <LensPanel
+          prompt="The deck schematic looks blank under normal light — its conduit labels were printed in thermochromic ink. Dr. Reyes's headlamp has a thermal mode, if you've found it."
+          lensLabel="Switch the headlamp to thermal"
+          tint="rgba(220, 60, 30, 0.18)"
+          requiresItem={{ id: 'headlamp', hint: 'You need a thermal light source. Keep exploring — someone on this station owned one.' }}
+          inventory={inventory}
+          base={<p style={{ opacity: 0.6, fontStyle: 'italic' }}>…six unlabeled conduits cross the schematic…</p>}
+          hidden={
+            <div style={{ display: 'flex', gap: '1.3rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', fontFamily: "'JetBrains Mono', monospace", fontSize: '1.35rem' }}>
+              <span>G<small style={{ display: 'block', fontSize: '0.55rem' }}>52°</small></span>
+              <span>O<small style={{ display: 'block', fontSize: '0.55rem' }}>84°</small></span>
+              <span>N<small style={{ display: 'block', fontSize: '0.55rem' }}>20°</small></span>
+              <span>Y<small style={{ display: 'block', fontSize: '0.55rem' }}>65°</small></span>
+              <span>E<small style={{ display: 'block', fontSize: '0.55rem' }}>38°</small></span>
+              <span>X<small style={{ display: 'block', fontSize: '0.55rem' }}>71°</small></span>
+            </div>
           }
-          overlay={<div style={{ background: 'rgba(79,209,197,0.35)', width: '100%', height: '100%', borderRadius: 8 }} />}
         />
       ),
     },
     I: {
-      id: 'I', letter: 'I', title: 'Airlock Star Chart', symbol: 'star', inputMode: 'decoder',
+      id: 'I', letter: 'I', title: 'The Observation Dome', symbol: 'star', inputMode: 'decoder', difficulty: 3,
       solution: '997',
-      entryHint: 'Set the decoder: outer ring to the eye, middle ring to the compass, inner ring to the star.',
+      entryHint: 'The three brightest stars name the rings, brightest to faintest, outer to inner.',
       component: () => (
-        <p className="puzzle-prompt">
-          The airlock's final override needs a scan-eye, a compass, and a star, outer to inner. Dial it in and read the code — this is the one that gets you out.
-        </p>
+        <ConstellationPanel
+          prompt="Above the airlock, the frost has cleared from the observation dome. Stars — real ones, the first you've seen in months. The airlock manual's final page reads: 'WHEN ALL ELSE FAILS: THE THREE BRIGHTEST GUIDE YOU HOME. BRIGHTEST TO THE OUTER RING.' Each bright star wears an engineer's icon, scratched into the dome glass beside it."
+          stars={[
+            { id: 'eye', x: 70, y: 60, size: 7, label: '◉ eye' },
+            { id: 'compass', x: 210, y: 40, size: 5.2, label: '✧ compass' },
+            { id: 'star', x: 150, y: 150, size: 4, label: '★ star' },
+            { id: 'd1', x: 40, y: 160, size: 2.2, label: 'wave' },
+            { id: 'd2', x: 260, y: 120, size: 2.6, label: 'skull' },
+            { id: 'd3', x: 120, y: 100, size: 1.8, label: 'gear' },
+            { id: 'd4', x: 250, y: 180, size: 1.4 },
+            { id: 'd5', x: 30, y: 30, size: 1.6 },
+          ]}
+        />
       ),
     },
   },
 
   blueCards: {
-    meridian: { id: 'meridian', outcome: 'advance', narrative: '"MERIDIAN" — the station answers to its own name, oddly pleased. A drawer under the console unlocks, holding a stack of encrypted logs.', unlocksRed: ['B'], unlocksBooklet: ['log-found'] },
-    reyes: { id: 'reyes', outcome: 'advance', narrative: 'REYES. The log entry unlocks fully, revealing a warning-light diagnostic and a maintenance hatch on the reactor deck.', unlocksRed: ['C', 'D'] },
-    '11': { id: '11', outcome: 'advance', narrative: 'Eleven. The reactor deck hatch releases, revealing a security camera feed frozen on a single mirrored frame.', unlocksRed: ['E'], grantsObjects: ['keycard'] },
-    '105': { id: '105', outcome: 'advance', narrative: 'One-zero-five. A locker beside the valves opens: a crew manifest tablet and a hand tool.', unlocksRed: ['F', 'G'], grantsObjects: ['wrench'], unlocksBooklet: ['valves-found'] },
-    kaia: { id: 'kaia', outcome: 'advance', narrative: "KAIA. Dr. Reyes's own first name. A thermal schematic prints itself from a nearby terminal.", unlocksRed: ['H'], grantsObjects: ['headlamp'] },
-    four: { id: 'four', outcome: 'advance', narrative: 'Cabin Four. Still occupied, still drawing power — whatever that means, it isn\'t your problem tonight. The pressure log unlocks.', unlocksRed: ['G'] },
-    '55': { id: '55', outcome: 'advance', narrative: 'Fifty-five. The pressure cycle stabilizes and the thermal overlay comes fully online.', unlocksRed: ['H'] },
-    oxygen: { id: 'oxygen', outcome: 'advance', narrative: 'OXYGEN. MERIDIAN recalculates your reserves out loud, and for the first time sounds almost relieved. The airlock star chart illuminates.', unlocksRed: ['I'], unlocksBooklet: ['oxygen-found'] },
-    '997': { id: '997', outcome: 'win', narrative: 'Nine-nine-seven. The airlock finally, finally cycles.' },
+    meridian: { id: 'meridian', outcome: 'advance', narrative: '"MERIDIAN" — the station answers to its own name, oddly pleased. A drawer under the console unlocks: encrypted personal logs and a laminated crew roster.', unlocksRed: ['B'], unlocksBooklet: ['log-found'] },
+    reyes: { id: 'reyes', outcome: 'advance', narrative: 'REYES. 7-3-9-3-7 fits no other name on the roster. The log unlocks: a fault-count challenge on the reactor board, and coordinates for a maintenance hatch.', unlocksRed: ['C', 'D'] },
+    '11': { id: '11', outcome: 'advance', narrative: 'Eleven steady faults — the flickering bulbs fooled nobody today. The reactor deck hatch releases. Inside: a security keycard and a frozen, mirrored camera feed.', unlocksRed: ['E'], grantsObjects: ['keycard'] },
+    '105': { id: '105', outcome: 'advance', narrative: 'One-zero-five — highest pressure to the outer ring, exactly as the plate demanded. A locker beside the valves opens: a crew manifest tablet, a hand wrench, and pressure logs.', unlocksRed: ['F', 'G'], grantsObjects: ['wrench'], unlocksBooklet: ['valves-found'] },
+    kaia: { id: 'kaia', outcome: 'advance', narrative: "KAIA. Dr. Reyes signed her own diagnostic frame. Her locker accepts the name — inside, her headlamp, thermal mode intact.", unlocksRed: ['H'], grantsObjects: ['headlamp'] },
+    four: { id: 'four', outcome: 'advance', narrative: 'Cabin Four — the only even cabin still drawing power. Whatever is in there, it isn\'t your problem tonight. The pressure ritual unlocks.', unlocksRed: ['G'] },
+    '55': { id: '55', outcome: 'advance', narrative: 'Fifty-five. "Organic," MERIDIAN repeats, satisfied — each day the sum of the two before. The thermal schematic prints itself from the nearest terminal.', unlocksRed: ['H'] },
+    oxygen: { id: 'oxygen', outcome: 'advance', narrative: 'OXYGEN — read from the hottest conduit down to the coldest. MERIDIAN recalculates your reserves out loud, and for the first time sounds almost relieved. Above the airlock, the dome frost is clearing.', unlocksRed: ['I'], unlocksBooklet: ['oxygen-found'] },
+    '997': { id: '997', outcome: 'win', narrative: 'Nine-nine-seven. The three brightest stars, brightest first. The airlock finally, finally cycles.' },
+    piret: { id: 'piret', outcome: 'decoy', narrative: 'The terminal blinks: "J. PIRET — geology — no log entries this cycle." A five-letter name, yes. But run his letters through the keypad: 7-4-7-3-8. The second digit betrays you.' },
+    '15': { id: '15', outcome: 'decoy', narrative: 'MERIDIAN sighs — an odd sound from a station AI. "Fifteen includes four dying bulbs. Re-read the standing order taped to the board."' },
+    '203': { id: '203', outcome: 'decoy', narrative: 'The valves shudder and re-seal. "Backwards," MERIDIAN notes. "The plate says HIGHEST first, technician."' },
     '404': { id: '404', outcome: 'decoy', narrative: 'MERIDIAN\'s voice flattens: "Resource not found." Somewhere, a very old joke lands on absolutely no one. Try again.' },
     '000': { id: '000', outcome: 'decoy', narrative: 'The terminal returns a null log — just a timestamp from before the station was even crewed. Not your answer.' },
   },
@@ -222,55 +296,55 @@ export const abyssalTheme: ThemeManifest = {
   greenCards: {
     wave: { id: 'wave', symbol: 'wave', hints: [
       'That buzzer pattern is Morse code, not random static.',
-      'Press play, then try writing down each short and long pulse as a dot or a dash.',
+      'Press play and write down each short and long pulse as a dot or a dash — eight letters.',
       'The decoded word is MERIDIAN.',
     ] },
     key: { id: 'key', symbol: 'key', hints: [
-      'This is an old phone-keypad cipher — each digit maps to a small group of letters.',
-      'The pattern narrows down fast once you realize it spells a common five-letter surname.',
-      'The decoded name is REYES.',
+      'Five digits, five letters — and only four possible authors. The roster is in your story booklet.',
+      'OKAFOR and SANTOS are the wrong length. Between REYES and PIRET, check each letter against the keypad: only one fits 7-3-9-3-7.',
+      'R=7, E=3, Y=9, E=3, S=7 — the answer is REYES.',
     ] },
     eye: { id: 'eye', symbol: 'eye', hints: [
-      'Two colors of light are mixed into that panel — count only one of them.',
-      'Count only the amber lights, ignore every green one.',
-      'There are 11 amber lights.',
+      'Not every amber light is a fault. Read the note taped to the board.',
+      'Blinking lights are dying bulbs, not faults — count only the steady amber lights.',
+      'There are 11 steady amber lights.',
     ] },
     gear: { id: 'gear', symbol: 'gear', hints: [
-      'Three valves, three stamped icons — a gear, a key, a wave.',
-      'Set the dial outer-to-inner in exactly that order: gear, key, wave.',
-      'The revealed number is 105.',
+      'The plate ties bleed order to ring order — and the gauges tell you the bleed order.',
+      'Gear reads 80, key 45, wave 10. Highest to the outer ring: gear outer, key middle, wave inner.',
+      'Set outer=gear, middle=key, inner=wave. The windows read 105.',
     ] },
     compass: { id: 'compass', symbol: 'compass', hints: [
-      'The camera feed is mirrored — a known hardware fault, not a puzzle in itself.',
-      'Flip the lens to read the frozen frame the right way round.',
-      'The word is KAIA.',
+      'The camera feed is mirrored — a hardware fault, not a cipher.',
+      'Flip the lens. The frame reads "DR · KAIA" — the plaque wants the first name only.',
+      'The answer is KAIA.',
     ] },
     skull: { id: 'skull', symbol: 'skull', hints: [
-      'Three of the four cabins are explicitly ruled out by the notes — work through them one at a time.',
-      'Only Cabin Four is left once the other three are eliminated.',
+      'Start with the parity clue — it halves the field immediately.',
+      'The occupied cabin is even: Two or Four. Cabin Two has drawn no power since the frost, and the occupied cabin still draws power.',
       'The answer is FOUR.',
     ] },
     clock: { id: 'clock', symbol: 'clock', hints: [
-      'Compare each number in the sequence to the two before it.',
-      "It's a Fibonacci-style sequence: each term is the sum of the two before it.",
-      'The missing number is 55.',
+      'Read each needle carefully first — the values matter more than the pictures.',
+      'The readings run 5, 8, 13, 21, 34 — each day is the sum of the two before ("organic," as MERIDIAN says).',
+      'Day six reads 21 + 34 = 55.',
     ] },
     flame: { id: 'flame', symbol: 'flame', hints: [
-      'Not every letter in that schematic is the same color.',
-      'Read only the red-highlighted letters, left to right.',
-      'They spell OXYGEN.',
+      "The schematic isn't blank — its ink responds to heat. Dr. Reyes owned something that can see heat.",
+      'With the headlamp in thermal mode, six letters appear with temperatures. Read hottest to coldest, not left to right.',
+      '84°, 71°, 65°, 52°, 38°, 20° spell O-X-Y-G-E-N.',
     ] },
     star: { id: 'star', symbol: 'star', hints: [
-      "This dial needs everything you've learned about this station's eyes, compasses and stars.",
-      'Set outer to the scan-eye, middle to the compass, inner to the star.',
-      'The final number is 997.',
+      'The manual cares about brightness, and each bright star wears an icon from the dial.',
+      'Trace the three visibly largest stars, largest first: the eye, then the compass, then the star. That is your ring order, outer to inner.',
+      'Set outer=eye, middle=compass, inner=star. The windows read 997.',
     ] },
   },
 
   objects: {
     keycard: { id: 'keycard', name: 'Reactor Keycard', description: "A worn keycard from the reactor deck hatch. Still warm, somehow.", icon: KeycardIcon },
     wrench: { id: 'wrench', name: 'Hand Wrench', description: 'A well-used maintenance wrench. Station-issue, station-worn.', icon: WrenchIcon },
-    headlamp: { id: 'headlamp', name: 'Headlamp', description: "Dr. Reyes's headlamp, still functional. It smells faintly of ozone.", icon: HeadlampIcon },
+    headlamp: { id: 'headlamp', name: "Reyes's Headlamp", description: "Dr. Reyes's headlamp. The selector has two positions: VISIBLE and THERMAL. It smells faintly of ozone.", icon: HeadlampIcon },
   },
 
   decoder: {
@@ -291,7 +365,8 @@ export const abyssalTheme: ThemeManifest = {
     backClue: () => (
       <div>
         <h3 className="display-font">Etched into the dial's housing</h3>
-        <p>"Three rings, three failsafes. Trust the eye, then the compass, then the star." — station engineering, pre-launch</p>
+        <p>"Pressure decides the order of things down here. When it doesn't, look up: the bright ones will."</p>
+        <p style={{ opacity: 0.7, fontStyle: 'italic' }}>— station engineering, pre-launch</p>
       </div>
     ),
   },

@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
-import { CipherPanel, SymbolCounter, SequencePanel, MirrorPanel, LogicGridPanel, MorsePanel, OverlayPanel } from '../../engine/puzzles'
+import {
+  CipherPanel, SymbolCounter, MirrorPanel, MorsePanel,
+  LensPanel, ScalePanel, ClockFace,
+} from '../../engine/puzzles'
+import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
   return (
@@ -21,6 +25,8 @@ function CoverArt() {
   )
 }
 
+/** The box clue is load-bearing: puzzle C (the lying clock face) cannot be solved
+ * honestly without it. */
 function BoxClue() {
   return <p>"Tick tock — the hour on my clocks is never what it seems. Trust the count, not the face." <br />— a brass plate riveted under the box lid</p>
 }
@@ -50,16 +56,14 @@ function OilCanIcon() {
   )
 }
 
-const CAESAR_TABLE: Record<string, string> = {}
-for (let i = 0; i < 26; i++) {
-  const plain = String.fromCharCode(65 + i)
-  const cipher = String.fromCharCode(65 + ((i + 3) % 26))
-  CAESAR_TABLE[plain] = cipher
-}
-
 function Page({ children }: { children: ReactNode }) {
   return <div>{children}</div>
 }
+
+/* Puzzle C: the repainted, lying clock face. Position-counting (per the box clue)
+ * gives hour 6, minute-mark 4 → 64. Reading the painted numerals gives 9 and 8 →
+ * the 98 decoy card. */
+const LYING_NUMERALS = ['XI', 'VI', 'I', 'X', 'VIII', 'II', 'IX', 'V', 'XII', 'IV', 'VII', 'III']
 
 export const clockmakerTheme: ThemeManifest = {
   id: 'clockmaker',
@@ -67,6 +71,7 @@ export const clockmakerTheme: ThemeManifest = {
   tagline: 'A workshop, a vanished master, a hundred years of silence.',
   synopsis:
     'Locked in after hours to witness a legendary automaton rewind for the first time in a century, you must out-think a dead man\'s workshop before the last gear stops turning.',
+  difficulty: 2.5,
   palette: { primary: '#6b4226', secondary: '#2b2118', accent: '#c9a24b', bg: '#14100c', paper: '#ece0c4', ink: '#201509' },
   coverArt: CoverArt,
   boxClue: BoxClue,
@@ -85,9 +90,9 @@ export const clockmakerTheme: ThemeManifest = {
       id: 'intro-2', order: 1, title: 'How This Workshop Works',
       body: () => (
         <Page>
-          <p>Every puzzle you solve here resolves to a word or number. Whatever you derive, you'll enter it beside the puzzle card — the workshop's logbook (the Answer Deck) will tell you whether you're right, and if so, which drawer or cabinet to search next.</p>
-          <p>Some puzzles instead give you symbols. For those, turn the workshop's decoder — three brass rings, each stamped with symbols — until the ones you've been shown line up, and read off the number that appears.</p>
-          <p>If you're ever stuck, three tiers of Master Voss's own marginalia (Hint Cards) are filed by the same symbol as your puzzle. Draw them one at a time.</p>
+          <p>Every puzzle you solve here resolves to a word or number. Enter it beside the puzzle card — the workshop's logbook (the Answer Deck) will tell you whether you're right, and if so, where to search next. Wrong-but-tempting answers sometimes have their own logbook pages. Learn from them.</p>
+          <p>Some puzzles yield symbols instead. Turn the workshop's decoder until those symbols line up under the marker and read the number from its windows. The decoder has a back side. So does the box you found this game in. Nothing in this workshop is decoration.</p>
+          <p>Three tiers of Master Voss's own marginalia (Hint Cards) are filed under the same symbol as each puzzle. Draw them one at a time — the third tier always confesses the full answer.</p>
         </Page>
       ),
     },
@@ -96,15 +101,15 @@ export const clockmakerTheme: ThemeManifest = {
   storyPages: {
     'note-found': {
       id: 'note-found', order: 2, title: 'The Note, Decoded',
-      body: () => <Page><p>"Find the pendulum," it read, in the shift-cipher he taught you last spring. Beneath the words, a small brass key had been taped to the paper.</p></Page>,
+      body: () => <Page><p>"Find the pendulum," it read, once you'd unwound his cipher. Beneath the words, a small brass key had been taped to the paper. You pocket it. In this workshop, you suspect, nothing stays unused for long.</p></Page>,
     },
     'triptych-found': {
       id: 'triptych-found', order: 3, title: 'Three Stamps',
-      body: () => <Page><p>Stamped into the Sentinel's chest plate are three tiny marks — a cog, a key, a lamp flame — worn smooth by a century of winding. The decoder's rings seem built for exactly these.</p></Page>,
+      body: () => <Page><p>Stamped into the Sentinel's chest plate are three marks of very different sizes — a cog broad as a coin, a key half that, a lamp flame barely a scratch. Worn smooth by a century of thumbs, as if the sizes themselves were the point.</p></Page>,
     },
     'final-approach': {
       id: 'final-approach', order: 4, title: 'One Gear Left',
-      body: () => <Page><p>The ledger's ink is nearly dry. Whatever Master Voss intended, it ends at the Sentinel itself — and the last gear it's still waiting for.</p></Page>,
+      body: () => <Page><p>The ledger's ink is nearly dry. Whatever Master Voss intended, it ends at the Sentinel itself — and the last dial it's still waiting for. The order of its three keyholes is written nowhere in the room. Which leaves the things you carried in with you.</p></Page>,
     },
   },
 
@@ -123,177 +128,246 @@ export const clockmakerTheme: ThemeManifest = {
 
   redCards: {
     A: {
-      id: 'A', letter: 'A', title: "The Apprentice's Note", symbol: 'gear', inputMode: 'text',
+      id: 'A', letter: 'A', title: "The Apprentice's Note", symbol: 'gear', inputMode: 'text', difficulty: 1,
       solution: 'pendulum',
       entryHint: 'Enter the decoded word.',
       component: () => (
         <CipherPanel
-          prompt="Master Voss's private shift-cipher, taught to you last spring. Shift every letter back by three."
+          prompt="Master Voss's note is in the private cipher he taught you last spring — every letter pushed the same distance along the alphabet. He never wrote the distance down. He didn't need to."
           cipherText="SHQGXOXP"
-          keyMap={CAESAR_TABLE}
+          engraving={'Stamped on the winding crank beside the note: "THRICE TURNED, ALWAYS THRICE."'}
         />
       ),
     },
     B: {
-      id: 'B', letter: 'B', title: 'Shelf of Curiosities', symbol: 'key', inputMode: 'text',
+      id: 'B', letter: 'B', title: 'Shelf of Curiosities', symbol: 'key', inputMode: 'text', difficulty: 2,
       solution: '13',
-      entryHint: 'Enter how many keys are in the workshop tonight.',
+      entryHint: 'Enter how many working keys are in the workshop tonight.',
       component: () => (
         <SymbolCounter
-          prompt="The cabinet drawer is a clutter of loose gears — but not everything in it is a gear. A margin note in Master Voss's hand asks: 'How many keys in the workshop tonight?'"
+          prompt="The cabinet drawer is a clutter of loose gears — but not everything in it is a gear, and not every key in it has survived a century of damp. A margin note in Master Voss's hand asks: 'How many working keys in the workshop tonight?'"
           targetGlyph="🔑"
-          cells={['⚙️','⚙️','🔑','⚙️','⚙️','🔑','⚙️','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','🔑']}
+          cells={[
+            '⚙️','⚙️','🔑','⚙️',{ glyph: '🔑', dim: true },'🔑',
+            '⚙️','⚙️','⚙️','🔑','⚙️','🔑',
+            '⚙️','🔑','⚙️',{ glyph: '🔑', dim: true },'🔑','⚙️',
+            '🔑','⚙️','🔑','⚙️','⚙️','🔑',
+            '⚙️','🔑','⚙️','🔑',{ glyph: '🔑', dim: true },'🔑',
+          ]}
+          fine={'"A key eaten by rust opens nothing at all." — the same margin, smaller writing. And is the drawer really the only place you\'ve seen a key tonight?'}
         />
       ),
     },
     C: {
-      id: 'C', letter: 'C', title: "The Grandfather's Riddle", symbol: 'clock', inputMode: 'text',
+      id: 'C', letter: 'C', title: 'The Grandfather Lies', symbol: 'clock', inputMode: 'text', difficulty: 2,
       solution: '64',
-      entryHint: 'Enter the missing number.',
-      component: () => <SequencePanel prompt="Carved into the grandfather clock's base, a sequence of gear-teeth counts:" items={['4', '8', '16', '32', '?']} />,
+      entryHint: 'Two digits: what the clock truly says — hour, then minute mark.',
+      component: () => (
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            The grandfather clock stopped the moment the door sealed. Someone has repainted
+            its numerals — hastily, or with great care, you can't yet tell. The hands, at least,
+            haven't moved.
+          </p>
+          <ClockFace
+            numerals={LYING_NUMERALS}
+            hourPos={6}
+            minutePos={4}
+            caption="The short hand marks the hour; the long hand, the minute track."
+          />
+        </div>
+      ),
     },
     D: {
-      id: 'D', letter: 'D', title: 'Triptych of Symbols', symbol: 'compass', inputMode: 'decoder',
+      id: 'D', letter: 'D', title: 'Triptych of Stamps', symbol: 'compass', inputMode: 'decoder', difficulty: 2,
       solution: '319',
-      entryHint: "Set the decoder: outer ring to the gear, middle ring to the key, inner ring to the flame.",
+      entryHint: 'Align the three stamped symbols on the decoder — in the order the engraving demands — and read the windows.',
       component: () => (
-        <p className="puzzle-prompt">
-          Stamped into the Sentinel's chest plate are three worn marks: a cog, a key, and a lamp flame.
-          Turn the workshop's decoder so the outer ring shows the cog, the middle ring the key, and the inner ring the flame — then read the number it reveals.
-        </p>
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            Three marks are stamped into the Sentinel's chest plate, each a different size,
+            worn smooth by a century of winding:
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2rem', justifyContent: 'center', padding: '0.6rem 0' }}>
+            <span title="a cog, broad as a coin"><LockIcon symbol="gear" size={72} /></span>
+            <span title="a key, half that size"><LockIcon symbol="key" size={44} /></span>
+            <span title="a lamp flame, barely a scratch"><LockIcon symbol="flame" size={24} /></span>
+          </div>
+          <p className="cipher-engraving">
+            Engraved around the dial's rim: "THE LOUDEST VOICE SPEAKS FROM THE WIDEST RING; THE FAINTEST, FROM THE HEART."
+          </p>
+        </div>
       ),
     },
     E: {
-      id: 'E', letter: 'E', title: 'Mirror of Vanity', symbol: 'eye', inputMode: 'text',
+      id: 'E', letter: 'E', title: 'Mirror of Vanity', symbol: 'eye', inputMode: 'text', difficulty: 2,
       solution: 'aurelius',
-      entryHint: 'Enter the word once it reads correctly.',
-      component: () => <MirrorPanel prompt="A note tucked into the frame of the shaving mirror on the desk makes no sense at all — until you actually use the mirror." mirroredText="AURELIUS" />,
+      entryHint: 'Enter the first name the drawer wants.',
+      component: ({ inventory }) => (
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            A locked desk drawer bears a small plaque: "SPEAK MY FIRST NAME." Tucked into the
+            desk blotter, a slip of paper carries two lines of writing that read as nonsense —
+            written for a mirror, not for you.
+          </p>
+          <MirrorPanel
+            prompt=""
+            mirroredText={'REKAMKCOLC · SUILERUA'}
+            requiresItem={{ id: 'shaving_mirror', hint: 'You need something reflective. The workshop must have one somewhere — keep solving.' }}
+            inventory={inventory}
+          />
+        </div>
+      ),
     },
     F: {
-      id: 'F', letter: 'F', title: 'The Weighted Cogs', symbol: 'leaf', inputMode: 'text',
+      id: 'F', letter: 'F', title: 'The Weighted Cogs', symbol: 'leaf', inputMode: 'text', difficulty: 2,
       solution: 'iron',
-      entryHint: 'Enter the name of the heaviest cog.',
+      entryHint: 'Enter the metal of the cog the mainspring needs.',
       component: () => (
-        <LogicGridPanel
-          prompt="Four cogs sit on the bench, each a different metal. A card beside them lists what you know:"
-          clues={[
-            'Silver is heavier than Copper, but lighter than Brass.',
-            'Iron is the heaviest of all four.',
-            'Brass is heavier than Silver, but not the heaviest.',
-            'Copper is the lightest of all four.',
+        <ScalePanel
+          prompt="Four replacement cogs sit by the balance scale, none of them labeled with a weight. The maintenance ledger is unambiguous: 'THE MAINSPRING TAKES ONLY THE HEAVIEST COG. WEIGH THEM.'"
+          items={[
+            { id: 'copper', label: 'Copper', weight: 2 },
+            { id: 'silver', label: 'Silver', weight: 4 },
+            { id: 'brass', label: 'Brass', weight: 5 },
+            { id: 'iron', label: 'Iron', weight: 7 },
           ]}
-          rows={['Copper', 'Silver', 'Brass', 'Iron']}
-          cols={['Lightest', 'Light', 'Heavy', 'Heaviest']}
         />
       ),
     },
     G: {
-      id: 'G', letter: 'G', title: 'Song of the Signal Lamp', symbol: 'flame', inputMode: 'text',
+      id: 'G', letter: 'G', title: 'Song of the Signal Lamp', symbol: 'flame', inputMode: 'text', difficulty: 2,
       solution: 'voss',
-      entryHint: 'Enter the decoded word.',
-      component: () => <MorsePanel prompt="An old signal lamp in the corner still has oil in it. Its trigger clicks like it wants to be pressed." message="VOSS" />,
+      entryHint: 'Enter the word the lamp is spelling to its audience.',
+      component: () => (
+        <div className="puzzle-widget">
+          <MorsePanel
+            prompt="An old signal lamp in the corner still has oil in it, clicking out the same pattern over and over. But notice where it's pointed: not at you — at the tall mirror on the far wall."
+            message="SSOV"
+          />
+        </div>
+      ),
     },
     H: {
-      id: 'H', letter: 'H', title: 'The Feathered Ledger', symbol: 'feather', inputMode: 'text',
+      id: 'H', letter: 'H', title: 'The Feathered Ledger', symbol: 'feather', inputMode: 'text', difficulty: 3,
       solution: 'wound',
-      entryHint: 'Read the highlighted letters in order and enter the word.',
-      component: () => (
-        <OverlayPanel
-          prompt="The workshop ledger is dense with figures — but a handful of letters are inked in a different color entirely. Drag the loose sheet of wax paper aside and read them in order."
+      entryHint: 'Enter the five-letter word, in the order the times dictate.',
+      component: ({ inventory }) => (
+        <LensPanel
+          prompt="The workshop ledger's last page looks blank except for the heading: 'READ ME BY LAMPLIGHT, IN THE ORDER OF THE DAY.' The signal lamp will serve — if it has oil left to burn."
+          lensLabel="Hold the page to the lamp"
+          tint="rgba(120, 70, 200, 0.25)"
+          requiresItem={{ id: 'oil_can', hint: 'The lamp is dry. Somewhere in this workshop there must be oil.' }}
+          inventory={inventory}
           base={
-            <p style={{ fontSize: '0.85rem', lineHeight: 1.7, textAlign: 'left' }}>
-              Deliveries this fortnight: 4 barrels oil, 2 crates brass stock.{' '}
-              <b style={{ color: '#8a1f1f' }}>W</b>orkshop swept, benches{' '}
-              <b style={{ color: '#8a1f1f' }}>O</b>iled and dust cleared. Sentinel joints{' '}
-              <b style={{ color: '#8a1f1f' }}>U</b>nlatched for inspection, spring tension checked twice, chest plate re-set{' '}
-              <b style={{ color: '#8a1f1f' }}>N</b>early flush, mainspring{' '}
-              <b style={{ color: '#8a1f1f' }}>D</b>rawn taut and left ready.
+            <p style={{ fontSize: '1rem', opacity: 0.6, fontStyle: 'italic' }}>
+              …the page appears utterly blank…
             </p>
           }
-          overlay={<div style={{ background: 'rgba(201,162,75,0.35)', width: '100%', height: '100%', borderRadius: 8 }} />}
+          hidden={
+            <div style={{ display: 'flex', gap: '1.6rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', fontFamily: "'Cinzel', serif", fontSize: '1.5rem' }}>
+              <span>D<small style={{ display: 'block', fontSize: '0.55rem' }}>5 o'clock</small></span>
+              <span>U<small style={{ display: 'block', fontSize: '0.55rem' }}>3 o'clock</small></span>
+              <span>W<small style={{ display: 'block', fontSize: '0.55rem' }}>1 o'clock</small></span>
+              <span>N<small style={{ display: 'block', fontSize: '0.55rem' }}>4 o'clock</small></span>
+              <span>O<small style={{ display: 'block', fontSize: '0.55rem' }}>2 o'clock</small></span>
+            </div>
+          }
         />
       ),
     },
     I: {
-      id: 'I', letter: 'I', title: "The Sentinel's Final Gear", symbol: 'star', inputMode: 'decoder',
+      id: 'I', letter: 'I', title: "The Sentinel's Final Dial", symbol: 'star', inputMode: 'decoder', difficulty: 3,
       solution: '726',
-      entryHint: 'Set the decoder: outer ring to the moon, middle ring to the flame, inner ring to the star.',
+      entryHint: 'The keyholes name the symbols. Only the decoder itself knows their order.',
       component: () => (
-        <p className="puzzle-prompt">
-          Beneath the chest plate, one last dial waits — engraved with a crescent moon, a lamp flame, and a star, in that order, outer to inner.
-          Set the decoder to match and read the final number.
-        </p>
+        <div className="puzzle-widget">
+          <p className="puzzle-prompt">
+            Beneath the chest plate, the last dial waits. Three keyholes are cut into it, arranged
+            in a circle with no beginning — a crescent moon, a lamp flame, a five-pointed star.
+            Nothing on the Sentinel, and nothing in the ledger, says which comes first.
+          </p>
+          <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', padding: '0.6rem 0' }}>
+            <LockIcon symbol="moon" size={44} />
+            <LockIcon symbol="flame" size={44} />
+            <LockIcon symbol="star" size={44} />
+          </div>
+          <p className="cipher-engraving">
+            Scratched faintly under the dial: "TURN ME OVER IN YOUR MIND — OR SIMPLY TURN ME OVER."
+          </p>
+        </div>
       ),
     },
   },
 
   blueCards: {
-    pendulum: { id: 'pendulum', outcome: 'advance', narrative: '"Find the pendulum," the note read once unshifted. Taped beneath the words: a small brass key.', unlocksRed: ['B'], grantsObjects: ['brass_key'], unlocksBooklet: ['note-found'] },
-    '13': { id: '13', outcome: 'advance', narrative: 'Thirteen keys, thirteen drawers. The thirteenth drawer holds the grandfather clock\'s winding crank — and a folded diagram.', unlocksRed: ['C', 'D'] },
-    '64': { id: '64', outcome: 'advance', narrative: 'Sixty-four. The clock face swings open on a hidden hinge, revealing a shaving mirror tucked behind it.', unlocksRed: ['E'], grantsObjects: ['shaving_mirror'] },
-    '319': { id: '319', outcome: 'advance', narrative: 'Three-one-nine. A hidden compartment in the workbench opens, holding a weighing scale, four cogs, and a small can of oil.', unlocksRed: ['F', 'G'], grantsObjects: ['oil_can'], unlocksBooklet: ['triptych-found'] },
-    aurelius: { id: 'aurelius', outcome: 'advance', narrative: 'His own name, staring back at you. Folded beneath the mirror\'s stand: a ledger page, densely written.', unlocksRed: ['H'] },
-    iron: { id: 'iron', outcome: 'advance', narrative: 'Iron, heaviest of the four — and etched underneath, barely visible: a few bars of musical notation that turn out to be Morse.', unlocksRed: ['G'] },
-    voss: { id: 'voss', outcome: 'advance', narrative: 'His own surname again, spelled out in light. The signal lamp\'s base swings open, revealing the ledger you\'d already begun reading.', unlocksRed: ['H'] },
-    wound: { id: 'wound', outcome: 'advance', narrative: 'WOUND. Of course. The Sentinel itself has been waiting the entire evening. Its chest plate has one dial left unset.', unlocksRed: ['I'], unlocksBooklet: ['final-approach'] },
-    '726': { id: '726', outcome: 'win', narrative: 'Seven-two-six. The final gear turns home.' },
-    '12': { id: '12', outcome: 'decoy', narrative: 'The ledger page for 12 is a sketch of the cabinet drawer, with a margin note: "Counted only the drawer, did you? A workshop is bigger than a drawer — and so is a pocket." Check your items.' },
+    pendulum: { id: 'pendulum', outcome: 'advance', narrative: '"Find the pendulum," the note read once unshifted — three letters back, as the crank promised. Taped beneath the words: a small brass key. Keep it. Everything in this workshop gets used eventually.', unlocksRed: ['B'], grantsObjects: ['brass_key'], unlocksBooklet: ['note-found'] },
+    '13': { id: '13', outcome: 'advance', narrative: 'Thirteen keys — twelve sound ones in the drawer, and the thirteenth warming in your pocket. The pendulum case swings open, revealing the stopped grandfather clock and a maintenance hatch behind it.', unlocksRed: ['C', 'D'] },
+    '64': { id: '64', outcome: 'advance', narrative: 'Six, then four — the positions, not the paint. The clock face swings open on a hidden hinge. Behind it: a gentleman\'s shaving mirror and a locked desk drawer with a name plaque.', unlocksRed: ['E'], grantsObjects: ['shaving_mirror'] },
+    '319': { id: '319', outcome: 'advance', narrative: 'Three-one-nine — widest voice to faintest. A compartment in the workbench opens: a balance scale, four unlabeled cogs, and a half-full can of clock oil.', unlocksRed: ['F', 'G'], grantsObjects: ['oil_can'], unlocksBooklet: ['triptych-found'] },
+    aurelius: { id: 'aurelius', outcome: 'advance', narrative: 'AURELIUS — his first name, not his trade. The drawer accepts it. Inside lies the workshop ledger, its final page apparently blank.', unlocksRed: ['H'] },
+    iron: { id: 'iron', outcome: 'advance', narrative: 'Iron — heavier than brass, as the scale finally confessed. The mainspring accepts the cog with a satisfying clunk, and the signal lamp in the corner begins to click.', unlocksRed: ['G'] },
+    voss: { id: 'voss', outcome: 'advance', narrative: 'VOSS. The lamp was spelling it backwards all along — it speaks to the mirror, and the mirror speaks to you. The lamp\'s base swings open, revealing the same ledger drawer key Aurelius\'s name unlocks.', unlocksRed: ['H'] },
+    wound: { id: 'wound', outcome: 'advance', narrative: 'WOUND — one o\'clock to five o\'clock, in the order of the day. Of course. The Sentinel has been waiting to be wound the entire evening. Its chest plate releases, exposing one final dial.', unlocksRed: ['I'], unlocksBooklet: ['final-approach'] },
+    '726': { id: '726', outcome: 'win', narrative: 'Seven-two-six. Night first, fire\'s middle course, and the light that outlives them both. The final gear turns home.' },
+    '12': { id: '12', outcome: 'decoy', narrative: 'The ledger page for 12 is a sketch of the cabinet drawer, margin note: "Counted only the drawer, did you? A workshop is bigger than a drawer — and so is a pocket." Check your items.' },
+    '15': { id: '15', outcome: 'decoy', narrative: 'Page 15 shows the drawer again, all keys circled — even the rust-eaten ones. Beneath, in red ink: "A ruined key is a decoration. Count only what still turns."' },
+    '98': { id: '98', outcome: 'decoy', narrative: 'Page 98 is a portrait of the grandfather clock, and under it a single line: "You read the paint. The paint is new; the positions are old. What did the box lid tell you?"' },
     '99': { id: '99', outcome: 'decoy', narrative: 'The ledger page for 99 shows only a smudged inkblot and Master Voss\'s initials, underlined twice. Not what you were looking for.' },
-    '007': { id: '007', outcome: 'decoy', narrative: 'Page 007 is a receipt for pipe tobacco. Master Voss apparently had a sense of humor about round numbers. Keep looking.' },
   },
 
   greenCards: {
     gear: { id: 'gear', symbol: 'gear', hints: [
-      'Master Voss taught you a simple cipher last spring — each letter shifts forward by the same small number.',
-      'Try shifting each ciphered letter three places back through the alphabet.',
-      'The decoded word is PENDULUM.',
+      'The cipher key was never written on the note. But something about the winding crank was worth stamping into the metal.',
+      '"Thrice turned" — try walking each letter three steps back through the alphabet.',
+      'Shift every letter back by 3: SHQGXOXP becomes PENDULUM.',
     ] },
     key: { id: 'key', symbol: 'key', hints: [
-      "Some of the shapes in the drawer aren't gears at all — look for a different silhouette in the clutter. And read the question carefully: it asks about the workshop, not just the drawer.",
-      "There are twelve keys in the drawer — but haven't you already picked up a key somewhere else tonight?",
-      'Twelve keys in the drawer, plus the brass key taped beneath Master Voss\'s note: the answer is 13.',
+      "Two questions hide in this drawer: which keys still work, and whether the drawer is the only place keys live tonight.",
+      'The faded, rust-eaten keys open nothing — exclude them. Then re-read the question: it asks about the workshop, not the drawer. What have you already pocketed?',
+      'Twelve sound keys in the drawer, plus the brass key from the note: the answer is 13.',
     ] },
     clock: { id: 'clock', symbol: 'clock', hints: [
-      'Look at how each number in the sequence relates to the one before it.',
-      'Each term is exactly double the one before it.',
-      'The missing number is 64.',
+      'The numerals were repainted, but the hands never moved. Did anything you saw before opening the box mention clock faces?',
+      'The box lid: "Trust the count, not the face." Ignore the painted numerals — count positions clockwise from the top.',
+      'The hour hand sits on the 6th position, the minute hand on the 4th: the answer is 64.',
     ] },
     compass: { id: 'compass', symbol: 'compass', hints: [
-      'Three parts of the automaton bear stamped symbols: a cog, a key, and a lamp flame.',
-      'Turn the decoder so the outer ring shows the cog, the middle ring the key, and the inner ring the flame.',
-      'The revealed number is 319.',
+      'Three stamps, three sizes, three rings. The rim engraving talks about voices — and about width.',
+      '"The loudest voice speaks from the widest ring": the big cog goes to the outer ring, the tiny flame to the inner heart.',
+      'Set outer=cog, middle=key, inner=flame. The windows read 319.',
     ] },
     eye: { id: 'eye', symbol: 'eye', hints: [
-      'The note by the mirror looks like nonsense until you actually use the mirror.',
-      'Hold the page up to a mirror — in the workshop, that means flipping the lens.',
-      'The word is AURELIUS.',
+      'The slip has TWO mirrored lines, and the plaque is picky: it wants a first name.',
+      'In a mirror the lines read CLOCKMAKER and AURELIUS. One is a trade, not a name.',
+      'The drawer wants AURELIUS.',
     ] },
     leaf: { id: 'leaf', symbol: 'leaf', hints: [
-      'Work through the four cogs one comparison at a time — start with the clue that names an extreme.',
-      'The order, lightest to heaviest, is Copper, Silver, Brass, Iron.',
+      'No cog is labeled. The scale is not decoration — load the pans and watch the tilt.',
+      'Weigh them in pairs and keep the winner: iron outweighs brass, brass outweighs silver, silver outweighs copper.',
       'The heaviest cog is IRON.',
     ] },
     flame: { id: 'flame', symbol: 'flame', hints: [
-      'The signal lamp in the corner still has oil in it — try lighting the play button.',
-      'Each burst of short and long flashes is a letter. There are four letters total.',
-      'The message is VOSS.',
+      'Decode the clicks first. If the result looks like nonsense, look at where the lamp is aimed.',
+      'The lamp signals S-S-O-V — but it speaks to the mirror on the far wall, and mirrors reverse.',
+      'SSOV reversed is VOSS.',
     ] },
     feather: { id: 'feather', symbol: 'feather', hints: [
-      "Not every word in the ledger is written in the same ink.",
-      'Read only the red-inked letters, left to right, top to bottom.',
-      'They spell WOUND.',
+      'A blank page and a heading about lamplight. The lamp in the corner is dry — something you found earlier can fix that.',
+      'Oil the lamp (you need the oil can from the workbench). Under its light, five letters appear, each tagged with a time of day — read them in clock order, not page order.',
+      "One o'clock to five o'clock the letters read W-O-U-N-D: the answer is WOUND.",
     ] },
     star: { id: 'star', symbol: 'star', hints: [
-      "You'll need everything you've learned about this workshop's stars, moons, and flames for this last dial.",
-      'Set the outer ring to the moon, the middle ring to the flame, and the inner ring to the star.',
-      'The final number is 726.',
+      'The keyholes name three symbols but no order. The dial\'s scratch suggests turning something over — something you have been using all night.',
+      'Flip the decoder over. Its back is engraved: night first, fire\'s middle course, then the light that outlives both.',
+      'Set outer=moon, middle=flame, inner=star. The windows read 726.',
     ] },
   },
 
   objects: {
-    brass_key: { id: 'brass_key', name: 'Brass Key', description: 'A small brass key, taped beneath Master Voss\'s note. It doesn\'t seem to fit the door — perhaps it opens something smaller.', icon: KeyObjectIcon },
-    shaving_mirror: { id: 'shaving_mirror', name: 'Shaving Mirror', description: 'A hinged mirror from the desk. Handy for reading anything written backwards.', icon: MirrorObjectIcon },
-    oil_can: { id: 'oil_can', name: 'Oil Can', description: 'A small can of clock oil, half full. The signal lamp in the corner looks thirsty.', icon: OilCanIcon },
+    brass_key: { id: 'brass_key', name: 'Brass Key', description: 'A small brass key, taped beneath Master Voss\'s note. It doesn\'t fit the door — but a good apprentice counts everything in their pockets.', icon: KeyObjectIcon },
+    shaving_mirror: { id: 'shaving_mirror', name: 'Shaving Mirror', description: 'A hinged gentleman\'s mirror from behind the clock face. Handy for reading anything written for a reflection.', icon: MirrorObjectIcon },
+    oil_can: { id: 'oil_can', name: 'Oil Can', description: 'A half-full can of clock oil from the workbench. The signal lamp in the corner looks thirsty.', icon: OilCanIcon },
   },
 
   decoder: {
@@ -314,7 +388,8 @@ export const clockmakerTheme: ThemeManifest = {
     backClue: () => (
       <div>
         <h3 className="display-font">Engraved on the reverse</h3>
-        <p>"Three rings, three truths. A cog remembers, a key admits, a flame confesses." — A. Voss</p>
+        <p>"Night comes first. The fire runs its middle course. The last light outlives them both."</p>
+        <p style={{ opacity: 0.7, fontStyle: 'italic' }}>— A. Voss, who never engraved anything without a reason</p>
       </div>
     ),
   },

@@ -1,14 +1,28 @@
 import type { AmbientProfile } from './types'
 
-/** Procedurally generated, looping ambient bed — no audio files, just oscillators,
- * a slow filter sweep, and a sparse generative note sequence per theme "mood". */
+/** Procedurally generated, looping ambient bed — no audio files required, just
+ * oscillators, a slow filter, and a sparse generative sequence per theme mood.
+ *
+ * The bed EVOLVES with story progress via setIntensity(0..1):
+ *   - the lowpass filter opens up (brighter, more present)
+ *   - the note pulse quickens
+ *   - past 0.45 a second melodic voice (a fifth up) joins
+ *   - past 0.75 a low heartbeat pulse enters for the final act
+ *
+ * If the theme ships produced audio (profile.tracks), those replace the
+ * procedural bed — see docs/PRODUCTION.md for the asset pipeline. */
 class AmbientEngine {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private filter: BiquadFilterNode | null = null
   private timer: number | null = null
+  private heartbeatTimer: number | null = null
   private droneOsc: OscillatorNode[] = []
   private playing = false
+  private profile: AmbientProfile | null = null
+  private intensity = 0
+  private trackEl: HTMLAudioElement | null = null
+  private trackKind: 'main' | 'finale' | null = null
 
   private ensureCtx() {
     if (!this.ctx) {
@@ -24,7 +38,15 @@ class AmbientEngine {
     return this.ctx
   }
 
-  start(profile: AmbientProfile) {
+  start(profile: AmbientProfile, intensity = 0) {
+    this.profile = profile
+    this.intensity = intensity
+
+    if (profile.tracks?.main) {
+      this.startTrack(intensity >= 0.75 && profile.tracks.finale ? 'finale' : 'main')
+      return
+    }
+
     const ctx = this.ensureCtx()
     if (ctx.state === 'suspended') ctx.resume()
     if (this.playing) this.stopInternal()
@@ -34,11 +56,8 @@ class AmbientEngine {
     this.master!.gain.cancelScheduledValues(now)
     this.master!.gain.setValueAtTime(this.master!.gain.value, now)
     this.master!.gain.linearRampToValueAtTime(0.16, now + 1.5)
+    this.applyIntensity()
 
-    this.filter!.frequency.setValueAtTime(profile.filterFreq, now)
-    this.filter!.frequency.linearRampToValueAtTime(profile.filterFreq * 1.4, now + 8)
-
-    // two detuned drones for a slowly beating pad
     for (const detune of [-6, 6]) {
       const osc = ctx.createOscillator()
       osc.type = profile.waveform
@@ -52,30 +71,108 @@ class AmbientEngine {
       this.droneOsc.push(osc)
     }
 
+    this.scheduleNotes()
+    this.scheduleHeartbeat()
+  }
+
+  /** 0..1 — call as the player advances; reshapes the bed without restarting it. */
+  setIntensity(v: number) {
+    const clamped = Math.max(0, Math.min(1, v))
+    const wasBelow = this.intensity < 0.75
+    this.intensity = clamped
+    if (this.trackEl && this.profile?.tracks) {
+      if (wasBelow && clamped >= 0.75 && this.profile.tracks.finale && this.trackKind !== 'finale') {
+        this.startTrack('finale')
+      }
+      return
+    }
+    if (this.playing) this.applyIntensity()
+  }
+
+  private applyIntensity() {
+    if (!this.ctx || !this.filter || !this.profile) return
+    const t = this.ctx.currentTime
+    const target = this.profile.filterFreq * (1 + this.intensity * 2.2)
+    this.filter.frequency.cancelScheduledValues(t)
+    this.filter.frequency.setValueAtTime(this.filter.frequency.value, t)
+    this.filter.frequency.linearRampToValueAtTime(target, t + 2.5)
+  }
+
+  private noteTempo() {
+    const p = this.profile!
+    return p.tempoMs * (1 - this.intensity * 0.45)
+  }
+
+  private scheduleNotes() {
     const playNote = () => {
-      if (!this.ctx || !this.playing) return
-      const degree = profile.scale[Math.floor(Math.random() * profile.scale.length)]
-      const freq = profile.baseFreq * Math.pow(2, degree / 12) * (Math.random() < 0.3 ? 2 : 1)
-      const osc = this.ctx.createOscillator()
-      osc.type = profile.mood === 'mechanical' ? 'square' : profile.waveform
-      osc.frequency.value = freq
-      const g = this.ctx.createGain()
-      const t = this.ctx.currentTime
-      g.gain.setValueAtTime(0, t)
-      g.gain.linearRampToValueAtTime(0.06, t + 0.4)
-      g.gain.linearRampToValueAtTime(0, t + 2.2)
-      osc.connect(g)
-      g.connect(this.filter!)
-      osc.start(t)
-      osc.stop(t + 2.3)
-      this.timer = window.setTimeout(playNote, profile.tempoMs * (0.7 + Math.random() * 0.8))
+      if (!this.ctx || !this.playing || !this.profile) return
+      const p = this.profile
+      const degree = p.scale[Math.floor(Math.random() * p.scale.length)]
+      const freq = p.baseFreq * Math.pow(2, degree / 12) * (Math.random() < 0.3 ? 2 : 1)
+      this.voice(freq, p.mood === 'mechanical' ? 'square' : p.waveform, 0.06, 2.2)
+      // second act: a companion voice a fifth above, slightly delayed
+      if (this.intensity > 0.45 && Math.random() < 0.6) {
+        window.setTimeout(() => {
+          if (this.playing) this.voice(freq * 1.5, 'triangle', 0.035, 1.6)
+        }, 260)
+      }
+      this.timer = window.setTimeout(playNote, this.noteTempo() * (0.7 + Math.random() * 0.8))
     }
     playNote()
   }
 
+  private scheduleHeartbeat() {
+    const beat = () => {
+      if (!this.ctx || !this.playing) return
+      if (this.intensity > 0.75) {
+        this.voice(this.profile!.baseFreq / 2, 'sine', 0.09, 0.35)
+        window.setTimeout(() => {
+          if (this.playing && this.intensity > 0.75) this.voice(this.profile!.baseFreq / 2, 'sine', 0.06, 0.3)
+        }, 320)
+      }
+      this.heartbeatTimer = window.setTimeout(beat, 2100 - this.intensity * 600)
+    }
+    beat()
+  }
+
+  private voice(freq: number, type: OscillatorType, gain: number, dur: number) {
+    if (!this.ctx || !this.filter) return
+    const osc = this.ctx.createOscillator()
+    osc.type = type
+    osc.frequency.value = freq
+    const g = this.ctx.createGain()
+    const t = this.ctx.currentTime
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(gain, t + Math.min(0.4, dur * 0.2))
+    g.gain.linearRampToValueAtTime(0, t + dur)
+    osc.connect(g)
+    g.connect(this.filter)
+    osc.start(t)
+    osc.stop(t + dur + 0.1)
+  }
+
+  private startTrack(kind: 'main' | 'finale') {
+    const src = this.profile?.tracks?.[kind]
+    if (!src) return
+    this.stopInternal()
+    if (this.trackEl) {
+      this.trackEl.pause()
+      this.trackEl = null
+    }
+    const el = new Audio(src)
+    el.loop = true
+    el.volume = 0.5
+    el.play().catch(() => { /* autoplay policies — user gesture will retry */ })
+    this.trackEl = el
+    this.trackKind = kind
+    this.playing = true
+  }
+
   private stopInternal() {
     if (this.timer) window.clearTimeout(this.timer)
+    if (this.heartbeatTimer) window.clearTimeout(this.heartbeatTimer)
     this.timer = null
+    this.heartbeatTimer = null
     for (const osc of this.droneOsc) {
       try {
         osc.stop()
@@ -87,43 +184,73 @@ class AmbientEngine {
   }
 
   stop() {
-    if (!this.ctx || !this.master) return
+    this.playing = false
+    if (this.trackEl) {
+      this.trackEl.pause()
+      this.trackEl = null
+      this.trackKind = null
+    }
+    if (!this.ctx || !this.master) {
+      this.stopInternal()
+      return
+    }
     const now = this.ctx.currentTime
     this.master.gain.cancelScheduledValues(now)
     this.master.gain.setValueAtTime(this.master.gain.value, now)
     this.master.gain.linearRampToValueAtTime(0, now + 0.8)
-    this.playing = false
     window.setTimeout(() => this.stopInternal(), 900)
   }
 }
 
 export const ambientEngine = new AmbientEngine()
 
-/** Short one-shot UI stingers (correct / wrong / hint) reusing the same context. */
-export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw') {
-  const ctx = new AudioContext()
+let uiCtx: AudioContext | null = null
+function getUiCtx() {
+  if (!uiCtx) uiCtx = new AudioContext()
+  if (uiCtx.state === 'suspended') uiCtx.resume()
+  return uiCtx
+}
+
+/** Short one-shot UI stingers. 'story' is the four-note act motif played when a
+ * blue card advances the narrative; 'tick' is the decoder ring snapping home. */
+export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' | 'tick') {
+  const ctx = getUiCtx()
   const g = ctx.createGain()
   g.connect(ctx.destination)
   const t = ctx.currentTime
+
+  if (kind === 'tick') {
+    const osc = ctx.createOscillator()
+    osc.type = 'square'
+    osc.frequency.value = 1800
+    osc.connect(g)
+    g.gain.setValueAtTime(0.05, t)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045)
+    osc.start(t)
+    osc.stop(t + 0.05)
+    return
+  }
+
   const notes: Record<string, number[]> = {
     correct: [523.25, 659.25, 783.99],
     wrong: [220, 196],
     hint: [440, 523.25],
     draw: [349.23],
+    story: [392, 466.16, 587.33, 783.99],
   }
   const freqs = notes[kind]
+  const step = kind === 'story' ? 0.16 : 0.11
   g.gain.setValueAtTime(0.001, t)
   freqs.forEach((f, i) => {
     const osc = ctx.createOscillator()
     osc.type = kind === 'wrong' ? 'sawtooth' : 'triangle'
     osc.frequency.value = f
     osc.connect(g)
-    const start = t + i * 0.11
+    const start = t + i * step
     g.gain.setValueAtTime(0.001, start)
-    g.gain.exponentialRampToValueAtTime(0.18, start + 0.02)
-    g.gain.exponentialRampToValueAtTime(0.001, start + 0.3)
+    g.gain.exponentialRampToValueAtTime(0.16, start + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.001, start + (kind === 'story' ? 0.4 : 0.3))
     osc.start(start)
-    osc.stop(start + 0.32)
+    osc.stop(start + (kind === 'story' ? 0.42 : 0.32))
   })
-  window.setTimeout(() => ctx.close(), (freqs.length * 0.11 + 0.4) * 1000)
 }

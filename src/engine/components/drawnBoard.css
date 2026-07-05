@@ -1,7 +1,7 @@
 .drawn-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 0.9rem;
 }
 
 .drawn-board.empty {
@@ -11,50 +11,94 @@
   font-style: italic;
 }
 
+/* Each drawn tile reads as a miniature red puzzle card: red header band with the
+ * deck letter, paper body with the title, symbol seal watermark. */
 .drawn-tile {
   position: relative;
   background: var(--paper);
   color: var(--ink);
   border: none;
   border-radius: 10px;
-  padding: 0.8rem 0.6rem 0.6rem;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-align: center;
+  aspect-ratio: 2.5 / 3.1;
+}
+.drawn-tile:hover { transform: translateY(-4px) rotate(-0.5deg); box-shadow: 0 12px 22px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.15); }
+.drawn-tile.solved { opacity: 0.55; }
+
+.drawn-tile-band {
+  background: linear-gradient(160deg, #8a2a24, #6d1d1d);
+  color: #f0dcb8;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0.32em 0;
+  letter-spacing: 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  border-bottom: 1px solid rgba(0,0,0,0.3);
+}
+.drawn-tile-band svg { opacity: 0.9; }
+
+.drawn-tile-body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.35em;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
-  transition: transform 0.15s ease;
-  text-align: center;
-}
-.drawn-tile:hover { transform: translateY(-3px); }
-.drawn-tile.solved { opacity: 0.6; }
-
-.drawn-tile-letter {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  font-family: 'Cinzel', serif;
-  font-weight: 700;
-  font-size: 0.85rem;
-  opacity: 0.5;
+  justify-content: center;
+  gap: 0.3em;
+  padding: 0.5em 0.5em 0.7em;
+  position: relative;
 }
 
 .drawn-tile-title {
   font-size: 0.78rem;
   line-height: 1.25;
+  position: relative;
+  z-index: 1;
 }
+
+.drawn-tile-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.07;
+  z-index: 0;
+}
+.drawn-tile-watermark svg { width: 70%; height: 70%; }
 
 .drawn-tile-check {
   position: absolute;
   top: 4px;
-  right: 8px;
-  color: #1f6b2f;
+  right: 7px;
+  color: #ffe9c9;
   font-weight: 700;
+  z-index: 2;
 }
 
 .drawn-tile-hintmark {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   opacity: 0.55;
+  position: relative;
+  z-index: 1;
+}
+
+.drawn-tile-diff {
+  font-size: 0.55rem;
+  letter-spacing: 0.22em;
+  color: #8a2a24;
+  opacity: 0.75;
+  position: relative;
+  z-index: 1;
 }

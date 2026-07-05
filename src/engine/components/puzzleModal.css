@@ -19,6 +19,14 @@
 }
 .puzzle-modal-title h2 { margin: 0; font-size: 1.3rem; }
 
+.puzzle-difficulty {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--primary);
+  opacity: 0.8;
+  margin-left: 0.3em;
+}
+
 .puzzle-stage {
   background: rgba(0,0,0,0.04);
   border-radius: 10px;

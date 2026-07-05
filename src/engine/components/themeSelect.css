@@ -61,6 +61,23 @@
 
 .theme-box-face h2 { margin: 0.4rem 0 0.2rem; }
 .theme-tagline { font-style: italic; opacity: 0.85; margin: 0; font-size: 0.9rem; }
+.theme-difficulty {
+  display: flex;
+  align-items: center;
+  gap: 0.15em;
+  margin-top: 0.5em;
+  font-size: 0.75rem;
+}
+.theme-difficulty .lock { opacity: 0.22; filter: grayscale(1); }
+.theme-difficulty .lock.on { opacity: 1; filter: none; }
+.theme-difficulty-label {
+  margin-left: 0.5em;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.75;
+}
+
 .theme-examine-hint {
   margin-top: auto;
   font-size: 0.68rem;

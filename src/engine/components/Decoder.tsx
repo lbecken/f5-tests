@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { DecoderConfig, DecoderRingConfig } from '../types'
+import { playChime } from '../audio'
 import './decoder.css'
 
 const RING_RADII = [2.55, 1.8, 1.05] as const
@@ -192,6 +193,7 @@ function Ring({ radius, config, trackColor, ink, paper, onAligned, zLayer }: Rin
       dragging.current = false
       const idx = computeIdx(groupRef.current.rotation.z)
       groupRef.current.rotation.z = -idx * step
+      playChime('tick')
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -271,6 +273,17 @@ function DecoderScene({ config, ink, paper, onCodeChange }: DecoderSceneProps) {
         <circleGeometry args={[RING_RADII[0] + 0.9, 64]} />
         <meshBasicMaterial color="#100c08" />
       </mesh>
+      {/* engraved bezel notches, like a machined instrument rim */}
+      {Array.from({ length: 24 }).map((_, i) => {
+        const a = (i / 24) * Math.PI * 2
+        const r = RING_RADII[0] + 0.68
+        return (
+          <mesh key={`n${i}`} position={[Math.cos(a) * r, Math.sin(a) * r, -0.05]} rotation={[0, 0, a]}>
+            <planeGeometry args={[0.16, 0.045]} />
+            <meshBasicMaterial color="#4a3b22" />
+          </mesh>
+        )
+      })}
       {RING_RADII.map((r, i) => (
         <Ring
           key={i}
@@ -283,6 +296,15 @@ function DecoderScene({ config, ink, paper, onCodeChange }: DecoderSceneProps) {
           zLayer={i}
         />
       ))}
+      {/* hub cap */}
+      <mesh position={[0, 0, 0.3]} renderOrder={20}>
+        <circleGeometry args={[0.55, 48]} />
+        <meshBasicMaterial color="#1a130b" />
+      </mesh>
+      <mesh position={[0, 0, 0.31]} renderOrder={21}>
+        <ringGeometry args={[0.42, 0.48, 48]} />
+        <meshBasicMaterial color="#c9a24b" transparent opacity={0.85} />
+      </mesh>
       <PointerMarker />
     </Canvas>
   )
@@ -299,8 +321,15 @@ export function Decoder({ config, ink, paper }: { config: DecoderConfig; ink: st
           <div className="decoder-canvas-box">
             <DecoderScene config={config} ink={ink} paper={paper} onCodeChange={setCode} />
           </div>
-          <div className="decoder-readout mono">{code}</div>
-          <p className="decoder-instructions">Drag each ring to align the clue's symbols under the marker.</p>
+          <div className="decoder-readout-row">
+            {code.split('').map((digit, i) => (
+              <div key={i} className="decoder-window">
+                <span className="decoder-window-label">{['outer', 'middle', 'inner'][i]}</span>
+                <span className="decoder-window-digit mono">{digit}</span>
+              </div>
+            ))}
+          </div>
+          <p className="decoder-instructions">Drag each ring to align the clue's symbols under the marker, then read the windows.</p>
         </div>
         <div className="decoder-face back panel">
           <config.backClue />

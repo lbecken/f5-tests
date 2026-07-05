@@ -30,11 +30,21 @@ export function DrawnBoard({ theme, drawnRed, onSelect }: DrawnBoardProps) {
             className={`drawn-tile fade-up ${d.solved ? 'solved' : ''}`}
             onClick={() => onSelect(d.id)}
           >
-            <div className="drawn-tile-letter">{red.letter}</div>
-            <LockIcon symbol={red.symbol} size={22} color={theme.palette.primary} />
-            <div className="drawn-tile-title">{red.title}</div>
-            {d.solved && <div className="drawn-tile-check">✓</div>}
-            {!d.solved && d.hintLevel > 0 && <div className="drawn-tile-hintmark">hint {d.hintLevel}/3</div>}
+            <div className="drawn-tile-band">
+              <span>{red.letter}</span>
+              <LockIcon symbol={red.symbol} size={15} color="#f0dcb8" />
+              {d.solved && <div className="drawn-tile-check">✓</div>}
+            </div>
+            <div className="drawn-tile-body">
+              <div className="drawn-tile-watermark">
+                <LockIcon symbol={red.symbol} color="#000" />
+              </div>
+              <div className="drawn-tile-title">{red.title}</div>
+              {red.difficulty && (
+                <div className="drawn-tile-diff">{'●'.repeat(red.difficulty)}{'○'.repeat(3 - red.difficulty)}</div>
+              )}
+              {!d.solved && d.hintLevel > 0 && <div className="drawn-tile-hintmark">hint {d.hintLevel}/3</div>}
+            </div>
           </button>
         )
       })}
