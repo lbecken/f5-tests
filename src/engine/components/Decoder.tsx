@@ -138,9 +138,14 @@ interface RingProps {
   ink: string
   paper: string
   onAligned: (idx: number) => void
+  /** Higher = drawn closer to the camera. Rings share near-identical depth otherwise,
+   * so where their icon planes' square bounding boxes graze each other, transparent-object
+   * sort order can let a neighboring ring paint over this one's icons — a generous,
+   * strictly-ordered z gap per ring (innermost highest) makes that unambiguous. */
+  zLayer: number
 }
 
-function Ring({ radius, config, trackColor, ink, paper, onAligned }: RingProps) {
+function Ring({ radius, config, trackColor, ink, paper, onAligned, zLayer }: RingProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const { camera, gl } = useThree()
   const dragging = useRef(false)
@@ -196,9 +201,12 @@ function Ring({ radius, config, trackColor, ink, paper, onAligned }: RingProps) 
     }
   }, [camera, gl, computeIdx, step])
 
+  const hitZ = -0.05 - zLayer * 0.02
+  const symbolZ = 0.1 + zLayer * 0.05
+
   return (
     <>
-      <mesh onPointerDown={onPointerDown}>
+      <mesh position={[0, 0, hitZ]} onPointerDown={onPointerDown}>
         <ringGeometry args={[radius - 0.42, radius + 0.42, 64]} />
         <meshBasicMaterial color={trackColor} side={THREE.DoubleSide} />
       </mesh>
@@ -206,15 +214,30 @@ function Ring({ radius, config, trackColor, ink, paper, onAligned }: RingProps) 
         {config.segments.map((_, i) => {
           const a = Math.PI / 2 + i * step
           return (
-            <mesh key={i} position={[Math.cos(a) * radius, Math.sin(a) * radius, 0.01]}>
+            <mesh key={i} position={[Math.cos(a) * radius, Math.sin(a) * radius, symbolZ]} renderOrder={10 + zLayer}>
               <planeGeometry args={[0.62, 0.62]} />
-              <meshBasicMaterial map={textures[i]} transparent />
+              <meshBasicMaterial map={textures[i]} transparent depthTest={false} />
             </mesh>
           )
         })}
       </group>
     </>
   )
+}
+
+/** The camera's zoom must track the canvas's real pixel size — a fixed zoom
+ * crops the outer ring on narrow layouts (sidebar, mobile), leaving only the
+ * tips of its discs visible at the rim. */
+const SCENE_HALF_EXTENT = 3.6
+
+function FitCamera() {
+  const { camera, size } = useThree()
+  useEffect(() => {
+    const ortho = camera as THREE.OrthographicCamera
+    ortho.zoom = Math.min(size.width, size.height) / (2 * SCENE_HALF_EXTENT)
+    ortho.updateProjectionMatrix()
+  }, [camera, size])
+  return null
 }
 
 function PointerMarker() {
@@ -243,6 +266,7 @@ function DecoderScene({ config, ink, paper, onCodeChange }: DecoderSceneProps) {
 
   return (
     <Canvas orthographic camera={{ position: [0, 0, 10], zoom: 62 }} style={{ background: 'transparent' }}>
+      <FitCamera />
       <mesh position={[0, 0, -0.1]}>
         <circleGeometry args={[RING_RADII[0] + 0.9, 64]} />
         <meshBasicMaterial color="#100c08" />
@@ -256,6 +280,7 @@ function DecoderScene({ config, ink, paper, onCodeChange }: DecoderSceneProps) {
           ink={ink}
           paper={paper}
           onAligned={handleAligned(i)}
+          zLayer={i}
         />
       ))}
       <PointerMarker />

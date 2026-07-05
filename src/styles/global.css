@@ -94,6 +94,19 @@ button {
   color: var(--paper);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper) 40%, transparent);
 }
+
+/* On paper-colored panels (booklet, modals, decoder card) the paper-on-paper
+   secondary button is invisible — flip it to ink. */
+.panel .btn.secondary {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+
+/* …except inside dark sub-panels nested within a paper panel. */
+.hint-panel .btn.secondary {
+  color: var(--paper);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper) 40%, transparent);
+}
 .btn:disabled { opacity: 0.4; cursor: not-allowed; filter: none; transform: none; }
 
 @keyframes shake {
