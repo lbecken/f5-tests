@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import type { ThemeManifest } from '../types'
+import { playChime, playVoice, stopVoice } from '../audio'
 import './winScreen.css'
 
 function formatTime(ms: number) {
@@ -18,6 +20,12 @@ interface WinScreenProps {
 
 export function WinScreen({ theme, elapsedMs, hintsUsed, wrongAttempts, onMenu }: WinScreenProps) {
   const Win = theme.winPage.body
+  const [speaking, setSpeaking] = useState(false)
+
+  useEffect(() => {
+    playChime('win')
+    return () => stopVoice()
+  }, [])
   let rating = 'Escape Artist'
   const minutes = elapsedMs / 60000
   if (minutes > 90 || hintsUsed > 6) rating = 'Needs More Practice'
@@ -28,6 +36,24 @@ export function WinScreen({ theme, elapsedMs, hintsUsed, wrongAttempts, onMenu }
     <div className="deck-modal-overlay">
       <div className="panel win-screen fade-up">
         <h2 className="display-font win-title">You Escaped!</h2>
+        {theme.winPage.narrationUrl && (
+          <button
+            className="btn secondary"
+            style={{ marginBottom: '0.8rem' }}
+            onClick={() => {
+              if (speaking) {
+                stopVoice()
+                setSpeaking(false)
+              } else {
+                const el = playVoice(theme.winPage.narrationUrl!)
+                el.onended = () => setSpeaking(false)
+                setSpeaking(true)
+              }
+            }}
+          >
+            {speaking ? '◼ Stop' : '🔊 Hear the ending'}
+          </button>
+        )}
         <div className="win-body"><Win /></div>
         <div className="win-stats">
           <div><span>Time</span><strong>{formatTime(elapsedMs)}</strong></div>

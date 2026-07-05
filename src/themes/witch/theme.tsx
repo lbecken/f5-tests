@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
+import coverUrl from '../../assets/art/witch-cover.svg'
+import introVoice from '../../assets/voice/witch-intro.mp3'
+import winVoice from '../../assets/voice/witch-win.mp3'
 import {
   CipherPanel, SymbolCounter, MirrorPanel, MorsePanel, LogicGridPanel,
   LensPanel, RubbingPanel,
@@ -7,17 +10,7 @@ import {
 import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
-  return (
-    <svg viewBox="0 0 200 160" width="100%" height="100%">
-      <path d="M100 30a35 35 0 100 70 28 28 0 010-70z" fill="#b98cce" opacity="0.85" />
-      {Array.from({ length: 40 }).map((_, i) => {
-        const x = (i * 37) % 200
-        const y = (i * 53) % 60
-        return <circle key={i} cx={x} cy={y} r={0.9} fill="#f0e6da" opacity={0.6} />
-      })}
-      <path d="M60 140c10-30 70-30 80 0" stroke="#7fbf7f" strokeWidth="3" fill="none" opacity="0.7" />
-    </svg>
-  )
+  return <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
 }
 
 function BoxClue() {
@@ -73,7 +66,7 @@ export const witchTheme: ThemeManifest = {
 
   intro: [
     {
-      id: 'intro-1', order: 0, title: 'Shelter From the Storm', body: () => (
+      id: 'intro-1', order: 0, narrationUrl: introVoice, title: 'Shelter From the Storm', body: () => (
         <Page>
           <p>The storm drove you off the forest path and into the one cottage for miles — dark windows, herbs drying in bunches, a hearth gone cold. The moment the door shut behind you, it would not open again.</p>
           <p>On the mantle, an hourglass turns itself over, unprompted. Its sand is running out. A note in a spidery hand rests beside it: "Whoever finds this has already agreed to finish what I started." The old stories call this place the Ashwood cottage, after the witch who built it.</p>
@@ -98,7 +91,7 @@ export const witchTheme: ThemeManifest = {
   },
 
   winPage: {
-    id: 'win', order: 99, title: 'The Last Grain',
+    id: 'win', order: 99, narrationUrl: winVoice, title: 'The Last Grain',
     body: () => (
       <Page>
         <p>The final sigil clicks into place just as the hourglass's last grain of sand falls. The cottage door — sealed since the moment you entered — swings open on its own, releasing a breath of warm air that smells like rosemary and rain.</p>

@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
+import coverUrl from '../../assets/art/zephyr-cover.svg'
+import introVoice from '../../assets/voice/zephyr-intro.mp3'
+import winVoice from '../../assets/voice/zephyr-win.mp3'
 import {
   AnagramPanel, GridLookupPanel, ScalePanel, TearPanel, FoldPanel,
   RubbingPanel, MazePanel,
@@ -7,26 +10,7 @@ import {
 import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
-  return (
-    <svg viewBox="0 0 200 160" width="100%" height="100%">
-      {/* deco sunburst */}
-      {Array.from({ length: 9 }).map((_, i) => {
-        const a = ((i - 4) / 8) * Math.PI * 0.9 - Math.PI / 2
-        return <line key={i} x1="100" y1="70" x2={100 + Math.cos(a) * 85} y2={70 + Math.sin(a) * 85} stroke="#d4af5a" strokeWidth="2" opacity="0.55" />
-      })}
-      <circle cx="100" cy="70" r="30" fill="none" stroke="#d4af5a" strokeWidth="3" />
-      <circle cx="100" cy="70" r="22" fill="none" stroke="#d4af5a" strokeWidth="1.4" />
-      {/* streamlined locomotive silhouette */}
-      <path d="M20 118 h115 a22 22 0 0 0 22 -14 l8 -0 v14 a8 8 0 0 1 -8 8 H20 z" fill="#d4af5a" opacity="0.9" />
-      <rect x="30" y="106" width="18" height="10" rx="2" fill="#071019" />
-      <rect x="56" y="106" width="18" height="10" rx="2" fill="#071019" />
-      <rect x="82" y="106" width="18" height="10" rx="2" fill="#071019" />
-      <circle cx="45" cy="128" r="5" fill="#071019" />
-      <circle cx="75" cy="128" r="5" fill="#071019" />
-      <circle cx="105" cy="128" r="5" fill="#071019" />
-      <line x1="10" y1="140" x2="190" y2="140" stroke="#d4af5a" strokeWidth="2" />
-    </svg>
-  )
+  return <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
 }
 
 /** Load-bearing: the initials on this label are the last confirmation for card J. */
@@ -78,7 +62,7 @@ export const zephyrTheme: ThemeManifest = {
 
   intro: [
     {
-      id: 'intro-1', order: 0, title: 'Ninety Seconds', body: () => (
+      id: 'intro-1', order: 0, narrationUrl: introVoice, title: 'Ninety Seconds', body: () => (
         <Page>
           <p>The Zephyr Aurore is the fastest, vainest train in Europe — art deco from cowcatcher to caboose, and tonight, custodian of the Lucerne Diamond, riding in the mail-car safe under three locks.</p>
           <p>At 21:12, in the black of the Simplon tunnel, every light on the train dies for ninety seconds. When they flare back, the safe stands open, empty, and politely shut again. The mail car was locked from the inside.</p>
@@ -122,7 +106,7 @@ export const zephyrTheme: ThemeManifest = {
   },
 
   winPage: {
-    id: 'win', order: 99, title: 'Milano Centrale',
+    id: 'win', order: 99, narrationUrl: winVoice, title: 'Milano Centrale',
     body: () => (
       <Page>
         <p>She's in the dining car, of course — third table, facing the door, halfway through a coffee she never intended to finish. Regina Argent. The trunks named her family; the window named her; the luggage label under your own game box has been carrying her initials since before you opened it.</p>

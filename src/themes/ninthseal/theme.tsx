@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
+import coverUrl from '../../assets/art/ninthseal-cover.svg'
+import introVoice from '../../assets/voice/ninthseal-intro.mp3'
+import winVoice from '../../assets/voice/ninthseal-win.mp3'
 import {
   RubbingPanel, ScalePanel, GridLookupPanel, ConstellationPanel,
   LensPanel, TearPanel,
@@ -7,21 +10,7 @@ import {
 import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
-  return (
-    <svg viewBox="0 0 200 160" width="100%" height="100%">
-      {/* pyramid against a star field */}
-      {Array.from({ length: 26 }).map((_, i) => (
-        <circle key={i} cx={(i * 47 + 11) % 200} cy={(i * 29 + 5) % 70} r="1" fill="#e0b34f" opacity="0.7" />
-      ))}
-      <path d="M100 28 L168 132 L32 132 Z" fill="none" stroke="#e0b34f" strokeWidth="3" strokeLinejoin="round" />
-      <path d="M100 28 L128 132" stroke="#e0b34f" strokeWidth="1.4" opacity="0.6" />
-      {/* the ninth seal: a cartouche, name scratched out */}
-      <rect x="72" y="88" width="56" height="20" rx="10" fill="none" stroke="#e0b34f" strokeWidth="2" />
-      <line x1="78" y1="98" x2="122" y2="98" stroke="#e0b34f" strokeWidth="3" opacity="0.85" />
-      <line x1="60" y1="146" x2="140" y2="146" stroke="#e0b34f" strokeWidth="2" />
-      <text x="100" y="152" textAnchor="middle" fontSize="8" fill="#e0b34f" opacity="0.7">𓋹 𓊽 𓋹</text>
-    </svg>
-  )
+  return <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
 }
 
 function BoxClue() {
@@ -76,7 +65,7 @@ export const ninthSealTheme: ThemeManifest = {
 
   intro: [
     {
-      id: 'intro-1', order: 0, title: 'The Unrecorded Door', body: () => (
+      id: 'intro-1', order: 0, narrationUrl: introVoice, title: 'The Unrecorded Door', body: () => (
         <Page>
           <p>The kings' lists skip a reign. Between two well-fed pharaohs there is a gap the length of a lifetime, and every stele of that lifetime has had its cartouche chiselled blank. Damnatio memoriae — the punishment of being forgotten.</p>
           <p>Your expedition found what the punishment missed: a tomb with nine seals and no name. You were four levels down cataloguing the antechamber when the sandstorm came, and the door you entered by decided it had never existed.</p>
@@ -119,7 +108,7 @@ export const ninthSealTheme: ThemeManifest = {
   },
 
   winPage: {
-    id: 'win', order: 99, title: 'Spoken',
+    id: 'win', order: 99, narrationUrl: winVoice, title: 'Spoken',
     body: () => (
       <Page>
         <p>NEFERKARA. The syllables leave your mouth and the tomb inhales — three thousand years of held breath going out of the stones all at once. Nine seals fall in sequence like a slow drumroll, and behind the ninth: stairs, and storm-light, and air.</p>

@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ThemeManifest } from '../types'
+import { playVoice, stopVoice } from '../audio'
 import './booklet.css'
 
 interface BookletProps {
@@ -17,6 +18,10 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
     return [...theme.intro, ...extra].sort((a, b) => a.order - b.order)
   }, [theme, unlockedIds])
 
+  const [speaking, setSpeaking] = useState(false)
+  useEffect(() => () => stopVoice(), [])
+  useEffect(() => { stopVoice(); setSpeaking(false) }, [pageIdx, open])
+
   if (!open) return null
   const page = pages[Math.min(pageIdx, pages.length - 1)]
   const Body = page?.body
@@ -31,7 +36,26 @@ export function Booklet({ theme, unlockedIds, open, onClose }: BookletProps) {
         <div className="booklet-page fade-up" key={page?.id}>
           {page && (
             <>
-              <h3 className="display-font booklet-page-title">{page.title}</h3>
+              <h3 className="display-font booklet-page-title">
+                {page.title}
+                {page.narrationUrl && (
+                  <button
+                    className="btn secondary booklet-listen"
+                    onClick={() => {
+                      if (speaking) {
+                        stopVoice()
+                        setSpeaking(false)
+                      } else {
+                        const el = playVoice(page.narrationUrl!)
+                        el.onended = () => setSpeaking(false)
+                        setSpeaking(true)
+                      }
+                    }}
+                  >
+                    {speaking ? '◼ Stop' : '🔊 Read aloud'}
+                  </button>
+                )}
+              </h3>
               <div className="booklet-page-body">
                 <Body />
               </div>

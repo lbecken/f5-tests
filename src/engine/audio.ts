@@ -1,4 +1,10 @@
 import type { AmbientProfile } from './types'
+import sfxDraw from '../assets/sfx/draw.mp3'
+import sfxTick from '../assets/sfx/tick.mp3'
+import sfxTear from '../assets/sfx/tear.mp3'
+import sfxCorrect from '../assets/sfx/correct.mp3'
+import sfxWrong from '../assets/sfx/wrong.mp3'
+import sfxWin from '../assets/sfx/win.mp3'
 
 /** Procedurally generated, looping ambient bed — no audio files required, just
  * oscillators, a slow filter, and a sparse generative sequence per theme mood.
@@ -211,9 +217,44 @@ function getUiCtx() {
   return uiCtx
 }
 
+/** Produced sound effects (ElevenLabs) — see scripts/gen-audio.sh. Kinds without a
+ * file fall through to the procedural synth stinger below. */
+const SFX_FILES: Partial<Record<string, string>> = {
+  draw: sfxDraw,
+  tick: sfxTick,
+  tear: sfxTear,
+  correct: sfxCorrect,
+  wrong: sfxWrong,
+  win: sfxWin,
+}
+const SFX_VOLUME: Record<string, number> = { tick: 0.35, draw: 0.45, tear: 0.55, correct: 0.55, wrong: 0.4, win: 0.6 }
+
+/** One-shot narration/voice clip player — only one speaks at a time. */
+let voiceEl: HTMLAudioElement | null = null
+export function playVoice(url: string): HTMLAudioElement {
+  stopVoice()
+  voiceEl = new Audio(url)
+  voiceEl.volume = 0.9
+  voiceEl.play().catch(() => { /* needs a user gesture; buttons provide one */ })
+  return voiceEl
+}
+export function stopVoice() {
+  if (voiceEl) {
+    voiceEl.pause()
+    voiceEl = null
+  }
+}
+
 /** Short one-shot UI stingers. 'story' is the four-note act motif played when a
  * blue card advances the narrative; 'tick' is the decoder ring snapping home. */
-export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' | 'tick') {
+export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' | 'tick' | 'tear' | 'win') {
+  const file = SFX_FILES[kind]
+  if (file) {
+    const el = new Audio(file)
+    el.volume = SFX_VOLUME[kind] ?? 0.5
+    el.play().catch(() => { /* pre-gesture; procedural fallback below still runs nothing */ })
+    return
+  }
   const ctx = getUiCtx()
   const g = ctx.createGain()
   g.connect(ctx.destination)
@@ -239,6 +280,7 @@ export function playChime(kind: 'correct' | 'wrong' | 'hint' | 'draw' | 'story' 
     story: [392, 466.16, 587.33, 783.99],
   }
   const freqs = notes[kind]
+  if (!freqs) return
   const step = kind === 'story' ? 0.16 : 0.11
   g.gain.setValueAtTime(0.001, t)
   freqs.forEach((f, i) => {

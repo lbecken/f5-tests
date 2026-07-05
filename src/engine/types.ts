@@ -62,6 +62,8 @@ export interface BookletPage {
   title: string
   body: ComponentType
   order: number
+  /** Optional produced narration clip (mp3/ogg) — a "read aloud" button appears when set. */
+  narrationUrl?: string
 }
 
 export interface DecoderSegment {

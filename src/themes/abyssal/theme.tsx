@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
+import coverUrl from '../../assets/art/abyssal-cover.svg'
+import introVoice from '../../assets/voice/abyssal-intro.mp3'
+import winVoice from '../../assets/voice/abyssal-win.mp3'
 import {
   MorsePanel, CipherPanel, SymbolCounter, MirrorPanel, LogicGridPanel,
   LensPanel, ConstellationPanel, DialGauge,
@@ -7,16 +10,7 @@ import {
 import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
-  return (
-    <svg viewBox="0 0 200 160" width="100%" height="100%">
-      <circle cx="100" cy="80" r="50" fill="none" stroke="#4fd1c5" strokeWidth="3" />
-      <path d="M60 90c10-20 30-30 40-30s30 10 40 30" fill="none" stroke="#4fd1c5" strokeWidth="2" opacity="0.6" />
-      <circle cx="100" cy="80" r="10" fill="#4fd1c5" opacity="0.5" />
-      {Array.from({ length: 6 }).map((_, i) => (
-        <circle key={i} cx={30 + i * 28} cy={140} r="2.4" fill="#4fd1c5" opacity="0.5" />
-      ))}
-    </svg>
-  )
+  return <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
 }
 
 function BoxClue() {
@@ -68,7 +62,7 @@ export const abyssalTheme: ThemeManifest = {
 
   intro: [
     {
-      id: 'intro-1', order: 0, title: 'Cryo-Wake', body: () => (
+      id: 'intro-1', order: 0, narrationUrl: introVoice, title: 'Cryo-Wake', body: () => (
         <Page>
           <p>Pressure: nominal. Depth: 4,120 meters. Cryo-wake successful — technician designation only, no name given.</p>
           <p>The station's voice, MERIDIAN, greets you before your eyes fully focus: "Emergency wake protocol engaged. All egress sealed pending diagnostic. Please remain calm." Every door reads the same word: SEALED.</p>
@@ -106,7 +100,7 @@ export const abyssalTheme: ThemeManifest = {
   },
 
   winPage: {
-    id: 'win', order: 99, title: 'Surface Protocol',
+    id: 'win', order: 99, narrationUrl: winVoice, title: 'Surface Protocol',
     body: () => (
       <Page>
         <p>The airlock cycles for the first time in longer than the station will admit. Cold Pacific water floods out; cold Pacific air rushes in.</p>

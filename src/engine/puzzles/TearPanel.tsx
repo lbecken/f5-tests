@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { playChime } from '../audio'
 import '../puzzles/puzzles.css'
 
 interface TearPanelProps {
@@ -23,6 +24,7 @@ export function TearPanel({ prompt, intact, revealed, tearLabel = 'Hold to tear 
     const id = window.setInterval(() => {
       setProgress((p) => {
         if (p >= 100) { window.clearInterval(id); return 100 }
+        if (p + 4 >= 100) playChime('tear')
         return p + 4
       })
     }, 40)

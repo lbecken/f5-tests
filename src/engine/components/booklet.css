@@ -29,7 +29,12 @@
 
 .booklet-page-title {
   margin: 0 0 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8em;
+  flex-wrap: wrap;
 }
+.booklet-listen { font-size: 0.68rem; padding: 0.35em 0.8em; }
 
 .booklet-page-body {
   line-height: 1.6;

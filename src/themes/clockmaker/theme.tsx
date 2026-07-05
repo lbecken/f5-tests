@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
 import type { ThemeManifest } from '../../engine/types'
+import coverUrl from '../../assets/art/clockmaker-cover.svg'
+import introVoice from '../../assets/voice/clockmaker-intro.mp3'
+import winVoice from '../../assets/voice/clockmaker-win.mp3'
 import {
   CipherPanel, SymbolCounter, MirrorPanel, MorsePanel,
   LensPanel, ScalePanel, ClockFace,
@@ -7,22 +10,7 @@ import {
 import { LockIcon } from '../../engine/icons'
 
 function CoverArt() {
-  return (
-    <svg viewBox="0 0 200 160" width="100%" height="100%">
-      <circle cx="100" cy="80" r="55" fill="none" stroke="#c9a24b" strokeWidth="3" />
-      <circle cx="100" cy="80" r="6" fill="#c9a24b" />
-      <line x1="100" y1="80" x2="100" y2="42" stroke="#c9a24b" strokeWidth="3" strokeLinecap="round" />
-      <line x1="100" y1="80" x2="126" y2="92" stroke="#c9a24b" strokeWidth="3" strokeLinecap="round" />
-      {Array.from({ length: 12 }).map((_, i) => {
-        const a = (i / 12) * Math.PI * 2
-        const x1 = 100 + Math.cos(a) * 48, y1 = 80 + Math.sin(a) * 48
-        const x2 = 100 + Math.cos(a) * 54, y2 = 80 + Math.sin(a) * 54
-        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#c9a24b" strokeWidth="2" />
-      })}
-      <circle cx="40" cy="130" r="16" fill="none" stroke="#8a6d3b" strokeWidth="2" />
-      <circle cx="160" cy="30" r="12" fill="none" stroke="#8a6d3b" strokeWidth="2" />
-    </svg>
-  )
+  return <img src={coverUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
 }
 
 /** The box clue is load-bearing: puzzle C (the lying clock face) cannot be solved
@@ -78,7 +66,7 @@ export const clockmakerTheme: ThemeManifest = {
 
   intro: [
     {
-      id: 'intro-1', order: 0, title: 'An Invitation After Hours',
+      id: 'intro-1', order: 0, narrationUrl: introVoice, title: 'An Invitation After Hours',
       body: () => (
         <Page>
           <p>You are apprenticed to Master Aurelius Voss, the finest horologist the city has known in two generations. Tonight he asked you to stay after closing — the Sentinel, his masterwork automaton, was due its first rewinding in a hundred years, and he wanted a witness.</p>
@@ -114,7 +102,7 @@ export const clockmakerTheme: ThemeManifest = {
   },
 
   winPage: {
-    id: 'win', order: 99, title: 'The Last Wind',
+    id: 'win', order: 99, narrationUrl: winVoice, title: 'The Last Wind',
     body: () => (
       <Page>
         <p>The final gear clicks into place. Somewhere deep in its chest, the Sentinel's heart begins, impossibly, to tick.</p>
