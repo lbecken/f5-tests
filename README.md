@@ -12,13 +12,17 @@ npm run build    # production build to dist/
 
 No backend — progress is saved per-theme to `localStorage`.
 
-## The three games
+## The five games
 
-- **The Clockmaker's Last Wind** — steampunk mystery in a vanished horologist's workshop.
-- **Abyssal Station 7** — sci-fi survival aboard a sealed deep-sea research station.
-- **The Witch's Hourglass** — gothic fantasy in a cursed forest cottage.
+| Game | Setting | Difficulty |
+|---|---|---|
+| The Clockmaker's Last Wind | steampunk workshop mystery | 🔒🔒½ middle |
+| The Witch's Hourglass | gothic cottage curse | 🔒🔒🔒 middle-experienced |
+| Abyssal Station 7 | deep-sea station survival | 🔒🔒🔒½ experienced |
+| The Zephyr Vanishes | 1928 art-deco train heist | 🔒🔒🔒🔒 expert |
+| The Ninth Seal | Egyptian tomb, erased pharaoh | 🔒🔒🔒🔒½ expert |
 
-Each is a standalone data pack (`src/themes/<id>/theme.tsx`) with ~9 puzzles, a decoder configuration, story booklet pages, inventory objects, and hand-drawn SVG art — no two themes share content, only the engine underneath them.
+Each is a standalone data pack (`src/themes/<id>/theme.tsx`) with 9-10 puzzles, a decoder configuration, story booklet pages, inventory objects, decoy answer cards, and hand-drawn SVG art — no two themes share content, only the engine underneath. Puzzles are layered in the physical games' spirit: box-lid clues, the decoder's reverse engraving, booklet pages, and inventory items are all load-bearing, and finales cross-reference multiple earlier cards. See `docs/PRODUCTION.md` for the AI asset pipeline (art, voices, music).
 
 ## Architecture
 
