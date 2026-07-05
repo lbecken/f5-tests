@@ -137,10 +137,10 @@ export const clockmakerTheme: ThemeManifest = {
     B: {
       id: 'B', letter: 'B', title: 'Shelf of Curiosities', symbol: 'key', inputMode: 'text',
       solution: '13',
-      entryHint: 'Enter the number of keys you counted.',
+      entryHint: 'Enter how many keys are in the workshop tonight.',
       component: () => (
         <SymbolCounter
-          prompt="The cabinet drawer is a clutter of loose gears — but not everything in it is a gear."
+          prompt="The cabinet drawer is a clutter of loose gears — but not everything in it is a gear. A margin note in Master Voss's hand asks: 'How many keys in the workshop tonight?'"
           targetGlyph="🔑"
           cells={['⚙️','⚙️','🔑','⚙️','⚙️','🔑','⚙️','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','⚙️','🔑','⚙️','🔑','⚙️','🔑','⚙️','🔑']}
         />
@@ -237,6 +237,7 @@ export const clockmakerTheme: ThemeManifest = {
     voss: { id: 'voss', outcome: 'advance', narrative: 'His own surname again, spelled out in light. The signal lamp\'s base swings open, revealing the ledger you\'d already begun reading.', unlocksRed: ['H'] },
     wound: { id: 'wound', outcome: 'advance', narrative: 'WOUND. Of course. The Sentinel itself has been waiting the entire evening. Its chest plate has one dial left unset.', unlocksRed: ['I'], unlocksBooklet: ['final-approach'] },
     '726': { id: '726', outcome: 'win', narrative: 'Seven-two-six. The final gear turns home.' },
+    '12': { id: '12', outcome: 'decoy', narrative: 'The ledger page for 12 is a sketch of the cabinet drawer, with a margin note: "Counted only the drawer, did you? A workshop is bigger than a drawer — and so is a pocket." Check your items.' },
     '99': { id: '99', outcome: 'decoy', narrative: 'The ledger page for 99 shows only a smudged inkblot and Master Voss\'s initials, underlined twice. Not what you were looking for.' },
     '007': { id: '007', outcome: 'decoy', narrative: 'Page 007 is a receipt for pipe tobacco. Master Voss apparently had a sense of humor about round numbers. Keep looking.' },
   },
@@ -248,9 +249,9 @@ export const clockmakerTheme: ThemeManifest = {
       'The decoded word is PENDULUM.',
     ] },
     key: { id: 'key', symbol: 'key', hints: [
-      "Some of the shapes in the drawer aren't gears at all — look for a different silhouette in the clutter.",
-      'Count only the key-shaped icons among the gears, nothing else.',
-      'There are 13 keys.',
+      "Some of the shapes in the drawer aren't gears at all — look for a different silhouette in the clutter. And read the question carefully: it asks about the workshop, not just the drawer.",
+      "There are twelve keys in the drawer — but haven't you already picked up a key somewhere else tonight?",
+      'Twelve keys in the drawer, plus the brass key taped beneath Master Voss\'s note: the answer is 13.',
     ] },
     clock: { id: 'clock', symbol: 'clock', hints: [
       'Look at how each number in the sequence relates to the one before it.',

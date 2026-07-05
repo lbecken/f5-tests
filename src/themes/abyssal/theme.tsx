@@ -126,7 +126,7 @@ export const abyssalTheme: ThemeManifest = {
         <SymbolCounter
           prompt="The reactor status board is a wall of small indicator lights — mostly steady green, but not all of them."
           targetGlyph="🟠"
-          cells={['🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢']}
+          cells={['🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟠','🟢','🟢','🟠','🟢','🟢','🟢']}
         />
       ),
     },

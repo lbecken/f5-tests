@@ -20,9 +20,14 @@
   border-radius: 8px;
   border: 1px solid rgba(0,0,0,0.2);
   background: rgba(255,255,255,0.5);
+  /* :root sets color-scheme: dark, so the UA default input text is white —
+     invisible on this light field. Pin it to the theme's ink. */
+  color: var(--ink);
+  caret-color: var(--ink);
   font-size: 1rem;
   letter-spacing: 0.05em;
 }
+.code-input::placeholder { color: color-mix(in srgb, var(--ink) 55%, transparent); }
 
 .code-entry-attempts {
   font-size: 0.8rem;

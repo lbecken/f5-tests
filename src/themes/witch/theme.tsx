@@ -127,7 +127,7 @@ export const witchTheme: ThemeManifest = {
         <SymbolCounter
           prompt="Bundles of dried herbs hang from every beam. Most are common rosemary — but not all of them."
           targetGlyph="🌿"
-          cells={['🌾','🌿','🌾','🌾','🌿','🌾','🌿','🌾','🌾','🌿','🌾','🌿','🌾','🌾','🌿','🌾','🌿','🌾','🌿','🌾']}
+          cells={['🌾','🌿','🌾','🌾','🌿','🌾','🌿','🌾','🌾','🌿','🌾','🌿','🌿','🌾','🌿','🌾','🌿','🌾','🌿','🌾']}
         />
       ),
     },
