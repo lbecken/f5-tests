@@ -165,7 +165,9 @@ const Engine = (() => {
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     window.addEventListener('keydown', e => {
       if (e.key === ' ') { paused = !paused; e.preventDefault(); }
-      const n = parseInt(e.key, 10);
+      // keys 1–9 select sims 1–9; key 0 selects the 10th
+      let n = parseInt(e.key, 10);
+      if (e.key === '0') n = 10;
       if (n >= 1 && n <= sims.length) select(n - 1);
     });
     window.addEventListener('resize', resize);
@@ -199,7 +201,7 @@ const Engine = (() => {
     const list = document.getElementById('simList');
     sims.forEach((s, i) => {
       const b = document.createElement('button');
-      b.innerHTML = `<span class="icon">${s.icon}</span>${s.name}<span class="num">${i + 1}</span>`;
+      b.innerHTML = `<span class="icon">${s.icon}</span>${s.name}<span class="num">${(i + 1) % 10}</span>`;
       b.addEventListener('click', () => select(i));
       list.append(b);
     });
