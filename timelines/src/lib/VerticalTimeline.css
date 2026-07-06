@@ -1,0 +1,166 @@
+.vt {
+  --vt-surface: #ffffff;
+  --vt-ink: #17171f;
+  --vt-ink-muted: #5c5c66;
+  --vt-dots: #23232d;
+  --vt-spine-width: 6px;
+
+  position: relative;
+  background: var(--vt-surface);
+  font-family: inherit;
+}
+
+/* Edge fades — only visible when there is more content that way. */
+.vt::before,
+.vt::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.vt::before {
+  top: 0;
+  background: linear-gradient(to bottom, var(--vt-surface), transparent);
+}
+.vt::after {
+  bottom: 0;
+  background: linear-gradient(to top, var(--vt-surface), transparent);
+}
+.vt[data-fade-start]::before {
+  opacity: 1;
+}
+.vt[data-fade-end]::after {
+  opacity: 1;
+}
+
+.vt-scroller {
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--vt-ink) 30%, transparent) transparent;
+}
+.vt-scroller:focus-visible {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--vt-ink) 40%, transparent);
+}
+
+.vt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+  min-height: 170px;
+}
+
+/* Spine */
+.vt-spine {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+}
+.vt-line {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  bottom: 0;
+  width: var(--vt-spine-width);
+}
+.vt-node {
+  position: absolute;
+  left: 50%;
+  top: 24px;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--vt-surface);
+  border: 5px solid var(--vt-c);
+}
+
+/* Lead-in / lead-out stubs so the spine runs past the first and last nodes */
+.vt-end {
+  position: relative;
+  height: 46px;
+}
+
+/* Content */
+.vt-content {
+  grid-row: 1;
+  padding: 0 10px 30px;
+  text-align: center;
+  min-width: 0;
+}
+.vt-row--right .vt-content {
+  grid-column: 3;
+}
+.vt-row--left .vt-content {
+  grid-column: 1;
+}
+
+.vt-leader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 5px; /* badge (38px tall) centered on the node at y=24 */
+}
+.vt-row--left .vt-leader {
+  flex-direction: row-reverse;
+}
+
+.vt-arrow {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+}
+.vt-row--right .vt-arrow {
+  border-left: 10px solid var(--vt-c);
+  margin-left: -4px;
+}
+.vt-row--left .vt-arrow {
+  border-right: 10px solid var(--vt-c);
+  margin-right: -4px;
+}
+
+.vt-dots {
+  flex: 1;
+  min-width: 28px;
+  height: 6px;
+  background-image: radial-gradient(circle, var(--vt-dots) 2.6px, transparent 3.1px);
+  background-size: 16px 6px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+.vt-badge {
+  flex: none;
+  box-sizing: border-box;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--vt-c);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  padding: 0 26px;
+  border-radius: 999px;
+}
+
+.vt-title {
+  margin: 20px 0 10px;
+  font-size: 21px;
+  font-weight: 800;
+  color: var(--vt-ink);
+}
+.vt-desc {
+  margin: 0 auto;
+  max-width: 340px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--vt-ink-muted);
+}

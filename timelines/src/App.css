@@ -1,0 +1,73 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 40px 28px 80px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1b1b22;
+}
+.page-header p {
+  margin: 0;
+  color: #5c5c66;
+  max-width: 62ch;
+  line-height: 1.6;
+}
+
+.demo {
+  margin-top: 56px;
+}
+.demo > h2 {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a8a94;
+  margin: 0 0 16px;
+}
+.demo-note {
+  margin: 20px 0 12px;
+  color: #5c5c66;
+  font-size: 14px;
+  max-width: 70ch;
+  line-height: 1.6;
+}
+
+.vertical-frame {
+  max-width: 820px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(20, 20, 30, 0.08), 0 8px 28px rgba(20, 20, 30, 0.06);
+  padding: 36px 32px;
+}
+.vertical-heading {
+  margin-bottom: 8px;
+}
+.vertical-heading h3 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  color: #1b1b22;
+  letter-spacing: 0.01em;
+}
+.vertical-heading p {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8a8a94;
+}
+
+code {
+  background: #ececf1;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.92em;
+}
