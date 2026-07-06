@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nature Simulations — physics playground</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>Nature<br>Simulations</h1>
+    <nav id="simList"></nav>
+    <div id="controls"></div>
+    <div id="actions"></div>
+    <div id="info"></div>
+    <footer>
+      <span id="fps"></span>
+      <span class="hint">space&nbsp;=&nbsp;pause&nbsp;·&nbsp;keys&nbsp;1–8 switch</span>
+    </footer>
+  </aside>
+  <main id="stage">
+    <canvas id="view"></canvas>
+    <div id="hud"></div>
+  </main>
+</div>
+<script src="js/main.js"></script>
+<script src="js/sims/ball.js"></script>
+<script src="js/sims/sand.js"></script>
+<script src="js/sims/water.js"></script>
+<script src="js/sims/rain.js"></script>
+<script src="js/sims/fire.js"></script>
+<script src="js/sims/wind.js"></script>
+<script src="js/sims/snow.js"></script>
+<script src="js/sims/lightning.js"></script>
+<script>Engine.boot();</script>
+</body>
+</html>
