@@ -10,7 +10,8 @@ const SFX_FILES = [
 ];
 
 class AudioMan {
-  constructor() {
+  constructor(basePath = 'assets/sfx') {
+    this.basePath = basePath;
     this.ctx = null;
     this.buffers = {};
     this.master = null;
@@ -32,7 +33,7 @@ class AudioMan {
 
     await Promise.all(SFX_FILES.map(async (name) => {
       try {
-        const res = await fetch(`assets/sfx/${name}.mp3`);
+        const res = await fetch(`${this.basePath}/${name}.mp3`);
         const buf = await res.arrayBuffer();
         this.buffers[name] = await this.ctx.decodeAudioData(buf);
       } catch (e) {
