@@ -1,0 +1,9 @@
+# Core pipeline
+faster-whisper>=1.0.0      # STT: Whisper via CTranslate2 (fast on CPU)
+piper-tts>=1.2.0           # TTS: fast local neural voices (ONNX, CPU realtime+)
+requests>=2.31.0           # Ollama HTTP client (streaming)
+
+# Audio I/O + endpointing
+sounddevice>=0.4.6         # mic capture / speaker playback (PortAudio)
+webrtcvad-wheels>=2.0.10   # voice activity detection (prebuilt wheels)
+numpy>=1.24
