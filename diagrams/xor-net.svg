@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 340" font-family="Helvetica, Arial, sans-serif">
+  <rect width="640" height="340" fill="#ffffff"/>
+  <text x="320" y="30" text-anchor="middle" font-size="17" font-weight="bold" fill="#1c2b4a">The 2 &#8594; 2 &#8594; 1 network that solves XOR (9 parameters)</text>
+
+  <!-- edges input -> hidden -->
+  <g stroke="#9db2d0" stroke-width="2" fill="none">
+    <line x1="150" y1="120" x2="310" y2="120"/>
+    <line x1="150" y1="120" x2="310" y2="230"/>
+    <line x1="150" y1="230" x2="310" y2="120"/>
+    <line x1="150" y1="230" x2="310" y2="230"/>
+    <line x1="330" y1="120" x2="490" y2="175"/>
+    <line x1="330" y1="230" x2="490" y2="175"/>
+  </g>
+
+  <!-- weight labels -->
+  <g font-size="12" fill="#5b6b85">
+    <text x="222" y="108">W1 (2&#215;2), b1 (2)</text>
+    <text x="398" y="128">W2 (1&#215;2), b2 (1)</text>
+  </g>
+
+  <!-- input nodes -->
+  <g>
+    <circle cx="130" cy="120" r="24" fill="#eef3fb" stroke="#1a6fb0" stroke-width="2.5"/>
+    <text x="130" y="126" text-anchor="middle" font-size="15" fill="#1c2b4a">x&#8321;</text>
+    <circle cx="130" cy="230" r="24" fill="#eef3fb" stroke="#1a6fb0" stroke-width="2.5"/>
+    <text x="130" y="236" text-anchor="middle" font-size="15" fill="#1c2b4a">x&#8322;</text>
+  </g>
+
+  <!-- hidden nodes -->
+  <g>
+    <circle cx="330" cy="120" r="26" fill="#fdf1e4" stroke="#e29b3d" stroke-width="2.5"/>
+    <text x="330" y="126" text-anchor="middle" font-size="14" fill="#1c2b4a">tanh</text>
+    <circle cx="330" cy="230" r="26" fill="#fdf1e4" stroke="#e29b3d" stroke-width="2.5"/>
+    <text x="330" y="236" text-anchor="middle" font-size="14" fill="#1c2b4a">tanh</text>
+  </g>
+
+  <!-- output node -->
+  <circle cx="515" cy="175" r="26" fill="#fbeaea" stroke="#d1495b" stroke-width="2.5"/>
+  <text x="515" y="181" text-anchor="middle" font-size="13" fill="#1c2b4a">&#963;</text>
+  <line x1="541" y1="175" x2="590" y2="175" stroke="#9db2d0" stroke-width="2"/>
+  <text x="612" y="180" text-anchor="middle" font-size="15" fill="#1c2b4a">&#375;</text>
+
+  <!-- captions -->
+  <g font-size="12.5" fill="#5b6b85" text-anchor="middle">
+    <text x="130" y="285">inputs</text>
+    <text x="330" y="290">hidden layer: each neuron</text>
+    <text x="330" y="306">draws ONE line in the plane</text>
+    <text x="530" y="285">output: combines the</text>
+    <text x="530" y="301">two half-plane answers</text>
+  </g>
+</svg>

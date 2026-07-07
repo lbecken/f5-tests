@@ -1,0 +1,7 @@
+# chapters 1-5
+torch
+numpy
+matplotlib
+scikit-learn
+# chapter 6 (GPT-2)
+transformers
