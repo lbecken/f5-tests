@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="jakarta.faces.html"
+      xmlns:f="jakarta.faces.core"
+      xmlns:b="https://becken.dev/faces">
+<h:head>
+    <title>Becken DateTimePicker — JSF hybrid component demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+        :root {
+            --page-bg: #f4f5fa;
+            --card-bg: #ffffff;
+            --fg: #1f2430;
+            --fg-soft: #6b7280;
+            --border: #e3e5ee;
+            --accent: #4f46e5;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --page-bg: #12141f;
+                --card-bg: #1b1f2e;
+                --fg: #e7e9f2;
+                --fg-soft: #9aa1b5;
+                --border: #2c3147;
+                --accent: #818cf8;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--page-bg);
+            color: var(--fg);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.5;
+        }
+        .wrap { max-width: 880px; margin: 0 auto; padding: 40px 20px 80px; }
+        header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.02em; }
+        header p { color: var(--fg-soft); margin: 0 0 32px; font-size: 15px; }
+        header .tag {
+            display: inline-block; font-size: 12px; font-weight: 600;
+            color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
+            border-radius: 999px; padding: 3px 12px; margin-bottom: 14px;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 26px 28px;
+            margin-bottom: 22px;
+            box-shadow: 0 1px 3px rgba(15,20,40,0.05);
+        }
+        .card h2 { font-size: 17px; margin: 0 0 4px; }
+        .card > p { color: var(--fg-soft); font-size: 14px; margin: 0 0 18px; }
+        .row { display: flex; flex-wrap: wrap; gap: 28px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--fg-soft); }
+        .echo {
+            margin-top: 16px; font-size: 14px; padding: 12px 16px;
+            border-radius: 12px; border: 1px dashed var(--border);
+            color: var(--fg-soft); background: color-mix(in srgb, var(--accent) 4%, transparent);
+        }
+        .echo b { color: var(--fg); }
+        .btn {
+            font: inherit; font-weight: 600; font-size: 14px;
+            background: var(--accent); color: #fff; border: none;
+            border-radius: 10px; padding: 10px 22px; cursor: pointer;
+        }
+        .btn:hover { filter: brightness(1.08); }
+        .summary { margin-top: 16px; font-size: 14px; color: var(--fg-soft); }
+        .summary b { color: var(--fg); font-variant-numeric: tabular-nums; }
+        .messages ul { margin: 8px 0 0; padding-left: 18px; color: #dc2626; font-size: 13px; }
+    </style>
+</h:head>
+<h:body>
+<div class="wrap">
+    <header>
+        <span class="tag">&lt;b:dateTimePicker/&gt; · Jakarta Faces 4 · zero JS dependencies</span>
+        <h1>Becken DateTimePicker</h1>
+        <p>A hybrid JSF component: real <code>UIInput</code> on the server, vanilla JS/CSS widget in
+           the browser, wired together with standard Faces AJAX. Resize the window or open on a
+           phone — the popover becomes a bottom sheet.</p>
+    </header>
+
+    <h:form id="f">
+
+        <div class="card">
+            <h2>Date &amp; time, with &lt;f:ajax&gt;</h2>
+            <p>Committing a value fires a partial-lifecycle AJAX request; only the echo line below is re-rendered.</p>
+            <div class="row">
+                <div class="field">
+                    <label for="f:appointment:display">Appointment</label>
+                    <b:dateTimePicker id="appointment" value="#{demoBean.appointment}" label="Appointment">
+                        <f:ajax event="valueChange" listener="#{demoBean.onAppointmentChange}" render="echo"/>
+                    </b:dateTimePicker>
+                </div>
+            </div>
+            <h:panelGroup id="echo" layout="block" styleClass="echo">
+                <h:outputText value="#{demoBean.ajaxMessage}"/>
+            </h:panelGroup>
+        </div>
+
+        <div class="card">
+            <h2>Date only &amp; time only</h2>
+            <p>The same component in <code>mode="date"</code> (one click to pick) and
+               <code>mode="time"</code> (two clicks: hour, minute — no clock dial, no wheels).</p>
+            <div class="row">
+                <div class="field">
+                    <label for="f:birthday:display">Birthday — pattern dd/MM/yyyy</label>
+                    <b:dateTimePicker id="birthday" mode="date" pattern="dd/MM/yyyy"
+                                      value="#{demoBean.birthday}" label="Birthday"/>
+                </div>
+                <div class="field">
+                    <label for="f:reminder:display">Daily reminder</label>
+                    <b:dateTimePicker id="reminder" mode="time" minuteStep="15"
+                                      value="#{demoBean.reminder}" label="Reminder"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Constrained range + classic form post</h2>
+            <p>Only dates from today to three months out are selectable; out-of-range days are disabled.
+               This one commits through a normal JSF POST with server-side conversion and validation.</p>
+            <div class="row">
+                <div class="field">
+                    <label for="f:meeting:display">Meeting (next 3 months)</label>
+                    <b:dateTimePicker id="meeting" value="#{demoBean.meeting}" label="Meeting"
+                                      min="#{demoBean.minMeetingDate}" max="#{demoBean.maxMeetingDate}"
+                                      required="true" requiredMessage="Meeting: please pick a date and time."/>
+                </div>
+            </div>
+            <div class="summary">
+                <h:commandButton value="Submit form" action="#{demoBean.submit}" styleClass="btn"/>
+                <div class="messages"><h:messages/></div>
+                <p>
+                    Model values after last POST —
+                    appointment: <b><h:outputText value="#{demoBean.appointment}"/></b> ·
+                    birthday: <b><h:outputText value="#{demoBean.birthday}"/></b> ·
+                    reminder: <b><h:outputText value="#{demoBean.reminder}"/></b> ·
+                    meeting: <b><h:outputText value="#{demoBean.meeting}"/></b>
+                </p>
+            </div>
+        </div>
+
+    </h:form>
+</div>
+</h:body>
+</html>

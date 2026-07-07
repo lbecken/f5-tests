@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<facelet-taglib xmlns="https://jakarta.ee/xml/ns/jakartaee"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                                    https://jakarta.ee/xml/ns/jakartaee/web-facelettaglibrary_4_0.xsd"
+                version="4.0">
+
+    <namespace>https://becken.dev/faces</namespace>
+
+    <tag>
+        <tag-name>dateTimePicker</tag-name>
+        <component>
+            <component-type>dev.becken.faces.DateTimePicker</component-type>
+            <renderer-type>dev.becken.faces.DateTimePickerRenderer</renderer-type>
+        </component>
+        <attribute>
+            <name>value</name>
+            <description>LocalDateTime, LocalDate or LocalTime depending on mode.</description>
+        </attribute>
+        <attribute>
+            <name>mode</name>
+            <description>datetime (default), date or time.</description>
+        </attribute>
+        <attribute>
+            <name>pattern</name>
+            <description>Display pattern using yyyy MM dd HH mm ss tokens.</description>
+        </attribute>
+        <attribute>
+            <name>minuteStep</name>
+            <description>Granularity of the minute grid, 1..30 (default 5). Typing is always minute-exact.</description>
+        </attribute>
+        <attribute>
+            <name>min</name>
+            <description>ISO lower bound, e.g. 2026-01-01 or 2026-01-01T08:00.</description>
+        </attribute>
+        <attribute>
+            <name>max</name>
+            <description>ISO upper bound.</description>
+        </attribute>
+        <attribute>
+            <name>placeholder</name>
+        </attribute>
+        <attribute>
+            <name>disabled</name>
+        </attribute>
+        <attribute>
+            <name>required</name>
+        </attribute>
+        <attribute>
+            <name>label</name>
+        </attribute>
+        <attribute>
+            <name>styleClass</name>
+        </attribute>
+    </tag>
+</facelet-taglib>
