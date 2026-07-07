@@ -1,0 +1,421 @@
+/* Chart chrome & ink tokens (light/dark selected, not auto-flipped).
+   Series colors are injected from src/vitals.ts as --series-<type>. */
+.vsm-root {
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --band: rgba(12, 163, 12, 0.07);
+  --status-critical: #d03b3b;
+  --status-critical-ink: #b32e2e;
+  --crosshair: #898781;
+}
+@media (prefers-color-scheme: dark) {
+  .vsm-root {
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --band: rgba(12, 163, 12, 0.12);
+    --status-critical: #d03b3b;
+    --status-critical-ink: #e66767;
+    --crosshair: #898781;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  background: var(--page);
+}
+
+.vsm-root {
+  min-height: 100vh;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  padding: 20px clamp(12px, 3vw, 36px) 32px;
+}
+
+/* ------------------------------------------------------------- header */
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.app-header h1 {
+  font-size: 19px;
+  font-weight: 650;
+  margin: 0;
+}
+.conn-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  align-self: center;
+}
+.conn-on {
+  background: #0ca30c;
+}
+.conn-off {
+  background: var(--status-critical);
+}
+.conn-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------ controls */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-1);
+}
+.segmented button,
+.pause-btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+.segmented button:hover,
+.pause-btn:hover {
+  color: var(--text-primary);
+}
+.seg-on,
+.segmented .seg-on {
+  color: var(--text-primary);
+  font-weight: 650;
+  background: var(--band);
+}
+.pause-btn {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+.paused-note {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* -------------------------------------------------------------- layout */
+.monitor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 200px;
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .monitor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tiles {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}
+
+.chart-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 14px 10px;
+}
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+.chart-container svg {
+  display: block;
+  outline-offset: 2px;
+}
+.chart-container svg:focus-visible {
+  outline: 2px solid var(--series-heart_rate);
+}
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------- svg pieces */
+.gridline {
+  stroke: var(--gridline);
+  stroke-width: 1;
+}
+.gridline-x {
+  stroke-opacity: 0.6;
+}
+.gridline-limit {
+  stroke: var(--baseline);
+  stroke-dasharray: 3 3;
+}
+.axis-baseline {
+  stroke: var(--baseline);
+  stroke-width: 1;
+}
+.axis-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.axis-title {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.panel-title {
+  fill: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.normal-band {
+  fill: var(--band);
+}
+.band-label {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+}
+.marker {
+  stroke: var(--surface-1);
+  stroke-width: 1.5;
+  paint-order: stroke;
+}
+.oor-ring {
+  fill: none;
+  stroke: var(--status-critical);
+  stroke-width: 1.6;
+}
+.crosshair {
+  stroke: var(--crosshair);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+/* -------------------------------------------------------------- tooltip */
+.tooltip {
+  position: absolute;
+  width: 264px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  padding: 8px 10px;
+  pointer-events: none;
+  z-index: 5;
+}
+.tooltip-time {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 5px;
+}
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 1.5px 0;
+}
+.tooltip-key {
+  width: 12px;
+  height: 2.5px;
+  border-radius: 1px;
+  flex: none;
+}
+.tooltip-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tooltip-unit {
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 11.5px;
+}
+.tooltip-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* --------------------------------------------------------------- legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-bottom: 8px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 12.5px;
+  background: none;
+  border: none;
+  padding: 3px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.legend-item:hover {
+  background: var(--band);
+}
+.legend-item-off {
+  opacity: 0.38;
+}
+.legend-item-off .legend-name {
+  text-decoration: line-through;
+}
+.legend-range {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------- tiles */
+.tiles {
+  display: grid;
+  gap: 10px;
+}
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 4px solid;
+  border-radius: 10px;
+  padding: 9px 12px 8px;
+}
+.tile-alert {
+  border-color: var(--status-critical);
+  border-left-width: 4px;
+}
+.tile-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.tile-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.tile-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.tile-unit {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 5px;
+}
+.tile-sub {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+.status-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.status-high,
+.status-low {
+  color: #ffffff;
+  background: var(--status-critical);
+}
+.tooltip .status-chip {
+  margin-left: 4px;
+}
+
+/* ----------------------------------------------------------- data table */
+.data-table {
+  margin-top: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.data-table summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.data-table-scroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.data-table table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 4px 12px 4px 0;
+  border-bottom: 1px solid var(--gridline);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.data-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.data-table td.num {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* --------------------------------------------------------------- footer */
+.overlay-hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 8px 2px 2px;
+}
+.app-footer {
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.app-footer code {
+  font-size: 11.5px;
+}
