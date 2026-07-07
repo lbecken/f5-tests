@@ -34,6 +34,35 @@ const wrapDz = (a, b) => {
   return d;
 };
 
+// ------------------------------------------------------------------ terrain
+// Height varies along the ring (rolling hills across the flight path).
+// Fly low through the valleys — clip a ridge and you're debris.
+const TERR_STEP = 100;
+const TERR_N = RING_C / TERR_STEP;
+let terr = [];
+
+function genTerr() {
+  terr = new Array(TERR_N);
+  let y = rand(5, 25);
+  for (let i = 0; i < TERR_N; i++) {
+    terr[i] = y;
+    y += rand(-13, 13);
+    y = clamp(y, 0, 62);
+  }
+  const blend = 10;
+  for (let i = 0; i < blend; i++) {
+    const t = i / blend, j = TERR_N - blend + i;
+    terr[j] = terr[j] * (1 - t) + terr[0] * t;
+  }
+}
+
+function groundY(z) {
+  z = wrapZ(z);
+  const i = Math.floor(z / TERR_STEP);
+  const f = (z - i * TERR_STEP) / TERR_STEP;
+  return terr[i] + (terr[(i + 1) % TERR_N] - terr[i]) * f;
+}
+
 // -------------------------------------------------------------------- state
 let canvas, ctx, sprites, audio;
 let state = 'title';
@@ -47,6 +76,7 @@ const ship = {
   x: 0, y: 60, z: 0, vx: 0, vy: 0,
   roll: 0, alive: true, invuln: 0,
   fireCooldown: 0, muzzle: 1,        // alternating wingtip
+  carrying: null,                    // rescued humanoid on the hull
 };
 const cam = { x: 0, y: 84, z: -90 };
 
@@ -60,6 +90,15 @@ let stars = [];
 let ridge = [];       // horizon mountain silhouette
 
 const voCooldown = { abduct: 0, mutant: 0 };
+let wingCooldown = 0;                // shared cooldown for wingman chatter
+let killStreak = 0, killStreakT = 0; // rapid-kill counter for "great shooting"
+let watchbackT = 0;                  // periodic check for enemies behind
+
+function wingSay(name) {
+  if (wingCooldown > 0) return;
+  wingCooldown = 8;
+  audio.say(name);
+}
 
 // -------------------------------------------------------------------- input
 const keys = {};
@@ -126,7 +165,9 @@ function startGame() {
   audio.init().then(() => audio.say('vo_defend'));
   score = 0; lives = START_LIVES; bombs = START_BOMBS; wave = 0;
   nextBonus = BONUS_EVERY;
-  ship.x = 0; ship.y = 60; ship.z = 0; ship.vx = 0; ship.vy = 0;
+  ship.x = 0; ship.y = 90; ship.z = 0; ship.vx = 0; ship.vy = 0;
+  ship.carrying = null;
+  genTerr();
   spawnHumanoids();
   startWave(1);
   respawnShip();
@@ -136,10 +177,10 @@ function startGame() {
 function spawnHumanoids() {
   humanoids = [];
   for (let i = 0; i < 10; i++) {
+    const z = wrapZ(i * RING_C / 10 + rand(-300, 300));
     humanoids.push({
       x: rand(-LAT_LIM * 0.8, LAT_LIM * 0.8),
-      z: wrapZ(i * RING_C / 10 + rand(-300, 300)),
-      y: 0, state: 'walk',
+      z, y: groundY(z), state: 'walk',
     });
   }
 }
@@ -151,7 +192,27 @@ function startWave(n) {
   enemies = [];
   landerReserve = 8 + n * 3;
   spawnLanderBatch();
+  const bombers = n >= 2 ? Math.min(n, 5) : 0;
+  for (let i = 0; i < bombers; i++) {
+    enemies.push({
+      type: 'bomber',
+      x: rand(-LAT_LIM, LAT_LIM), y: rand(70, 150),
+      z: wrapZ(ship.z + rand(1000, RING_C - 1000)),
+      vz: rand(60, 130) * (Math.random() < 0.5 ? 1 : -1),
+      vx: 0, vy: 0, t: rand(0, 9), fire: 99, mineT: rand(0.8, 1.6),
+    });
+  }
+  const pods = n >= 3 ? Math.min(n - 2, 4) : 0;
+  for (let i = 0; i < pods; i++) {
+    enemies.push({
+      type: 'pod',
+      x: rand(-LAT_LIM, LAT_LIM), y: rand(80, 160),
+      z: wrapZ(ship.z + rand(1000, RING_C - 1000)),
+      vx: 0, vy: 0, t: rand(0, 9), fire: 99,
+    });
+  }
   spawnHumanoids();
+  if (n > 1) wingSay('wing_incoming');
 }
 
 function spawnLanderBatch() {
@@ -172,7 +233,7 @@ function respawnShip() {
   ship.alive = true;
   ship.invuln = 3;
   ship.vx = 0; ship.vy = 0;
-  ship.y = clamp(ship.y, 40, 120);
+  ship.y = clamp(ship.y, 90, 140);   // safely above the tallest ridge
 }
 
 // --------------------------------------------------------------- projection
@@ -221,15 +282,15 @@ function addScore(n, x, y, z) {
   }
 }
 
-const SCORES = { lander: 150, mutant: 150, baiter: 200 };
+const SCORES = { lander: 150, mutant: 150, baiter: 200, bomber: 250, pod: 1000, swarmer: 150, mine: 50 };
 
 function killEnemy(e, silentish) {
   if (e.dead) return;
   e.dead = true;
   addScore(SCORES[e.type] || 100, e.x, e.y, e.z);
-  spawnExplosion(e.x, e.y, e.z, '#ffd040');
+  spawnExplosion(e.x, e.y, e.z, e.type === 'pod' ? '#c040ff' : '#ffd040');
+  const p = project(e.x, e.y, e.z);
   if (!silentish) {
-    const p = project(e.x, e.y, e.z);
     audio.play('explosion', {
       vol: clamp(500 / (p ? p.dz : 500), 0.15, 0.7),
       rate: rand(0.9, 1.15),
@@ -237,15 +298,43 @@ function killEnemy(e, silentish) {
     });
   }
   shake = Math.max(shake, 2);
+  // a close kill sprays debris at the canopy
+  if (p && p.dz < 280) {
+    spawnExplosion(e.x, e.y, e.z, '#ffffff', 16, -260);
+    shake = Math.max(shake, 4);
+    flash = Math.max(flash, 0.04);
+  }
   if (e.type === 'lander' && e.target && e.target.state === 'grabbed') {
     e.target.state = 'falling';
+    e.target.fallFrom = e.target.y;
     e.target.vy = 0;
   }
+  if (e.type === 'pod') {
+    const n = randi(3, 4);
+    for (let i = 0; i < n; i++) {
+      enemies.push({
+        type: 'swarmer',
+        x: e.x + rand(-20, 20), y: clamp(e.y + rand(-20, 20), 10, ALT_MAX),
+        z: wrapZ(e.z + rand(-30, 30)),
+        vx: 0, vy: 0, t: rand(0, 9), fire: rand(1, 3),
+      });
+    }
+    audio.play('materialize', { vol: 0.5 });
+  }
+  // rapid kills earn wingman praise
+  killStreak++; killStreakT = 6;
+  if (killStreak >= 5) { wingSay('wing_goodshot'); killStreak = 0; }
 }
 
 function killShip() {
   if (!ship.alive || ship.invuln > 0) return;
   ship.alive = false;
+  if (ship.carrying) {
+    ship.carrying.state = 'falling';
+    ship.carrying.fallFrom = ship.carrying.y;
+    ship.carrying.vy = 0;
+    ship.carrying = null;
+  }
   audio.setThrust(false);
   audio.play('bigboom', { vol: 1 });
   spawnExplosion(ship.x, ship.y, ship.z + 30, '#ffffff', 50);
@@ -259,11 +348,11 @@ function killShip() {
 }
 
 // ------------------------------------------------------------------ effects
-function spawnExplosion(x, y, z, color, n = 22) {
+function spawnExplosion(x, y, z, color, n = 22, vzBias = 0) {
   for (let i = 0; i < n; i++) {
     particles.push({
       x, y, z,
-      vx: rand(-160, 160), vy: rand(-160, 160), vz: rand(-160, 160),
+      vx: rand(-160, 160), vy: rand(-160, 160), vz: rand(-160, 160) + vzBias,
       life: rand(0.3, 0.9),
       color: Math.random() < 0.4 ? '#ffffff' : color,
     });
@@ -285,6 +374,8 @@ function update(dt) {
   if (shake > 0) shake = Math.max(0, shake - dt * 20);
   if (flash > 0) flash -= dt;
   voCooldown.abduct -= dt; voCooldown.mutant -= dt;
+  wingCooldown -= dt; watchbackT -= dt;
+  if ((killStreakT -= dt) <= 0) killStreak = 0;
 
   for (const p of particles) {
     p.life -= dt;
@@ -326,7 +417,17 @@ function update(dt) {
   const landersActive = enemies.filter((e) => e.type === 'lander').length;
   if (landerReserve > 0 && landersActive <= 2) spawnLanderBatch();
 
-  if (enemies.filter((e) => e.type !== 'baiter').length + landerReserve === 0) {
+  // something sneaking up from behind? the wingman notices
+  if (watchbackT <= 0) {
+    watchbackT = 4;
+    const behind = enemies.some((e) => {
+      const dz = wrapDz(e.z, ship.z);
+      return dz < -60 && dz > -500 && (e.type === 'mutant' || e.type === 'baiter' || e.type === 'swarmer');
+    });
+    if (behind) wingSay('wing_watchback');
+  }
+
+  if (enemies.filter((e) => e.type !== 'baiter' && e.type !== 'mine').length + landerReserve === 0) {
     const saved = humanoids.filter((h) => h.state !== 'dead').length;
     const bonus = Math.min(wave, 5) * 100 * saved;
     if (bonus) addScore(bonus);
@@ -353,8 +454,25 @@ function updateShip(dt) {
   ship.vy = clamp(ship.vy, -220, 220);
 
   ship.x = clamp(ship.x + ship.vx * dt, -LAT_LIM, LAT_LIM);
-  ship.y = clamp(ship.y + ship.vy * dt, ALT_MIN, ALT_MAX);
+  ship.y = clamp(ship.y + ship.vy * dt, 6, ALT_MAX);
   ship.z = wrapZ(ship.z + (boost ? BOOST_SPEED : FWD_SPEED) * dt);
+
+  // hug the valleys, respect the ridges
+  if (ship.y < groundY(ship.z) + 5) { killShip(); return; }
+
+  // ferrying a rescued humanoid: skim the ground to set it down
+  if (ship.carrying) {
+    ship.carrying.x = ship.x;
+    ship.carrying.y = ship.y - 10;
+    ship.carrying.z = ship.z;
+    if (ship.y < groundY(ship.z) + 22) {
+      ship.carrying.state = 'walk';
+      ship.carrying.y = groundY(ship.carrying.z);
+      ship.carrying = null;
+      addScore(500, ship.x, ship.y, wrapZ(ship.z + 100));
+      audio.play('rescue', { vol: 0.9 });
+    }
+  }
 
   // bank into the turn
   const targetRoll = clamp(-ship.vx * 0.0024, -0.5, 0.5);
@@ -399,13 +517,46 @@ function enemyFire(e) {
     x: e.x, y: e.y, z: e.z,
     vx: dx / d * sp, vy: dy / d * sp, vz: dz / d * sp, life: 6,
   });
+  const p = project(e.x, e.y, e.z);
+  if (p) {
+    audio.play('enemyshoot', {
+      vol: clamp(300 / p.dz, 0.08, 0.4),
+      rate: rand(0.9, 1.1),
+      pan: clamp((p.x - CX) / CX, -1, 1) * 0.7,
+    });
+  }
 }
 
 function updateEnemies(dt) {
   for (const e of enemies) {
     e.t += dt; e.fire -= dt;
     if (e.type === 'lander') updateLander(e, dt);
-    else if (e.type === 'mutant') {
+    else if (e.type === 'bomber') {
+      e.z = wrapZ(e.z + e.vz * dt);
+      e.x += Math.sin(e.t * 0.9) * 40 * dt;
+      e.y = clamp(e.y + Math.cos(e.t * 0.7) * 30 * dt, 60, 160);
+      e.mineT -= dt;
+      if (e.mineT < 0) {
+        if (enemies.filter((m) => m.type === 'mine').length < 40) {
+          enemies.push({ type: 'mine', x: e.x, y: e.y, z: e.z, vx: 0, vy: 0, t: 0, fire: 99, life: 14 });
+        }
+        e.mineT = rand(0.7, 1.4);
+      }
+    } else if (e.type === 'mine') {
+      e.life -= dt;
+      if (e.life <= 0) e.dead = true;
+    } else if (e.type === 'pod') {
+      e.x += Math.sin(e.t * 0.6) * 22 * dt;
+      e.y = clamp(e.y + Math.cos(e.t * 0.8) * 26 * dt, 60, ALT_MAX);
+      e.z = wrapZ(e.z + 30 * dt);
+    } else if (e.type === 'swarmer') {
+      const dz = wrapDz(ship.z, e.z);
+      e.z = wrapZ(e.z + (Math.sign(dz) * Math.min(Math.abs(dz), (FWD_SPEED + 150) * dt)) + FWD_SPEED * dt * (Math.abs(dz) < 350 ? 1 : 0));
+      e.x += (ship.x - e.x) * dt * 1.8 + Math.sin(e.t * 8) * 180 * dt;
+      e.y += (ship.y - e.y) * dt * 1.8 + Math.cos(e.t * 7) * 160 * dt;
+      e.y = clamp(e.y, 8, ALT_MAX + 20);
+      if (e.fire < 0) { enemyFire(e); e.fire = rand(1.4, 3); }
+    } else if (e.type === 'mutant') {
       // close in on the player from any direction around the ring
       const dz = wrapDz(ship.z, e.z);
       e.z = wrapZ(e.z + Math.sign(dz) * Math.min(Math.abs(dz), (FWD_SPEED + 90) * dt) + FWD_SPEED * dt * (Math.abs(dz) < 400 ? 1 : 0));
@@ -426,6 +577,17 @@ function updateEnemies(dt) {
         Math.abs(dz) < 26 && Math.abs(e.x - ship.x) < 20 && Math.abs(e.y - ship.y) < 14) {
       killEnemy(e); killShip();
     }
+    // near miss: doppler whoosh as something streaks past the canopy
+    if (e.prevDz !== undefined && e.prevDz > 0 && dz <= 0 &&
+        Math.abs(e.x - ship.x) < 130 && Math.abs(e.y - ship.y) < 90) {
+      const prox = Math.max(Math.abs(e.x - ship.x), Math.abs(e.y - ship.y));
+      audio.play('flyby', {
+        vol: clamp(1 - prox / 130, 0.15, 0.8),
+        rate: rand(0.9, 1.25),
+        pan: clamp((e.x - ship.x) / 60, -1, 1) * 0.8,
+      });
+    }
+    e.prevDz = dz;
   }
   enemies = enemies.filter((e) => !e.dead);
 }
@@ -448,13 +610,14 @@ function updateLander(e, dt) {
     e.x += (e.target.x - e.x) * dt * 2;
     e.z = wrapZ(e.z + wrapDz(e.target.z, e.z) * dt * 2);
     e.y -= 40 * dt;
-    if (e.y <= 10) {
-      e.y = 10;
+    if (e.y <= groundY(e.z) + 10) {
+      e.y = groundY(e.z) + 10;
       e.state = 'lift';
       e.target.state = 'grabbed';
       const p = project(e.x, e.y, e.z);
       audio.play('abduct', { vol: 0.7, pan: p ? clamp((p.x - CX) / CX, -1, 1) * 0.7 : 0 });
       if (voCooldown.abduct <= 0) { audio.say('vo_abduct'); voCooldown.abduct = 12; }
+      else wingSay('wing_humanoids');
     }
   } else if (e.state === 'lift') {
     if (!e.target || e.target.state !== 'grabbed') { e.state = 'seek'; e.target = null; return; }
@@ -490,13 +653,33 @@ function updateHumanoids(dt) {
   for (const h of humanoids) {
     if (h.state === 'walk') {
       h.z = wrapZ(h.z + Math.sin(lastT / 900 + h.x) * 6 * dt);
+      h.y = groundY(h.z);
     } else if (h.state === 'falling') {
-      h.vy = (h.vy || 0) - 120 * dt;   // gentle parachute fall
+      h.vy = clamp((h.vy || 0) - 160 * dt, -110, 0);
       h.y += h.vy * dt;
-      if (h.y <= 0) {
-        h.y = 0; h.state = 'walk';
-        addScore(250, h.x, 10, h.z);
-        audio.play('rescue', { vol: 0.7 });
+      // dive under a falling humanoid to scoop it onto the hull
+      if (ship.alive && !ship.carrying &&
+          Math.abs(wrapDz(h.z, ship.z)) < 34 &&
+          Math.abs(h.x - ship.x) < 24 && Math.abs(h.y - ship.y) < 18) {
+        h.state = 'carried';
+        ship.carrying = h;
+        addScore(500, h.x, h.y, h.z);
+        audio.play('rescue', { vol: 0.9 });
+        wingSay('wing_nicecatch');
+        continue;
+      }
+      const g = groundY(h.z);
+      if (h.y <= g) {
+        h.y = g;
+        if ((h.fallFrom || 0) - g > 70) {
+          h.state = 'dead';
+          spawnExplosion(h.x, h.y, h.z, '#d0a0ff', 10);
+          audio.play('humandie', { vol: 0.6 });
+        } else {
+          h.state = 'walk';
+          addScore(250, h.x, h.y + 10, h.z);
+          audio.play('rescue', { vol: 0.6 });
+        }
       }
     }
   }
@@ -568,27 +751,31 @@ function drawRidge() {
 }
 
 function drawGround() {
-  // cross lines sweeping toward the camera
+  // cross lines ride the heightfield as they sweep toward the camera
   ctx.strokeStyle = '#7a3008';
   ctx.lineWidth = 1;
-  const step = 150;
-  const first = Math.ceil((cam.z + 16) / step) * step;
-  for (let k = 0; k < 18; k++) {
-    const z = first + k * step;
-    const a = project(-900 + cam.x, 0, z), b = project(900 + cam.x, 0, z);
+  const first = Math.ceil((cam.z + 16) / TERR_STEP) * TERR_STEP;
+  for (let k = 0; k < 26; k++) {
+    const z = first + k * TERR_STEP;
+    const y = groundY(z);
+    const a = project(-900 + cam.x, y, z), b = project(900 + cam.x, y, z);
     if (!a || !b) continue;
     ctx.globalAlpha = clamp(1.4 - a.dz / DRAW_FAR, 0.08, 0.8);
     ctx.beginPath();
     ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
     ctx.stroke();
   }
-  // longitudinal rails
+  // longitudinal rails: polylines following the terrain profile
+  ctx.globalAlpha = 0.35;
   for (let x = -600; x <= 600; x += 120) {
-    const a = project(x, 0, cam.z + 40), b = project(x, 0, cam.z + DRAW_FAR);
-    if (!a || !b) continue;
-    ctx.globalAlpha = 0.35;
     ctx.beginPath();
-    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    let started = false;
+    for (let z = cam.z + 40; z <= cam.z + DRAW_FAR; z += TERR_STEP) {
+      const p = project(x, groundY(z), z);
+      if (!p) continue;
+      if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+      else ctx.lineTo(p.x, p.y);
+    }
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
@@ -718,10 +905,11 @@ function drawScanner() {
     ctx.fillStyle = '#d0a0ff';
     ctx.fillRect(mapX(hm.z), mapY(hm.y), 1, 1);
   }
-  const dotColor = { lander: '#30e030', mutant: '#ff40ff', baiter: '#c0ff20' };
+  const dotColor = { lander: '#30e030', mutant: '#ff40ff', baiter: '#c0ff20', bomber: '#6080ff', pod: '#c040ff', swarmer: '#ff8020', mine: '#ff4040' };
   for (const e of enemies) {
     ctx.fillStyle = dotColor[e.type] || '#fff';
-    ctx.fillRect(mapX(e.z), mapY(e.y), 2, 2);
+    const d = e.type === 'mine' ? 1 : 2;
+    ctx.fillRect(mapX(e.z), mapY(e.y), d, d);
   }
   if (ship.alive && Math.floor(lastT / 120) % 2 === 0) {
     ctx.fillStyle = '#ffffff';

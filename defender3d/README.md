@@ -38,8 +38,16 @@ python3 -m http.server 8000        # from the repository root
   game wrapped in x — same `wrapDz` shortest-distance math).
 - **The abduction loop in depth**: landers descend to the surface
   ahead of you, grab humanoids, and lift; kill the lander and the
-  humanoid parachutes back down; let it reach the top and you've made
-  a mutant that hunts you around the ring.
+  humanoid falls — **dive under it to scoop it onto your hull**
+  (+500), then skim the ground to set it down (+500). A short fall is
+  survivable on its own; a long one isn't.
+- **Rolling terrain**: the surface is a heightfield around the ring —
+  the grid and rails ride over ridges and valleys, humanoids stand on
+  the slopes, landers descend to the local ground… and clipping a
+  ridge at speed kills you. Fly the valleys.
+- **The full enemy roster in 3D**: bombers cruising the ring leaving
+  minefields, pods that burst into weaving swarmers, mutants and
+  baiters that hunt you from any direction — including from behind.
 - **Banking flight model** — lateral velocity rolls the ship and
   counter-tilts the whole world view; the chase camera eases behind
   your movement.
@@ -48,13 +56,17 @@ python3 -m http.server 8000        # from the repository root
   (now showing the ring flattened into a strip), and the full
   ElevenLabs soundscape from v1 with distance-based volume and
   screen-position panning.
+- **A living cockpit soundscape**: enemies that streak past the canopy
+  trigger a doppler flyby whoosh panned to the side they passed on;
+  distant enemy fire is an audible low zap; close kills spray debris
+  at the camera with a flash and heavier shake.
+- **A wingman on the radio** (a second ElevenLabs voice): he calls
+  incoming waves, warns you when something is on your tail, cheers a
+  humanoid catch, and salutes a 5-kill streak. Chatter ducks the sound
+  mix like the announcer, with a global cooldown so he never babbles.
 
-## Not done yet (roadmap)
+## Still on the roadmap
 
-- Catching falling humanoids with the ship (currently they parachute
-  and survive on their own — the dive-and-scoop deserves real tuning).
-- Terrain height / trench walls (the surface is a flat grid; the
-  horizon ridge is a parallax silhouette).
-- Bombers, mines, pods and swarmers in 3D.
-- Doppler on passing enemies; wingman voice chatter.
-- A proper rear-view explosion when you fly through debris.
+- Trench walls / canyon sections between the open stretches.
+- True Doppler pitch-bending (the flyby is a one-shot whoosh today).
+- Full planet-destroyed state when every humanoid is lost (2D has it).

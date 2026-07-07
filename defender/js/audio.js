@@ -6,7 +6,9 @@
 const SFX_FILES = [
   'shoot', 'explosion', 'bigboom', 'thrust', 'abduct', 'rescue',
   'smartbomb', 'mutant', 'materialize', 'hyperspace', 'humandie', 'baiter',
+  'flyby', 'enemyshoot',
   'vo_defend', 'vo_abduct', 'vo_wave', 'vo_gameover', 'vo_mutant',
+  'wing_incoming', 'wing_watchback', 'wing_nicecatch', 'wing_goodshot', 'wing_humanoids',
 ];
 
 class AudioMan {
