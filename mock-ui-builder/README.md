@@ -12,6 +12,8 @@ No build step, no server, no dependencies — **just open `index.html` in a brow
 
 ## Features
 
+- **Containers** — drop a component onto a Panel, Card, Fieldset, TabView, Dialog, Sidebar or OverlayPanel and it nests inside: moving the container moves its contents, delete/duplicate cascade, and the inspector shows the membership with a **Detach** action. The target container highlights green while dragging.
+- **PNG export** — the 🖼 PNG button rasterizes the layout (current mode: rendered or wireframe) at 2× resolution, fully offline.
 - **Component palette** — 55+ placeholder types, each mapped to a PrimeFaces component (the `p:` tag is shown in the palette and inspector). Categorized (Form, Buttons, Data, Panels, Overlays, Menus, Messages, File & Media, Misc) and searchable.
 - **Drag & drop canvas** — drag from the palette (or double-click to add), move freely with 10px grid snapping, resize with 8 handles, marquee/Shift multi-select, align tools, z-order controls, duplicate, keyboard nudging.
 - **Wireframe ⇄ Render** — while editing, components appear as grayscale wireframes (Balsamiq-style low fidelity). **▶ Render** switches the same layout to full-color PrimeFaces-styled components. Because both modes share the same markup, the render always matches the sketch pixel-for-pixel.
@@ -28,7 +30,7 @@ No build step, no server, no dependencies — **just open `index.html` in a brow
 |---|---|
 | Form | Label, InputText, Textarea, Password, InputNumber, InputMask, DatePicker, Checkbox, Radio group, Dropdown (SelectOneMenu), MultiSelect, Listbox, AutoComplete, Chips, Slider, Rating, Knob, InputSwitch, SelectButton, ToggleButton, ColorPicker, Spinner, Text Editor |
 | Buttons | CommandButton (severities / outlined / text / rounded / icons), SplitButton, Link |
-| Data | DataTable, TreeTable, DataView, Tree, OrderList, PickList, Carousel, Timeline, Paginator, Chart (bar / line / pie / doughnut), Galleria |
+| Data | DataTable, TreeTable, DataView, Tree, OrderList, PickList, Carousel, Timeline, Paginator, Chart (bar / hbar / line / area / pie / doughnut / radar), Galleria |
 | Panels | Panel, Card, Fieldset, Accordion, TabView, Toolbar, Divider |
 | Overlays | Dialog, ConfirmDialog, OverlayPanel, Sidebar, Tooltip |
 | Menus | Menubar, Menu, PanelMenu, Breadcrumb, Steps, TabMenu |
@@ -84,3 +86,5 @@ mock-ui-builder/
 ## Extending the palette
 
 Add a `def('myType', {...})` entry in `js/components.js` with a name, the PrimeFaces tag, a category, a default size, a prop schema, and an `html(props)` renderer, then style any new classes in `css/prime.css`. It immediately appears in the palette, inspector, and save format.
+
+**See [docs/GUIDE.md](docs/GUIDE.md)** for the full architecture explanation (including how the PrimeFaces look is achieved without a JSF server) and a step-by-step worked example of adding a new component.

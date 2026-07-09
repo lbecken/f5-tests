@@ -242,6 +242,18 @@ body:not(.render-mode) .comp:hover { outline: 1px dashed #93c5fd; outline-offset
 .h-sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
 .h-w  { left: -5px; top: calc(50% - 5px); cursor: ew-resize; }
 
+/* container about to receive the dragged component */
+.comp.drop-target { outline: 2px solid #22c55e; outline-offset: 2px; }
+.comp.drop-target::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: rgba(34, 197, 94, .07);
+  pointer-events: none;
+}
+
+.inside-row { display: flex; align-items: center; gap: 8px; color: #334155; }
+.inside-row .btn-sm { margin: 0 0 0 auto; }
+
 .marquee {
   position: absolute;
   border: 1px solid #2196F3;

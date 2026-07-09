@@ -167,7 +167,7 @@
 .p-req { color: #D32F2F; margin-left: 3px; }
 
 .p-slider { position: relative; height: 100%; display: flex; align-items: center; }
-.p-slider::before { content: ''; position: absolute; left: 0; right: 0; height: 5px; background: var(--pf-surface-2); border-radius: 3px; }
+.p-slider-track { position: absolute; left: 0; right: 0; height: 5px; background: var(--pf-surface-2); border-radius: 3px; }
 .p-slider-range { position: absolute; left: 0; height: 5px; background: var(--pf-primary); border-radius: 3px; }
 .p-slider-handle {
   position: absolute; width: 18px; height: 18px; margin-left: -9px;

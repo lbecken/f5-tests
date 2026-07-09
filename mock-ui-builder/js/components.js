@@ -138,54 +138,95 @@
   /* ---------------- chart drawing (inline SVG) ---------------- */
   const CHART_COLORS = ['#42A5F5', '#66BB6A', '#FFA726', '#26C6DA', '#7E57C2', '#EC407A'];
   function chartSvg(d, c) {
-    const W = 400, H = 260, padL = 34, padB = 26, padT = 12, padR = 8;
+    const W = 400, H = 260, padT = 12, padR = 8, padB = 26;
     const n = 7, data = M.series(n, 20, 95, 3), data2 = M.series(n, 10, 70, 8);
-    const cw = W - padL - padR, ch = H - padT - padB;
-    const x = (i) => padL + (i + 0.5) * (cw / n);
-    const y = (v) => padT + ch - (v / 100) * ch;
     let g = '';
-    /* gridlines + labels */
-    for (let v = 0; v <= 100; v += 25) {
-      g += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" class="ch-grid"/>` +
-           `<text x="${padL - 6}" y="${y(v) + 3.5}" class="ch-lbl" text-anchor="end">${v}</text>`;
-    }
-    for (let i = 0; i < n; i++) g += `<text x="${x(i)}" y="${H - 8}" class="ch-lbl" text-anchor="middle">${M.month(i)}</text>`;
+    const twoSeriesLegend =
+      `<span class="ch-leg"><span class="ch-dot" style="background:${CHART_COLORS[0]}"></span>This year</span>` +
+      `<span class="ch-leg"><span class="ch-dot" style="background:${CHART_COLORS[2]}"></span>Last year</span>`;
+    let legend = twoSeriesLegend;
 
-    if (d.type === 'bar') {
-      const bw = cw / n * 0.28;
-      for (let i = 0; i < n; i++) {
-        g += `<rect x="${x(i) - bw - 1.5}" y="${y(data[i])}" width="${bw}" height="${y(0) - y(data[i])}" fill="${CHART_COLORS[0]}" rx="2"/>`;
-        g += `<rect x="${x(i) + 1.5}" y="${y(data2[i])}" width="${bw}" height="${y(0) - y(data2[i])}" fill="${CHART_COLORS[2]}" rx="2"/>`;
+    if (d.type === 'bar' || d.type === 'line' || d.type === 'area') {
+      const padL = 34, cw = W - padL - padR, ch = H - padT - padB;
+      const x = (i) => padL + (i + 0.5) * (cw / n);
+      const y = (v) => padT + ch - (v / 100) * ch;
+      for (let v = 0; v <= 100; v += 25) {
+        g += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" class="ch-grid"/>` +
+             `<text x="${padL - 6}" y="${y(v) + 3.5}" class="ch-lbl" text-anchor="end">${v}</text>`;
       }
-    } else if (d.type === 'line') {
-      const pts = data.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-      const pts2 = data2.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-      g += `<polyline points="${pts}" fill="none" stroke="${CHART_COLORS[0]}" stroke-width="2.5"/>`;
-      g += `<polyline points="${pts2}" fill="none" stroke="${CHART_COLORS[2]}" stroke-width="2.5"/>`;
-      data.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="#fff" stroke="${CHART_COLORS[0]}" stroke-width="2"/>`);
-      data2.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="#fff" stroke="${CHART_COLORS[2]}" stroke-width="2"/>`);
+      for (let i = 0; i < n; i++) g += `<text x="${x(i)}" y="${H - 8}" class="ch-lbl" text-anchor="middle">${M.month(i)}</text>`;
+
+      if (d.type === 'bar') {
+        const bw = cw / n * 0.28;
+        for (let i = 0; i < n; i++) {
+          g += `<rect x="${x(i) - bw - 1.5}" y="${y(data[i])}" width="${bw}" height="${y(0) - y(data[i])}" fill="${CHART_COLORS[0]}" rx="2"/>`;
+          g += `<rect x="${x(i) + 1.5}" y="${y(data2[i])}" width="${bw}" height="${y(0) - y(data2[i])}" fill="${CHART_COLORS[2]}" rx="2"/>`;
+        }
+      } else {
+        const pts = data.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+        const pts2 = data2.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+        if (d.type === 'area') {
+          g += `<polygon points="${x(0)},${y(0)} ${pts} ${x(n - 1)},${y(0)}" fill="${CHART_COLORS[0]}" opacity="0.22"/>`;
+          g += `<polygon points="${x(0)},${y(0)} ${pts2} ${x(n - 1)},${y(0)}" fill="${CHART_COLORS[2]}" opacity="0.22"/>`;
+        }
+        g += `<polyline points="${pts}" fill="none" stroke="${CHART_COLORS[0]}" stroke-width="2.5"/>`;
+        g += `<polyline points="${pts2}" fill="none" stroke="${CHART_COLORS[2]}" stroke-width="2.5"/>`;
+        if (d.type === 'line') {
+          data.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="#fff" stroke="${CHART_COLORS[0]}" stroke-width="2"/>`);
+          data2.forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="3.4" fill="#fff" stroke="${CHART_COLORS[2]}" stroke-width="2"/>`);
+        }
+      }
+    } else if (d.type === 'hbar') {
+      const padL = 78, cw = W - padL - padR, ch = H - padT - 10;
+      const cats = 5, vals = M.series(cats, 15, 95, 4);
+      const x = (v) => padL + (v / 100) * cw;
+      for (let v = 0; v <= 100; v += 25) {
+        g += `<line x1="${x(v)}" y1="${padT}" x2="${x(v)}" y2="${padT + ch}" class="ch-grid"/>` +
+             `<text x="${x(v)}" y="${H - 4}" class="ch-lbl" text-anchor="middle">${v}</text>`;
+      }
+      const bh = ch / cats * 0.55;
+      for (let i = 0; i < cats; i++) {
+        const cy = padT + (i + 0.5) * (ch / cats);
+        g += `<rect x="${padL}" y="${cy - bh / 2}" width="${x(vals[i]) - padL}" height="${bh}" fill="${CHART_COLORS[i % CHART_COLORS.length]}" rx="2"/>`;
+        g += `<text x="${padL - 7}" y="${cy + 3.5}" class="ch-lbl" text-anchor="end">${M.city(i)}</text>`;
+      }
+      legend = '';
+    } else if (d.type === 'radar') {
+      const axes = 6, cx = W / 2, cy = (H - 6) / 2 + 3, r = Math.min(W, H) / 2 - 26;
+      const pt = (i, v) => {
+        const a = -Math.PI / 2 + (i / axes) * Math.PI * 2;
+        return (cx + (r * v / 100) * Math.cos(a)).toFixed(1) + ',' + (cy + (r * v / 100) * Math.sin(a)).toFixed(1);
+      };
+      for (let ring = 25; ring <= 100; ring += 25) {
+        g += `<polygon points="${Array.from({ length: axes }, (_, i) => pt(i, ring)).join(' ')}" fill="none" class="ch-grid"/>`;
+      }
+      for (let i = 0; i < axes; i++) {
+        g += `<line x1="${cx}" y1="${cy}" x2="${pt(i, 100).replace(',', '" y2="')}" class="ch-grid"/>`;
+        const a = -Math.PI / 2 + (i / axes) * Math.PI * 2;
+        g += `<text x="${cx + (r + 13) * Math.cos(a)}" y="${cy + (r + 13) * Math.sin(a) + 3.5}" class="ch-lbl" text-anchor="middle">${M.month(i)}</text>`;
+      }
+      const s1 = M.series(axes, 30, 95, 6), s2 = M.series(axes, 20, 80, 9);
+      g += `<polygon points="${s1.map((v, i) => pt(i, v)).join(' ')}" fill="${CHART_COLORS[0]}" opacity="0.25" stroke="${CHART_COLORS[0]}" stroke-width="2"/>`;
+      g += `<polygon points="${s2.map((v, i) => pt(i, v)).join(' ')}" fill="${CHART_COLORS[2]}" opacity="0.25" stroke="${CHART_COLORS[2]}" stroke-width="2"/>`;
     } else { /* pie / doughnut */
       const vals = M.series(5, 8, 40, 5), tot = vals.reduce((a, b) => a + b, 0);
-      const cx = W / 2, cy = (H - 16) / 2 + 6, r = Math.min(cw, ch) / 2.1;
-      let a0 = -Math.PI / 2, slices = '';
+      const cx = W / 2, cy = (H - 16) / 2 + 6, r = Math.min(W - padL0(), H - padT - padB) / 2.1;
+      function padL0() { return 42; }
+      let a0 = -Math.PI / 2;
       vals.forEach((v, i) => {
         const a1 = a0 + (v / tot) * Math.PI * 2;
         const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
         const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
         const large = (a1 - a0) > Math.PI ? 1 : 0;
-        slices += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} Z" fill="${CHART_COLORS[i % CHART_COLORS.length]}" stroke="#fff" stroke-width="2"/>`;
+        g += `<path d="M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} Z" fill="${CHART_COLORS[i % CHART_COLORS.length]}" stroke="#fff" stroke-width="2"/>`;
         a0 = a1;
       });
-      g = slices;
       if (d.type === 'doughnut') g += `<circle cx="${cx}" cy="${cy}" r="${r * 0.55}" fill="var(--ch-hole, #fff)"/>`;
+      legend = CHART_COLORS.slice(0, 5).map((col, i) => `<span class="ch-leg"><span class="ch-dot" style="background:${col}"></span>${M.category(i)}</span>`).join('');
     }
-    const legend = (d.type === 'pie' || d.type === 'doughnut')
-      ? CHART_COLORS.slice(0, 5).map((col, i) => `<span class="ch-leg"><span class="ch-dot" style="background:${col}"></span>${M.category(i)}</span>`).join('')
-      : `<span class="ch-leg"><span class="ch-dot" style="background:${CHART_COLORS[0]}"></span>This year</span>` +
-        `<span class="ch-leg"><span class="ch-dot" style="background:${CHART_COLORS[2]}"></span>Last year</span>`;
     return `<div class="p-chart">${d.title ? `<div class="p-chart-title">${esc(d.title)}</div>` : ''}` +
       `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="p-chart-svg">${g}</svg>` +
-      `<div class="p-chart-legend">${legend}</div></div>`;
+      (legend ? `<div class="p-chart-legend">${legend}</div>` : '') + '</div>';
   }
 
   /* ============================================================
@@ -276,7 +317,7 @@
   def('slider', {
     name: 'Slider', pf: 'p:slider', cat: 'Form', w: 220, h: 24,
     props: [{ k: 'value', n: 'Value (0-100)', t: 'num', d: 60 }],
-    html: (d) => `<div class="p-slider"><div class="p-slider-range" style="width:${Math.min(100, Math.max(0, d.value))}%"></div>` +
+    html: (d) => `<div class="p-slider"><span class="p-slider-track"></span><div class="p-slider-range" style="width:${Math.min(100, Math.max(0, d.value))}%"></div>` +
       `<span class="p-slider-handle" style="left:${Math.min(100, Math.max(0, d.value))}%"></span></div>`
   });
   def('rating', {
@@ -438,7 +479,7 @@
   def('chart', {
     name: 'Chart', pf: 'p:chart', cat: 'Data', w: 420, h: 300,
     props: [{ k: 'title', n: 'Title', t: 'text', d: 'Monthly Sales' },
-            { k: 'type', n: 'Type', t: 'sel', d: 'bar', o: ['bar', 'line', 'pie', 'doughnut'] }],
+            { k: 'type', n: 'Type', t: 'sel', d: 'bar', o: ['bar', 'hbar', 'line', 'area', 'pie', 'doughnut', 'radar'] }],
     html: (d, c) => chartSvg(d, c)
   });
   def('galleria', {
@@ -453,6 +494,7 @@
 
   /* ------------------------ PANELS ------------------------ */
   def('panel', {
+    container: true,
     name: 'Panel', pf: 'p:panel', cat: 'Panels', w: 360, h: 220,
     props: [{ k: 'title', n: 'Header', t: 'text', d: 'Panel Header' },
             { k: 'toggleable', n: 'Toggle icon', t: 'bool', d: true },
@@ -462,6 +504,7 @@
       `</div><div class="p-panel-content">${d.words > 0 ? esc(M.lorem(d.words)) : '<span class="p-dropzone-hint">Drop components on top of this panel</span>'}</div></div>`
   });
   def('card', {
+    container: true,
     name: 'Card', pf: 'p:card', cat: 'Panels', w: 320, h: 220,
     props: [{ k: 'title', n: 'Title', t: 'text', d: 'Card Title' },
             { k: 'subtitle', n: 'Subtitle', t: 'text', d: 'Subtitle' },
@@ -473,6 +516,7 @@
       (d.footer ? `<div class="p-card-footer">${btn('Save', { icon: I.check })} ${btn('Cancel', { icon: I.times, style: 'outlined', sev: 'secondary' })}</div>` : '') + '</div>'
   });
   def('fieldset', {
+    container: true,
     name: 'Fieldset', pf: 'p:fieldset', cat: 'Panels', w: 340, h: 180,
     props: [{ k: 'title', n: 'Legend', t: 'text', d: 'Details' }, { k: 'words', n: 'Content words (0 = empty)', t: 'num', d: 0 }],
     html: (d) => `<fieldset class="p-fieldset"><legend>${esc(d.title)}</legend>` +
@@ -490,6 +534,7 @@
     }).join('') + '</div>'
   });
   def('tabView', {
+    container: true,
     name: 'TabView', pf: 'p:tabView', cat: 'Panels', w: 400, h: 240,
     props: [{ k: 'tabs', n: 'Tabs', t: 'list', d: 'Overview\nDetails\nHistory' },
             { k: 'active', n: 'Active tab #', t: 'num', d: 1 },
@@ -516,6 +561,7 @@
 
   /* ------------------------ OVERLAYS ------------------------ */
   def('dialog', {
+    container: true,
     name: 'Dialog', pf: 'p:dialog', cat: 'Overlays', w: 380, h: 220,
     props: [{ k: 'title', n: 'Title', t: 'text', d: 'Edit Profile' },
             { k: 'words', n: 'Content words (0 = empty)', t: 'num', d: 0 },
@@ -532,11 +578,13 @@
       `<div class="p-dialog-footer">${btn('No', { icon: I.times, style: 'text' })}${btn('Yes', { icon: I.check })}</div></div>`
   });
   def('overlayPanel', {
+    container: true,
     name: 'Overlay Panel', pf: 'p:overlayPanel', cat: 'Overlays', w: 260, h: 140,
     props: [{ k: 'words', n: 'Content words', t: 'num', d: 14 }],
     html: (d) => `<div class="p-overlaypanel"><span class="p-op-arrow"></span><div class="p-op-content">${esc(M.lorem(Math.max(3, d.words | 0)))}</div></div>`
   });
   def('sidebar', {
+    container: true,
     name: 'Sidebar', pf: 'p:sidebar', cat: 'Overlays', w: 260, h: 420,
     props: [{ k: 'title', n: 'Title', t: 'text', d: 'Menu' }, { k: 'items', n: 'Items', t: 'list', d: 'Dashboard\nOrders\nCustomers\nReports\nSettings' }],
     html: (d) => `<div class="p-sidebar"><div class="p-sidebar-header"><span>${esc(d.title)}</span><span class="p-dialog-close">${I.times}</span></div>` +
@@ -612,7 +660,7 @@
             { k: 'summary', n: 'Summary', t: 'text', d: 'Info' },
             { k: 'detail', n: 'Detail', t: 'text', d: 'Your changes have been saved.' }],
     html: (d) => `<div class="p-message p-messages p-message-${d.severity}">${MSG_ICON[d.severity] || I.info}` +
-      `<span><b>${esc(d.summary)}</b>&nbsp; ${esc(d.detail)}</span><span class="p-message-close">${I.times}</span></div>`
+      `<span><b>${esc(d.summary)}</b>&#160; ${esc(d.detail)}</span><span class="p-message-close">${I.times}</span></div>`
   });
   def('toast', {
     name: 'Toast / Growl', pf: 'p:growl', cat: 'Messages', w: 320, h: 78,

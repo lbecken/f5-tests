@@ -41,6 +41,54 @@
   function byId(id) { return state.components.find(c => c.id === id); }
   function selected() { return state.components.filter(c => selection.has(c.id)); }
 
+  /* ------------------- container nesting ------------------- */
+  /* Components carry an optional `parent` (container id). Coordinates stay
+   * absolute; the parent link makes children follow container moves and
+   * cascade on delete/duplicate. */
+  function descendantsOf(id) {
+    const out = [];
+    const walk = (pid) => state.components.forEach(c => { if (c.parent === pid) { out.push(c); walk(c.id); } });
+    walk(id);
+    return out;
+  }
+  function subtree(c) { return [c, ...descendantsOf(c.id)]; }
+  /* topmost container whose bounds contain the point, skipping excluded ids */
+  function containerAtPt(cx, cy, excludeIds) {
+    for (let i = state.components.length - 1; i >= 0; i--) {
+      const t = state.components[i];
+      if (excludeIds && excludeIds.has(t.id)) continue;
+      const def = R.get(t.type);
+      if (!def || !def.container) continue;
+      if (cx >= t.x && cx <= t.x + t.w && cy >= t.y && cy <= t.y + t.h) return t;
+    }
+    return null;
+  }
+  /* keep a child (and its subtree) after its container in z-order */
+  function ensureAfter(c, t) {
+    if (state.components.indexOf(c) > state.components.indexOf(t)) return;
+    const sub = subtree(c);
+    state.components = state.components.filter(x => !sub.includes(x));
+    state.components.splice(state.components.indexOf(t) + 1, 0, ...sub);
+  }
+  /* re-evaluate which container a component sits in; returns the new
+   * container def name when the parent changed, else null */
+  function assignParent(c, excludeIds) {
+    const t = containerAtPt(c.x + c.w / 2, c.y + c.h / 2, excludeIds || new Set(subtree(c).map(x => x.id)));
+    const prev = c.parent || null;
+    if (t) { c.parent = t.id; ensureAfter(c, t); } else { delete c.parent; }
+    if ((c.parent || null) === prev) return null;
+    return t ? R.get(t.type).name : 'the page';
+  }
+  function clearDropTargets() {
+    el.canvas.querySelectorAll('.comp.drop-target').forEach(n => n.classList.remove('drop-target'));
+  }
+  function showDropTarget(t) {
+    clearDropTargets();
+    if (!t) return;
+    const n = el.canvas.querySelector(`.comp[data-id="${t.id}"]`);
+    if (n) n.classList.add('drop-target');
+  }
+
   /* ----------------------- undo/redo ----------------------- */
   function snapshot() { return JSON.stringify(state); }
   function pushHistory(snap) {
@@ -138,9 +186,10 @@
     c.x = clamp(c.x, 0, Math.max(0, state.canvas.width - 20));
     c.y = clamp(c.y, 0, Math.max(0, state.canvas.height - 16));
     state.components.push(c);
+    const placed = assignParent(c, new Set([c.id]));
     selection = new Set([c.id]);
     renderAll(); autosave();
-    setStatus(def.name + ' added — drag to position it');
+    setStatus(def.name + ' added' + (placed && placed !== 'the page' ? ' inside ' + placed : '') + ' — drag to position it');
     return c;
   }
 
@@ -164,10 +213,12 @@
       ghost.style.top = (e.clientY - def.h * zoom / 2) + 'px';
       const over = canvasPoint(e);
       ghost.classList.toggle('ok', !!over);
+      showDropTarget(over ? containerAtPt(over.x, over.y, null) : null);
     };
     const up = (e) => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
+      clearDropTargets();
       if (ghost) {
         ghost.remove();
         const pt = canvasPoint(e);
@@ -269,9 +320,13 @@
         return;
       }
       if (!selection.has(id)) { selection = new Set([id]); renderSelectionUI(); renderProps(); }
+      /* moving a container also moves everything nested inside it */
+      const moveSet = new Map();
+      selected().forEach(c => subtree(c).forEach(x => moveSet.set(x.id, x)));
       drag = {
         kind: 'move', snap: snapshot(), moved: false, px: ev.clientX, py: ev.clientY,
-        starts: selected().map(c => ({ id: c.id, x: c.x, y: c.y }))
+        movedIds: new Set(moveSet.keys()),
+        starts: [...moveSet.values()].map(c => ({ id: c.id, x: c.x, y: c.y }))
       };
     } else {
       /* empty canvas: start a marquee selection */
@@ -311,6 +366,8 @@
         if (node) { node.style.left = c.x + 'px'; node.style.top = c.y + 'px'; }
       });
       renderSelectionUI();
+      const pt = canvasPoint(ev);
+      showDropTarget(pt ? containerAtPt(pt.x, pt.y, drag.movedIds) : null);
       const c0 = byId(drag.starts[0].id);
       if (c0) setStatus(`x ${c0.x}  y ${c0.y}`);
     } else if (drag.kind === 'resize') {
@@ -364,10 +421,23 @@
   function onDragUp() {
     document.removeEventListener('pointermove', onDragMove);
     document.removeEventListener('pointerup', onDragUp);
+    clearDropTargets();
     if (!drag) return;
     if ((drag.kind === 'move' || drag.kind === 'resize') && drag.moved) {
+      let placed = null;
+      if (drag.kind === 'move') {
+        /* re-evaluate container membership for each moved root */
+        selected().forEach(c => { placed = assignParent(c, drag.movedIds) || placed; });
+      } else {
+        const c = byId(drag.id);
+        if (c) placed = assignParent(c);
+      }
       pushHistory(drag.snap);
       autosave();
+      drag = null;
+      renderAll();                       /* z-order may have changed on reparent */
+      setStatus(placed ? (placed === 'the page' ? 'Detached from container' : 'Placed inside ' + placed) : '');
+      return;
     }
     if (drag.kind === 'marquee' && drag.node) drag.node.remove();
     drag = null;
@@ -397,7 +467,9 @@
       ev.preventDefault();
       const step = ev.shiftKey ? GRID : 1;
       pushHistory();
-      selected().forEach(c => {
+      const moveSet = new Map();
+      selected().forEach(c => subtree(c).forEach(x => moveSet.set(x.id, x)));
+      moveSet.forEach(c => {
         c.x = clamp(c.x + nudges[ev.key][0] * step, -c.w + 20, state.canvas.width - 20);
         c.y = clamp(c.y + nudges[ev.key][1] * step, 0, state.canvas.height - 16);
         renderComp(c);
@@ -409,7 +481,9 @@
   function deleteSelection() {
     if (!selection.size) return;
     pushHistory();
-    state.components = state.components.filter(c => !selection.has(c.id));
+    const del = new Set();
+    selected().forEach(c => subtree(c).forEach(x => del.add(x.id)));
+    state.components = state.components.filter(c => !del.has(c.id));
     selection.clear();
     renderAll(); autosave();
     setStatus('Deleted');
@@ -417,13 +491,19 @@
   function duplicateSelection() {
     if (!selection.size) return;
     pushHistory();
-    const clones = selected().map(c => {
+    const roots = selected();
+    const all = new Map();
+    roots.forEach(c => subtree(c).forEach(x => all.set(x.id, x)));
+    const idMap = {};
+    const clones = [...all.values()].map(c => {
       const n = JSON.parse(JSON.stringify(c));
-      n.id = nextId(); n.x += 20; n.y += 20;
+      idMap[c.id] = n.id = nextId();
+      n.x += 20; n.y += 20;
       return n;
     });
+    clones.forEach(n => { if (n.parent && idMap[n.parent]) n.parent = idMap[n.parent]; });
     state.components.push(...clones);
-    selection = new Set(clones.map(c => c.id));
+    selection = new Set(roots.map(c => idMap[c.id]));
     renderAll(); autosave();
   }
 
@@ -495,6 +575,12 @@
       else if (p.t === 'sel') html += field(p.n, `<select data-prop="${p.k}">` + p.o.map(o => `<option value="${o}" ${o === v ? 'selected' : ''}>${o}</option>`).join('') + `</select>`);
       else if (p.t === 'list') html += field(p.n + ' (one per line)', `<textarea rows="4" data-prop="${p.k}">${R.esc(v)}</textarea>`);
     });
+    if (c.parent && byId(c.parent)) {
+      const pDef = R.get(byId(c.parent).type);
+      html += `<div class="prop-field"><label>Container</label>` +
+        `<div class="inside-row">Inside <b>${R.esc(pDef ? pDef.name : c.parent)}</b>` +
+        `<button class="btn-sm" data-act="detach" title="Detach from the container (keeps position)">Detach</button></div></div>`;
+    }
     html +=
       `<div class="prop-field"><label>Arrange</label>` +
       `<button class="btn-sm" data-act="front" title="Bring to front">⬆⬆</button>` +
@@ -518,6 +604,10 @@
       const act = b.dataset.act;
       if (act === 'delete') deleteSelection();
       else if (act === 'duplicate') duplicateSelection();
+      else if (act === 'detach') {
+        const c = selected()[0];
+        if (c && c.parent) { pushHistory(); delete c.parent; renderAll(); autosave(); }
+      }
       else reorder(act);
     }));
     el.props.querySelectorAll('[data-align]').forEach(b => b.addEventListener('click', () => alignSelection(b.dataset.align)));
@@ -538,7 +628,13 @@
       const c = selected()[0];
       if (!c) return;
       if (inp.dataset.geo) {
-        c[inp.dataset.geo] = Math.max(inp.dataset.geo === 'w' ? MIN_W : inp.dataset.geo === 'h' ? MIN_H : -1e5, Number(inp.value) || 0);
+        const k = inp.dataset.geo;
+        const nv = Math.max(k === 'w' ? MIN_W : k === 'h' ? MIN_H : -1e5, Number(inp.value) || 0);
+        if (k === 'x' || k === 'y') {
+          const delta = nv - c[k];
+          descendantsOf(c.id).forEach(dc => { dc[k] += delta; renderComp(dc); });
+        }
+        c[k] = nv;
       } else if (inp.dataset.prop) {
         c.props = c.props || {};
         c.props[inp.dataset.prop] = val;
@@ -614,6 +710,7 @@
   $('#btnOpen').addEventListener('click', openDialog);
   $('#btnSave').addEventListener('click', saveDialog);
   $('#btnExport').addEventListener('click', exportFile);
+  $('#btnPng').addEventListener('click', exportPng);
   $('#btnImport').addEventListener('click', () => el.fileInput.click());
   $('#btnHelp').addEventListener('click', helpDialog);
 
@@ -631,6 +728,9 @@
       canvas: Object.assign(defaultState().canvas, data.canvas || {}),
       components: data.components.filter(c => c && c.id && R.get(c.type))
     };
+    /* drop parent links that point at removed/unknown components */
+    const ids = new Set(state.components.map(c => c.id));
+    state.components.forEach(c => { if (c.parent && !ids.has(c.parent)) delete c.parent; });
     selection.clear();
     setMode('edit');
     autosave();
@@ -710,13 +810,106 @@
 
   function exportFile() {
     const data = JSON.stringify(serialize(), null, 2);
-    const name = (state.canvas.title || 'layout').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'layout';
+    const filename = exportName() + '.mock.json';
+    downloadBlob(new Blob([data], { type: 'application/json' }), filename);
+    toast('Exported ' + filename);
+  }
+
+  /* ---------------------- PNG export ----------------------
+   * The layout is rebuilt off-screen (so the page stylesheets apply),
+   * every element's computed style is inlined, and the tree is
+   * rasterized through an SVG <foreignObject> onto a 2x canvas.
+   * Computed-style inlining is used instead of embedding the CSS text
+   * because Chrome refuses to expose cssRules on file:// pages. */
+  const XHTML_NS = 'http://www.w3.org/1999/xhtml', SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function inlineComputedStyles(root, probeHolder) {
+    const defaults = {};
+    function baseline(el) {
+      const isSvg = el.namespaceURI === SVG_NS;
+      const key = (isSvg ? 'svg:' : '') + el.tagName;
+      if (!defaults[key]) {
+        const probe = isSvg ? document.createElementNS(SVG_NS, el.tagName) : document.createElement(el.tagName);
+        probeHolder.appendChild(probe);
+        const cs = getComputedStyle(probe);
+        const snap = {};
+        for (let i = 0; i < cs.length; i++) snap[cs[i]] = cs.getPropertyValue(cs[i]);
+        probe.remove();
+        defaults[key] = snap;
+      }
+      return defaults[key];
+    }
+    const all = [root, ...root.querySelectorAll('*')];
+    all.forEach(el => {
+      const cs = getComputedStyle(el);
+      const base = baseline(el);
+      let style = '';
+      for (let i = 0; i < cs.length; i++) {
+        const p = cs[i], v = cs.getPropertyValue(p);
+        if (v !== base[p]) style += p + ':' + v + ';';
+      }
+      el.setAttribute('style', style);
+    });
+  }
+
+  function exportPng() {
+    const scale = 2;
+    const w = state.canvas.width, h = state.canvas.height;
+    const wire = mode === 'edit';
+    /* off-screen stage: same DOM shape as the real canvas so all CSS
+     * (theme, wireframe filter via the body class, hint hiding) applies */
+    const stage = document.createElement('div');
+    stage.className = 'render-mode';
+    stage.style.cssText = 'position:fixed;left:-100000px;top:0;';
+    const root = document.createElement('div');
+    root.id = 'canvas';
+    root.style.cssText = `width:${w}px;height:${h}px;position:relative;background:#fff;overflow:hidden;`;
+    let inner = '';
+    state.components.forEach((c, i) => {
+      inner += `<div class="comp" style="left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px;z-index:${i + 1}">` +
+        `<div class="comp-inner">${R.render(c, wire ? 'edit' : 'render')}</div></div>`;
+    });
+    root.innerHTML = inner;
+    stage.appendChild(root);
+    document.body.appendChild(stage);
+    let svg;
+    try {
+      inlineComputedStyles(root, stage);
+      const xhtml = new XMLSerializer().serializeToString(root);
+      svg = `<svg xmlns="${SVG_NS}" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${xhtml}</foreignObject></svg>`;
+    } finally {
+      stage.remove();
+    }
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = w * scale; cv.height = h * scale;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      try {
+        cv.toBlob(b => {
+          if (!b) return toast('PNG export failed in this browser', true);
+          downloadBlob(b, exportName() + (wire ? '-wireframe' : '') + '.png');
+          toast('Exported PNG (' + (wire ? 'wireframe' : 'rendered') + ', ' + cv.width + '×' + cv.height + ')');
+        });
+      } catch (e) { toast('PNG export failed in this browser', true); }
+    };
+    img.onerror = () => toast('PNG export failed in this browser', true);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  }
+
+  function exportName() {
+    return (state.canvas.title || 'layout').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'layout';
+  }
+  function downloadBlob(blob, filename) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
-    a.download = name + '.mock.json';
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast('Exported ' + a.download);
   }
 
   el.fileInput.addEventListener('change', () => {
@@ -741,7 +934,9 @@
       `<tr><td>Resize</td><td>drag the handles (single selection)</td></tr>` +
       `<tr><td>Duplicate / Delete</td><td>Ctrl/Cmd+D · Del</td></tr>` +
       `<tr><td>Undo / Redo</td><td>Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z</td></tr>` +
+      `<tr><td>Containers</td><td>drop onto a Panel / Card / Fieldset / TabView / Dialog / Sidebar — it nests and moves with it (Detach in the inspector)</td></tr>` +
       `<tr><td>Save</td><td>Ctrl/Cmd+S (browser) · Export = portable .json</td></tr>` +
+      `<tr><td>Export image</td><td>🖼 PNG exports the current mode (rendered or wireframe) at 2× resolution</td></tr>` +
       `<tr><td>Render ⇄ Edit</td><td>▶ Render button · Esc returns to edit</td></tr>` +
       `</table>` +
       `<p class="modal-note">Every placeholder maps to a PrimeFaces component (shown in the palette and inspector). Layouts autosave to this browser as you work.</p>`,
