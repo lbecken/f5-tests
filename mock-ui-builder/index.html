@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PF Mock Builder — UI mock layout builder for PrimeFaces</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/prime.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='4' width='28' height='24' rx='4' fill='%232196F3'/%3E%3Crect x='6' y='10' width='12' height='3' rx='1.5' fill='white'/%3E%3Crect x='6' y='16' width='20' height='3' rx='1.5' fill='white' opacity='.8'/%3E%3Crect x='6' y='22' width='8' height='3' rx='1.5' fill='white' opacity='.6'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- ======= top toolbar ======= -->
+  <header id="topbar">
+    <div class="brand" title="PF Mock Builder">
+      <span class="brand-logo">▦</span>
+      <span class="brand-name">PF Mock Builder</span>
+    </div>
+    <div class="tb-group">
+      <button id="btnNew" class="btn" title="New empty layout">🗋 New</button>
+      <button id="btnOpen" class="btn" title="Open a layout saved in this browser">📂 Open</button>
+      <button id="btnSave" class="btn" title="Save to this browser (Ctrl+S)">💾 Save</button>
+    </div>
+    <div class="tb-group">
+      <button id="btnImport" class="btn" title="Import a .json layout file">📥 Import</button>
+      <button id="btnExport" class="btn" title="Export the layout as a portable .json file">📤 Export</button>
+    </div>
+    <div class="tb-group">
+      <button id="btnUndo" class="btn" title="Undo (Ctrl+Z)">↶</button>
+      <button id="btnRedo" class="btn" title="Redo (Ctrl+Shift+Z)">↷</button>
+    </div>
+    <div class="tb-group">
+      <button id="btnZoomOut" class="btn" title="Zoom out">−</button>
+      <button id="zoomLabel" class="btn btn-zoom" title="Reset zoom to 100%">100%</button>
+      <button id="btnZoomIn" class="btn" title="Zoom in">+</button>
+    </div>
+    <div class="tb-spacer"></div>
+    <button id="btnRender" class="btn btn-render" title="Preview with PrimeFaces components">▶ Render</button>
+    <button id="btnHelp" class="btn" title="Help &amp; shortcuts">?</button>
+  </header>
+
+  <div id="main">
+    <!-- ======= left: component palette ======= -->
+    <aside id="paletteWrap">
+      <div class="pal-search">
+        <input id="paletteSearch" type="search" placeholder="Search components…" spellcheck="false">
+      </div>
+      <div id="palette"></div>
+      <div class="pal-footer">placeholders map to PrimeFaces components</div>
+    </aside>
+
+    <!-- ======= center: canvas ======= -->
+    <section id="canvasWrap">
+      <div id="canvasScaler">
+        <div id="canvasFrame" class="canvas-frame chrome-browser">
+          <div id="chromeBar" class="chrome-bar"></div>
+          <div class="canvas-stack">
+            <div id="canvas" class="show-grid"></div>
+            <div id="overlay"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======= right: inspector ======= -->
+    <aside id="propsWrap">
+      <div id="propsTitle" class="props-title">Page</div>
+      <div id="props"></div>
+    </aside>
+  </div>
+
+  <footer id="statusBar"></footer>
+
+  <!-- generic modal -->
+  <div id="modal" class="modal">
+    <div class="modal-box">
+      <div id="modalTitle" class="modal-title"></div>
+      <div id="modalBody" class="modal-body"></div>
+      <div id="modalActions" class="modal-actions"></div>
+    </div>
+  </div>
+
+  <div id="appToast" class="app-toast"></div>
+  <input id="fileInput" type="file" accept=".json,application/json" hidden>
+
+  <script src="js/mockdata.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/sample.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

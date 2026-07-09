@@ -1,0 +1,35 @@
+/* Demo layout shown on first visit and via "Load demo layout". */
+window.SAMPLE_LAYOUT = {
+  app: 'pf-mock-layout',
+  version: 1,
+  canvas: { title: 'Sales Admin — Orders', width: 1180, height: 830, chrome: 'browser', grid: true },
+  components: [
+    { id: 's1', type: 'menubar', x: 20, y: 20, w: 1140, h: 48,
+      props: { brand: 'SALES ADMIN', items: 'Dashboard\nOrders\nCustomers\nReports' } },
+    { id: 's2', type: 'breadcrumb', x: 20, y: 84, w: 420, h: 40,
+      props: { items: 'Sales\nOrders' } },
+    { id: 's3', type: 'heading', x: 20, y: 138, w: 220, h: 40, props: { text: 'Orders', level: 'h1' } },
+    { id: 's4', type: 'tag', x: 240, y: 146, w: 70, h: 26, props: { value: 'LIVE', severity: 'success' } },
+    { id: 's5', type: 'toolbar', x: 20, y: 190, w: 720, h: 56,
+      props: { leftButtons: 'New\nImport', rightLabel: 'Search orders' } },
+    { id: 's6', type: 'dataTable', x: 20, y: 262, w: 720, h: 350,
+      props: { title: 'Recent Orders', columns: 'Name\nCountry\nDate\nAmount\nStatus', rows: 6, paginator: true, striped: true, sortable: true } },
+    { id: 's7', type: 'chart', x: 760, y: 190, w: 400, h: 300, props: { title: 'Monthly Sales', type: 'bar' } },
+    { id: 's8', type: 'panel', x: 760, y: 506, w: 400, h: 304, props: { title: 'Order Details', toggleable: true, words: 0 } },
+    { id: 's9', type: 'outputLabel', x: 780, y: 556, w: 120, h: 20, props: { text: 'Customer', required: true } },
+    { id: 's10', type: 'inputText', x: 780, y: 580, w: 360, h: 36, props: { value: 'Amy Almeida' } },
+    { id: 's11', type: 'outputLabel', x: 780, y: 626, w: 120, h: 20, props: { text: 'Country' } },
+    { id: 's12', type: 'dropdown', x: 780, y: 650, w: 360, h: 36, props: { value: 'Brazil' } },
+    { id: 's13', type: 'checkbox', x: 780, y: 700, w: 180, h: 28, props: { label: 'Express shipping', checked: true } },
+    { id: 's14', type: 'commandButton', x: 900, y: 750, w: 110, h: 36,
+      props: { label: 'Cancel', severity: 'secondary', style: 'outlined' } },
+    { id: 's15', type: 'commandButton', x: 1030, y: 750, w: 110, h: 36,
+      props: { label: 'Save', icon: 'check', severity: 'primary' } },
+    { id: 's16', type: 'progressBar', x: 20, y: 640, w: 340, h: 22, props: { value: 70, showValue: true } },
+    { id: 's17', type: 'outputLabel', x: 20, y: 616, w: 220, h: 20, props: { text: 'Monthly quota' } },
+    { id: 's18', type: 'toast', x: 420, y: 700, w: 320, h: 78,
+      props: { severity: 'success', summary: 'Success', detail: 'Order #1004 saved.' } },
+    { id: 's19', type: 'rating', x: 20, y: 690, w: 150, h: 28, props: { value: 4 } },
+    { id: 's20', type: 'outputLabel', x: 20, y: 666, w: 220, h: 20, props: { text: 'Customer satisfaction' } }
+  ]
+};
