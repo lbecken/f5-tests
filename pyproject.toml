@@ -1,0 +1,27 @@
+[project]
+name = "epub2pdf-smart"
+version = "0.1.0"
+description = "EPUB to fixed-layout PDF converter with competing pagination strategies and an optional local-LLM layout judge"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "fpdf2>=2.7.9",
+    "beautifulsoup4>=4.12",
+    "Pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Vision mode for the Ollama judge (rasterizes candidate pages to images)
+vision = ["pymupdf>=1.24"]
+dev = ["pytest", "pypdf", "pymupdf"]
+
+[project.scripts]
+epub2pdf = "epub2pdf.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["epub2pdf*"]
