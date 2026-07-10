@@ -1,0 +1,10 @@
+.gradle/
+build/
+out/
+*.iml
+.idea/
+.vscode/
+*.class
+schema.json
+data.json
+*.local.properties
