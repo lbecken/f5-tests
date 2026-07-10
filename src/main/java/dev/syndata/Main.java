@@ -1,5 +1,6 @@
 package dev.syndata;
 
+import dev.syndata.cli.CsvCommand;
 import dev.syndata.cli.GenerateCommand;
 import dev.syndata.cli.InsertCommand;
 import dev.syndata.cli.ScanCommand;
@@ -11,7 +12,8 @@ import picocli.CommandLine.Command;
 @Command(name = "syndata", mixinStandardHelpOptions = true, version = "syndata 0.1.0",
         description = "Smart synthetic data for Postgres: scan a schema, generate FK-consistent "
                 + "fake data, and load it back — with export/import files in between.",
-        subcommands = {ScanCommand.class, GenerateCommand.class, InsertCommand.class, SqlCommand.class})
+        subcommands = {ScanCommand.class, GenerateCommand.class, InsertCommand.class,
+                SqlCommand.class, CsvCommand.class})
 public class Main implements Runnable {
 
     @Override

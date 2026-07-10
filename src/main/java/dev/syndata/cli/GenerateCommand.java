@@ -51,6 +51,12 @@ public class GenerateCommand implements Callable<Integer> {
             description = "Probability that a nullable non-FK column is NULL (default: ${DEFAULT-VALUE}).")
     double nullRatio;
 
+    @Option(names = "--fk-skew", defaultValue = "1.0",
+            description = "Skew of parent selection for foreign keys: 1 = uniform, 2-4 = "
+                    + "Pareto-like (a few parents collect most references, e.g. some customers "
+                    + "have many orders). Default: ${DEFAULT-VALUE}.")
+    double fkSkew;
+
     @Option(names = "--locale", defaultValue = "en",
             description = "Locale for generated names, addresses etc. (default: ${DEFAULT-VALUE}).")
     String locale;
@@ -90,7 +96,7 @@ public class GenerateCommand implements Callable<Integer> {
 
         long actualSeed = seed != null ? seed : System.nanoTime();
         DataGenerator.Options opts = new DataGenerator.Options(rows, perTable, actualSeed,
-                nullRatio, Locale.forLanguageTag(locale), aiPool);
+                nullRatio, fkSkew, Locale.forLanguageTag(locale), aiPool);
 
         DataSetModel data = new DataGenerator(System.err::println).generate(schema, opts);
         JsonStore.writeDataSet(data, output);

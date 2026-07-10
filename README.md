@@ -13,8 +13,9 @@ the application generates later.
 
 ```
 scan ──► schema.json ──► generate ──► data.json ──┬─► insert ──► database
-(needs DB)              (offline)                 └─► sql ─► load.sql ─► psql
-                                                     (offline)
+(needs DB)              (offline)                 ├─► sql ─► load.sql ─► psql
+                                                  └─► csv ─► one .csv per table
+                                                     (both offline)
 ```
 
 ## Quick start
@@ -105,6 +106,7 @@ Reads a schema file and writes a data file. No database connection.
 | `-t / --table-rows orders=200` | per-table override (repeatable) |
 | `--seed 42` | reproducible output |
 | `--null-ratio 0.1` | how often nullable columns are NULL |
+| `--fk-skew 3` | parent selection skew: 1 = uniform, 2–4 = Pareto-like ("some customers have many orders") |
 | `--locale en` | DataFaker locale |
 | `--ai` | local-model enrichment (below) |
 
@@ -120,6 +122,11 @@ Reads the schema + data files and loads the rows:
 3. Applies the deferred cycle-breaking FK columns with batched UPDATEs.
 
 `--dry-run` prints the plan without connecting; `--batch-size` tunes batching.
+`--truncate` **deletes data**: it empties exactly the tables listed in the data
+file before inserting (same transaction, deliberately no CASCADE — if other
+tables still reference those rows the transaction fails instead of silently
+wiping them; sequences are not reset). Useful for re-seeding a test database
+to a known state.
 Because ids always come from the live sequences, you can insert several
 generated files into the same database — just generate each with a different
 seed, since *natural* unique values (emails, names) in a single file can only
@@ -137,6 +144,17 @@ updates, and wraps everything in one transaction.
 ```bash
 syndata sql -s schema.json -d data.json -o load.sql
 psql -h dbhost -U me -d mydb -f load.sql
+```
+
+### `syndata csv`
+
+Exports a data file as one RFC 4180 CSV file per table (header row included)
+into a directory — handy for eyeballing the data in a spreadsheet or feeding
+other tools. Sequence-backed ids keep their negative local values in CSV; only
+`insert` and `sql` translate them into real sequence values.
+
+```bash
+syndata csv -d data.json -o csv/
 ```
 
 ## Configuration

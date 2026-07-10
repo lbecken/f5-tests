@@ -31,8 +31,14 @@ public class DataGenerator {
 
     private static final int MAX_ROW_ATTEMPTS = 30;
 
+    /**
+     * {@code fkSkew} shapes how children pick parents: 1 = uniform; higher values
+     * concentrate references on few parents (2–4 gives a realistic Pareto-like
+     * "some customers have many orders" spread).
+     */
     public record Options(int defaultRows, Map<String, Integer> tableRows, long seed,
-                          double nullRatio, java.util.Locale locale, dev.syndata.ai.AiValuePool aiPool) {
+                          double nullRatio, double fkSkew, java.util.Locale locale,
+                          dev.syndata.ai.AiValuePool aiPool) {
     }
 
     private final Consumer<String> log;
@@ -223,7 +229,7 @@ public class DataGenerator {
                 fk.columns.forEach(assigned::add);
                 continue;
             }
-            Object[] parentRow = pool.get(ctx.random.nextInt(pool.size()));
+            Object[] parentRow = pickParent(pool, ctx, opts.fkSkew());
             for (int k = 0; k < fk.columns.size(); k++) {
                 Integer idx = g.index.get(fk.columns.get(k));
                 Integer parentIdx = parent.index.get(fk.referencedColumns.get(k));
@@ -298,6 +304,18 @@ public class DataGenerator {
         return true;
     }
 
+    /**
+     * Picks a parent row; with skew &gt; 1 the choice follows a power law over the
+     * pool order, so a few parents collect most references.
+     */
+    private static Object[] pickParent(List<Object[]> pool, GenContext ctx, double skew) {
+        if (skew <= 1.0) {
+            return pool.get(ctx.random.nextInt(pool.size()));
+        }
+        int idx = (int) (pool.size() * Math.pow(ctx.random.nextDouble(), skew));
+        return pool.get(Math.min(idx, pool.size() - 1));
+    }
+
     /** Second pass: fill FK columns that were deferred to break dependency cycles. */
     private void fillDeferredColumns(TableGraph.Order order, Map<String, Generated> generated,
                                      GenContext ctx, Options opts) {
@@ -321,7 +339,7 @@ public class DataGenerator {
                         continue;
                     }
                     List<Object[]> pool = parent.fkPool();
-                    Object[] parentRow = pool.get(ctx.random.nextInt(pool.size()));
+                    Object[] parentRow = pickParent(pool, ctx, opts.fkSkew());
                     for (int k = 0; k < fk.columns.size(); k++) {
                         Integer idx = g.index.get(fk.columns.get(k));
                         Integer parentIdx = parent.index.get(fk.referencedColumns.get(k));

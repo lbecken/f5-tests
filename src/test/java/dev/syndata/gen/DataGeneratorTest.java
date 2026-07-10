@@ -83,7 +83,7 @@ class DataGeneratorTest {
     }
 
     private DataSetModel generate(int rows) {
-        DataGenerator.Options opts = new DataGenerator.Options(rows, Map.of(), 42L, 0.1,
+        DataGenerator.Options opts = new DataGenerator.Options(rows, Map.of(), 42L, 0.1, 1.0,
                 Locale.ENGLISH, null);
         return new DataGenerator(msg -> {
         }).generate(schema(), opts);
@@ -181,7 +181,7 @@ class DataGeneratorTest {
         s.tables.add(t);
 
         DataSetModel data = new DataGenerator(m -> {
-        }).generate(s, new DataGenerator.Options(50, Map.of(), 1L, 0.0, Locale.ENGLISH, null));
+        }).generate(s, new DataGenerator.Options(50, Map.of(), 1L, 0.0, 1.0, Locale.ENGLISH, null));
         TableDataModel rows = table(data, "reviews");
         int rIdx = rows.columns.indexOf("rating");
         int aIdx = rows.columns.indexOf("attempts");
@@ -216,7 +216,7 @@ class DataGeneratorTest {
         s.tables.addAll(List.of(orders, customers));
 
         DataSetModel data = new DataGenerator(m -> {
-        }).generate(s, new DataGenerator.Options(20, Map.of(), 5L, 0.0, Locale.ENGLISH, null));
+        }).generate(s, new DataGenerator.Options(20, Map.of(), 5L, 0.0, 1.0, Locale.ENGLISH, null));
 
         assertEquals(1, data.tables.size(), "stub tables must not appear in the data file");
         TableDataModel o = table(data, "orders");
@@ -225,6 +225,29 @@ class DataGeneratorTest {
             long v = ((Number) row.get(fkIdx)).longValue();
             assertTrue(v >= 101 && v <= 103, "FK must use an existing key, got " + v);
         }
+    }
+
+    @Test
+    void fkSkewConcentratesReferencesOnFewParents() {
+        DataGenerator.Options skewed = new DataGenerator.Options(0,
+                Map.of("customers", 50, "orders", 400, "tags", 1, "order_tag", 0),
+                7L, 0.0, 3.0, Locale.ENGLISH, null);
+        DataSetModel data = new DataGenerator(m -> {
+        }).generate(schema(), skewed);
+
+        TableDataModel orders = table(data, "orders");
+        int fkIdx = orders.columns.indexOf("customer_id");
+        Map<Object, Integer> perCustomer = new java.util.HashMap<>();
+        for (List<Object> row : orders.rows) {
+            perCustomer.merge(row.get(fkIdx), 1, Integer::sum);
+        }
+        int busiest = perCustomer.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        long topShare = perCustomer.values().stream().sorted(java.util.Comparator.reverseOrder())
+                .limit(5).mapToInt(Integer::intValue).sum();
+        // Uniform would give ~8 orders per customer and the top 5 ~10% of orders.
+        assertTrue(busiest >= 20, "expected a heavy-hitter customer, max was " + busiest);
+        assertTrue(topShare >= orders.rows.size() * 0.4,
+                "top 5 customers should hold >=40% of orders, held " + topShare);
     }
 
     @Test

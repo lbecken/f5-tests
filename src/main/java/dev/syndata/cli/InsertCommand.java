@@ -39,6 +39,12 @@ public class InsertCommand implements Callable<Integer> {
             description = "Print what would be inserted without touching the database.")
     boolean dryRun;
 
+    @Option(names = "--truncate",
+            description = "DELETES DATA: empty the tables listed in the data file before "
+                    + "inserting (same transaction, no CASCADE — fails if outside tables still "
+                    + "reference them; sequences are not reset).")
+    boolean truncate;
+
     @Override
     public Integer call() throws Exception {
         SchemaModel schema = JsonStore.readSchema(schemaFile);
@@ -46,6 +52,10 @@ public class InsertCommand implements Callable<Integer> {
 
         if (dryRun) {
             int total = 0;
+            if (truncate) {
+                System.out.println("Dry run; would truncate " + data.tables.size()
+                        + " table(s) first.");
+            }
             System.out.println("Dry run; insertion order:");
             for (TableDataModel t : data.tables) {
                 System.out.printf("  %-40s %5d rows%s%n", t.name, t.rows.size(),
@@ -60,7 +70,7 @@ public class InsertCommand implements Callable<Integer> {
         long start = System.currentTimeMillis();
         try (Connection connection = Db.connect(db.resolvedUrl(), db.resolvedUser(), db.resolvedPassword())) {
             DataInserter inserter = new DataInserter(connection, batchSize, System.out::println);
-            DataInserter.Report report = inserter.insert(schema, data);
+            DataInserter.Report report = inserter.insert(schema, data, truncate);
             int total = report.insertedRows().values().stream().mapToInt(Integer::intValue).sum();
             System.out.println("Inserted " + total + " rows into " + report.insertedRows().size()
                     + " table(s)" + (report.deferredUpdates() > 0

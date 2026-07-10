@@ -45,10 +45,13 @@ public class DataInserter {
         this.log = log;
     }
 
-    public Report insert(SchemaModel schema, DataSetModel data) throws SQLException {
+    public Report insert(SchemaModel schema, DataSetModel data, boolean truncate) throws SQLException {
         boolean oldAutoCommit = connection.getAutoCommit();
         connection.setAutoCommit(false);
         try {
+            if (truncate) {
+                truncateTables(schema, data);
+            }
             Map<Long, Long> idMap = new HashMap<>();
             Map<String, Integer> inserted = new LinkedHashMap<>();
             List<DeferredUpdate> deferredUpdates = new ArrayList<>();
@@ -70,6 +73,26 @@ public class DataInserter {
         } finally {
             connection.setAutoCommit(oldAutoCommit);
         }
+    }
+
+    /**
+     * Empties exactly the tables present in the data file, in one statement so FKs
+     * among them do not matter. Deliberately no CASCADE: if a table outside the data
+     * file still references these rows, the transaction fails instead of silently
+     * wiping unrelated data. Sequences are not reset.
+     */
+    private void truncateTables(SchemaModel schema, DataSetModel data) throws SQLException {
+        if (data.tables.isEmpty()) {
+            return;
+        }
+        String targets = data.tables.stream()
+                .map(t -> requireTable(schema, t.name))
+                .map(t -> Db.quote(t.schema) + "." + Db.quote(t.name))
+                .collect(Collectors.joining(", "));
+        try (java.sql.Statement st = connection.createStatement()) {
+            st.execute("truncate table " + targets);
+        }
+        log.accept("  truncated " + data.tables.size() + " table(s)");
     }
 
     private static TableModel requireTable(SchemaModel schema, String name) {
