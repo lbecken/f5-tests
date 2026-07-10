@@ -48,6 +48,7 @@ create table products (
     name           varchar(120)  not null,
     description    text,
     price          numeric(10, 2) not null check (price >= 0),
+    rating         numeric(2, 1) check (rating >= 0 and rating <= 5),
     stock_quantity integer        not null default 0,
     weight_kg      numeric(6, 3),
     active         boolean        not null default true,

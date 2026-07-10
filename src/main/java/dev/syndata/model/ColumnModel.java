@@ -38,6 +38,14 @@ public class ColumnModel {
     public List<String> enumValues;
     /** Allowed values extracted from a simple CHECK (col IN (...)) constraint. */
     public List<String> checkValues;
+    /** Lower bound extracted from a simple numeric CHECK constraint. */
+    public java.math.BigDecimal checkMin;
+    /** Upper bound extracted from a simple numeric CHECK constraint. */
+    public java.math.BigDecimal checkMax;
+    /** True when checkMin came from {@code >} rather than {@code >=}. */
+    public Boolean checkMinExclusive;
+    /** True when checkMax came from {@code <} rather than {@code <=}. */
+    public Boolean checkMaxExclusive;
     /** Semantic hint, e.g. EMAIL or ENUM, contributed by the entity scanner. */
     public String semantic;
     /** Allowed values contributed by the entity scanner (e.g. Java enum constants). */

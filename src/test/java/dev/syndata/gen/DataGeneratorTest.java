@@ -164,6 +164,70 @@ class DataGeneratorTest {
     }
 
     @Test
+    void rangeCheckBoundsAreRespected() {
+        SchemaModel s = new SchemaModel();
+        s.schemaName = "public";
+        TableModel t = new TableModel("public", "reviews");
+        t.columns.add(col("rating", "numeric", Types.NUMERIC, false, null));
+        ColumnModel rating = t.column("rating");
+        rating.precision = 2;
+        rating.scale = 1;
+        rating.checkMin = new java.math.BigDecimal("0");
+        rating.checkMax = new java.math.BigDecimal("5");
+        t.columns.add(col("attempts", "int4", Types.INTEGER, false, null));
+        ColumnModel attempts = t.column("attempts");
+        attempts.checkMin = new java.math.BigDecimal("0");
+        attempts.checkMinExclusive = true;
+        s.tables.add(t);
+
+        DataSetModel data = new DataGenerator(m -> {
+        }).generate(s, new DataGenerator.Options(50, Map.of(), 1L, 0.0, Locale.ENGLISH, null));
+        TableDataModel rows = table(data, "reviews");
+        int rIdx = rows.columns.indexOf("rating");
+        int aIdx = rows.columns.indexOf("attempts");
+        for (List<Object> row : rows.rows) {
+            java.math.BigDecimal r = new java.math.BigDecimal(row.get(rIdx).toString());
+            assertTrue(r.compareTo(java.math.BigDecimal.ZERO) >= 0 && r.compareTo(new java.math.BigDecimal("5")) <= 0,
+                    "rating out of range: " + r);
+            assertTrue(((Number) row.get(aIdx)).longValue() > 0, "attempts must be > 0");
+        }
+    }
+
+    @Test
+    void foreignKeysFallBackToExistingKeysFromStubTables() {
+        SchemaModel s = new SchemaModel();
+        s.schemaName = "public";
+        s.globalSequence = SEQ;
+
+        TableModel customers = new TableModel("public", "customers");
+        customers.existingOnly = true;
+        customers.columns.add(col("id", "int8", Types.BIGINT, false, null));
+        customers.primaryKey.add("id");
+        customers.existingKeys = List.of(List.of(101L), List.of(102L), List.of(103L));
+
+        TableModel orders = new TableModel("public", "orders");
+        orders.columns.add(seqPk());
+        orders.columns.add(col("customer_id", "int8", Types.BIGINT, false, null));
+        orders.primaryKey.add("id");
+        ForeignKeyModel fk = new ForeignKeyModel("fk", "public", "customers");
+        fk.columns.add("customer_id");
+        fk.referencedColumns.add("id");
+        orders.foreignKeys.add(fk);
+        s.tables.addAll(List.of(orders, customers));
+
+        DataSetModel data = new DataGenerator(m -> {
+        }).generate(s, new DataGenerator.Options(20, Map.of(), 5L, 0.0, Locale.ENGLISH, null));
+
+        assertEquals(1, data.tables.size(), "stub tables must not appear in the data file");
+        TableDataModel o = table(data, "orders");
+        int fkIdx = o.columns.indexOf("customer_id");
+        for (List<Object> row : o.rows) {
+            long v = ((Number) row.get(fkIdx)).longValue();
+            assertTrue(v >= 101 && v <= 103, "FK must use an existing key, got " + v);
+        }
+    }
+
+    @Test
     void sameSeedGivesSameData() {
         assertEquals(toStrings(generate(5)), toStrings(generate(5)));
     }

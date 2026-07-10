@@ -50,9 +50,12 @@ public class SchemaIntrospector {
      * @param excludePatterns  glob patterns of table names to exclude
      * @param withDependencies also include tables referenced (transitively) by included tables
      * @param globalSequence   name of the Hibernate global sequence (unqualified or qualified)
+     * @param captureKeys      when non-null, sample up to this many existing PK values per table
+     *                         and turn unselected FK targets into key-only stub tables
      */
     public SchemaModel introspect(List<String> includePatterns, List<String> excludePatterns,
-                                  boolean withDependencies, String globalSequence) throws SQLException {
+                                  boolean withDependencies, String globalSequence,
+                                  Integer captureKeys) throws SQLException {
         DatabaseMetaData md = connection.getMetaData();
 
         SchemaModel schema = new SchemaModel();
@@ -81,8 +84,83 @@ public class SchemaIntrospector {
             table.joinTable = isJoinTable(table);
             schema.tables.add(table);
         }
-        warnAboutMissingFkTargets(schema, selected);
+        if (captureKeys != null) {
+            for (TableModel table : schema.tables) {
+                table.existingKeys = sampleKeys(table, captureKeys);
+            }
+            addStubsForMissingFkTargets(md, schema, allTables, enumTypes, captureKeys);
+        }
+        warnAboutMissingFkTargets(schema);
         return schema;
+    }
+
+    /** Samples up to {@code limit} existing primary key values; null when none exist. */
+    private List<List<Object>> sampleKeys(TableModel table, int limit) throws SQLException {
+        if (table.primaryKey.isEmpty()) {
+            return null;
+        }
+        String cols = table.primaryKey.stream().map(Db::quote)
+                .reduce((a, b) -> a + ", " + b).orElseThrow();
+        String sql = "select " + cols + " from " + Db.quote(schemaName) + "." + Db.quote(table.name)
+                + " limit " + limit;
+        List<List<Object>> keys = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                List<Object> key = new ArrayList<>(table.primaryKey.size());
+                for (int i = 1; i <= table.primaryKey.size(); i++) {
+                    key.add(jsonSafe(rs.getObject(i)));
+                }
+                keys.add(key);
+            }
+        }
+        return keys.isEmpty() ? null : keys;
+    }
+
+    private static Object jsonSafe(Object value) {
+        if (value instanceof java.sql.Timestamp t) {
+            return t.toLocalDateTime().toString();
+        }
+        if (value instanceof java.sql.Date d) {
+            return d.toLocalDate().toString();
+        }
+        if (value instanceof java.util.UUID u) {
+            return u.toString();
+        }
+        return value;
+    }
+
+    /** Key-only stubs for FK targets outside the selection, so subsets stay generatable. */
+    private void addStubsForMissingFkTargets(DatabaseMetaData md, SchemaModel schema,
+                                             Set<String> allTables, Map<String, List<String>> enumTypes,
+                                             int captureKeys) throws SQLException {
+        Set<String> present = new HashSet<>();
+        schema.tables.forEach(t -> present.add(t.name));
+        Set<String> missing = new TreeSet<>();
+        for (TableModel t : schema.tables) {
+            for (ForeignKeyModel fk : t.foreignKeys) {
+                if (!present.contains(fk.referencedTable) && allTables.contains(fk.referencedTable)) {
+                    missing.add(fk.referencedTable);
+                }
+            }
+        }
+        for (String name : missing) {
+            TableModel stub = new TableModel(schemaName, name);
+            stub.existingOnly = true;
+            readPrimaryKey(md, stub);
+            readColumns(md, stub, enumTypes);
+            stub.columns.removeIf(c -> !stub.primaryKey.contains(c.name));
+            applyColumnSequences(stub, schema);
+            stub.existingKeys = sampleKeys(stub, captureKeys);
+            if (stub.existingKeys == null) {
+                log.accept("Warning: " + name + " is referenced but excluded and has no existing rows;"
+                        + " NOT NULL FKs to it cannot be generated.");
+            } else {
+                log.accept("Adding key-only stub for " + name + " ("
+                        + stub.existingKeys.size() + " existing key(s) captured)");
+            }
+            schema.tables.add(stub);
+        }
     }
 
     private Set<String> listTableNames(DatabaseMetaData md) throws SQLException {
@@ -284,11 +362,15 @@ public class SchemaIntrospector {
                     CheckModel check = new CheckModel(rs.getString(1), rs.getString(2));
                     CheckParser.parse(check);
                     table.checkConstraints.add(check);
-                    if (check.column != null && check.values != null) {
-                        ColumnModel col = table.column(check.column);
-                        if (col != null) {
-                            col.checkValues = check.values;
-                        }
+                    ColumnModel col = check.column == null ? null : table.column(check.column);
+                    if (col != null && check.values != null) {
+                        col.checkValues = check.values;
+                    }
+                    if (col != null && (check.min != null || check.max != null)) {
+                        col.checkMin = check.min;
+                        col.checkMax = check.max;
+                        col.checkMinExclusive = check.minExclusive;
+                        col.checkMaxExclusive = check.maxExclusive;
                     }
                 }
             }
@@ -414,12 +496,15 @@ public class SchemaIntrospector {
         return true;
     }
 
-    private void warnAboutMissingFkTargets(SchemaModel schema, Set<String> selected) {
+    private void warnAboutMissingFkTargets(SchemaModel schema) {
+        Set<String> present = new HashSet<>();
+        schema.tables.forEach(t -> present.add(t.name));
         for (TableModel t : schema.tables) {
             for (ForeignKeyModel fk : t.foreignKeys) {
-                if (!selected.contains(fk.referencedTable)) {
+                if (!present.contains(fk.referencedTable)) {
                     log.accept("Warning: " + t.name + "." + fk.name + " references " + fk.referencedTable
-                            + " which is not included; use --with-dependencies or include it explicitly.");
+                            + " which is not included; use --with-dependencies, --capture-keys,"
+                            + " or include it explicitly.");
                 }
             }
         }

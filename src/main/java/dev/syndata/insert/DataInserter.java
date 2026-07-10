@@ -202,7 +202,7 @@ public class DataInserter {
         return value;
     }
 
-    private static boolean referencesSequencedColumn(SchemaModel schema, TableModel table, String columnName) {
+    static boolean referencesSequencedColumn(SchemaModel schema, TableModel table, String columnName) {
         for (ForeignKeyModel fk : table.foreignKeys) {
             int idx = fk.columns.indexOf(columnName);
             if (idx < 0) {

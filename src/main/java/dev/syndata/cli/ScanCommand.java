@@ -40,6 +40,12 @@ public class ScanCommand implements Callable<Integer> {
             description = "Also include tables referenced by the included tables through foreign keys.")
     boolean withDependencies;
 
+    @Option(names = "--capture-keys", arity = "0..1", fallbackValue = "1000", paramLabel = "N",
+            description = "Capture up to N existing primary key values per table into the schema "
+                    + "file (default N: ${FALLBACK-VALUE}). FK targets outside the selection become "
+                    + "key-only stub tables, so generated data can reference existing rows.")
+    Integer captureKeys;
+
     @Option(names = "--sequence",
             description = "Name of the Hibernate global id sequence "
                     + "(default: hibernate_sequence, config key: sequence.global).")
@@ -63,7 +69,7 @@ public class ScanCommand implements Callable<Integer> {
         SchemaModel schema;
         try (Connection connection = Db.connect(db.resolvedUrl(), db.resolvedUser(), db.resolvedPassword())) {
             SchemaIntrospector introspector = new SchemaIntrospector(connection, db.dbSchema, System.err::println);
-            schema = introspector.introspect(include, exclude, withDependencies, sequence);
+            schema = introspector.introspect(include, exclude, withDependencies, sequence, captureKeys);
         }
 
         List<Path> entityPaths = new ArrayList<>(entitiesPath);
@@ -97,6 +103,11 @@ public class ScanCommand implements Callable<Integer> {
                 + schema.tables.size() + " table(s)"
                 + (schema.globalSequence != null ? ", global sequence " + schema.globalSequence : ""));
         for (TableModel t : schema.tables) {
+            if (t.existingOnly) {
+                System.out.printf("  %-40s key-only stub (%d existing key(s))%n", t.name,
+                        t.existingKeys == null ? 0 : t.existingKeys.size());
+                continue;
+            }
             long seqPk = t.columns.stream().filter(c -> c.sequence != null).count();
             System.out.printf("  %-40s %3d cols, %d fk(s)%s%s%n", t.name, t.columns.size(),
                     t.foreignKeys.size(),

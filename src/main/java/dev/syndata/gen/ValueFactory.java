@@ -35,6 +35,12 @@ public final class ValueFactory {
         if ("EMAIL".equals(col.semantic)) {
             return fit(col, () -> ctx.faker.internet().emailAddress());
         }
+        String typeLower = col.typeName.toLowerCase(Locale.ROOT);
+        if ((col.checkMin != null || col.checkMax != null)
+                && (NameHeuristics.isIntegerish(typeLower) || NameHeuristics.isDecimal(typeLower))) {
+            // Hard range constraints beat name heuristics.
+            return boundedNumeric(ctx, col, typeLower);
+        }
 
         NameHeuristics.Match match = NameHeuristics.forColumn(ctx, table, col);
         if (match != null && !match.generic()) {
@@ -112,6 +118,46 @@ public final class ValueFactory {
                         + (col.nullable ? "NULL" : "empty string") + ".");
                 return () -> col.nullable ? null : "";
         }
+    }
+
+    /** Uniform values within the CHECK-constraint range, at the column's scale. */
+    private static Supplier<Object> boundedNumeric(GenContext ctx, ColumnModel col, String type) {
+        boolean integer = NameHeuristics.isIntegerish(type);
+        int scale = integer ? 0 : (col.scale == null ? 2 : Math.max(0, col.scale));
+        BigDecimal step = BigDecimal.ONE.movePointLeft(scale);
+        BigDecimal lo = col.checkMin;
+        BigDecimal hi = col.checkMax;
+        if (lo != null && Boolean.TRUE.equals(col.checkMinExclusive)) {
+            lo = lo.add(step);
+        }
+        if (hi != null && Boolean.TRUE.equals(col.checkMaxExclusive)) {
+            hi = hi.subtract(step);
+        }
+        // Normalize fractional bounds (e.g. CHECK (int_col > 0.5)) to the column scale.
+        if (lo != null) {
+            lo = lo.setScale(scale, RoundingMode.CEILING);
+        }
+        if (hi != null) {
+            hi = hi.setScale(scale, RoundingMode.FLOOR);
+        }
+        BigDecimal span = BigDecimal.valueOf(10_000);
+        if (lo == null) {
+            lo = hi.signum() >= 0 ? BigDecimal.ZERO.min(hi) : hi.subtract(span);
+        }
+        if (hi == null) {
+            hi = lo.add(span);
+        }
+        if (lo.compareTo(hi) > 0) {
+            hi = lo;
+        }
+        BigDecimal flo = lo;
+        BigDecimal fhi = hi;
+        return () -> {
+            BigDecimal v = flo.add(fhi.subtract(flo)
+                    .multiply(BigDecimal.valueOf(ctx.random.nextDouble())));
+            v = v.setScale(scale, RoundingMode.HALF_UP).max(flo).min(fhi);
+            return integer ? (Object) v.longValueExact() : (Object) v;
+        };
     }
 
     /** Coerces a picked list value (always stored as string) to the column's Java type. */

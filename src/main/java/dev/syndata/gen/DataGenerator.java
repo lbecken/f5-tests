@@ -47,6 +47,8 @@ public class DataGenerator {
         final List<String> columnNames = new ArrayList<>();
         final Map<String, Integer> index = new HashMap<>();
         final List<Object[]> rows = new ArrayList<>();
+        /** Existing PK values captured by scan; only the PK positions are filled. */
+        final List<Object[]> existingRows = new ArrayList<>();
 
         Generated(TableModel table) {
             this.table = table;
@@ -56,6 +58,23 @@ public class DataGenerator {
                     columnNames.add(c.name);
                 }
             }
+            if (table.existingKeys != null) {
+                for (List<Object> key : table.existingKeys) {
+                    Object[] row = new Object[columnNames.size()];
+                    for (int k = 0; k < table.primaryKey.size() && k < key.size(); k++) {
+                        Integer idx = index.get(table.primaryKey.get(k));
+                        if (idx != null) {
+                            row[idx] = key.get(k);
+                        }
+                    }
+                    existingRows.add(row);
+                }
+            }
+        }
+
+        /** Rows a foreign key may point at: generated rows, else existing database rows. */
+        List<Object[]> fkPool() {
+            return rows.isEmpty() ? existingRows : rows;
         }
     }
 
@@ -69,6 +88,10 @@ public class DataGenerator {
         long[] localId = {-1};
 
         for (TableModel table : order.tables()) {
+            if (table.existingOnly) {
+                generated.put(table.name, new Generated(table));
+                continue;
+            }
             Set<String> deferredCols = order.deferredFkColumns().getOrDefault(table.name, Set.of());
             int rows = opts.tableRows().getOrDefault(table.name, opts.defaultRows());
             Generated g = generateTable(schema, table, rows, deferredCols, generated, ctx, opts, localId);
@@ -81,6 +104,9 @@ public class DataGenerator {
         data.generatedAt = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS).toString();
         data.seed = opts.seed();
         for (Generated g : generated.values()) {
+            if (g.table.existingOnly || g.rows.isEmpty()) {
+                continue; // stubs and rowless tables have nothing to insert
+            }
             TableDataModel t = new TableDataModel(g.table.schema, g.table.name);
             t.columns = g.columnNames;
             t.deferredFkColumns = new ArrayList<>(
@@ -175,7 +201,7 @@ public class DataGenerator {
             boolean nullable = fk.columns.stream()
                     .allMatch(c -> table.column(c) != null && table.column(c).nullable);
 
-            List<Object[]> pool = parent == null ? List.of() : parent.rows;
+            List<Object[]> pool = parent == null ? List.of() : parent.fkPool();
             if (pool.isEmpty()) {
                 if (nullable) {
                     fk.columns.forEach(assigned::add);
@@ -285,7 +311,7 @@ public class DataGenerator {
                     continue;
                 }
                 Generated parent = generated.get(fk.referencedTable);
-                if (parent == null || parent.rows.isEmpty()) {
+                if (parent == null || parent.fkPool().isEmpty()) {
                     continue;
                 }
                 boolean nullable = fk.columns.stream()
@@ -294,7 +320,8 @@ public class DataGenerator {
                     if (nullable && ctx.random.nextDouble() < 0.15) {
                         continue;
                     }
-                    Object[] parentRow = parent.rows.get(ctx.random.nextInt(parent.rows.size()));
+                    List<Object[]> pool = parent.fkPool();
+                    Object[] parentRow = pool.get(ctx.random.nextInt(pool.size()));
                     for (int k = 0; k < fk.columns.size(); k++) {
                         Integer idx = g.index.get(fk.columns.get(k));
                         Integer parentIdx = parent.index.get(fk.referencedColumns.get(k));

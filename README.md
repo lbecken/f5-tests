@@ -12,8 +12,9 @@ ids from that sequence at insert time, so its inserts never collide with ids
 the application generates later.
 
 ```
-scan ──► schema.json ──► generate ──► data.json ──► insert ──► database
-(needs DB)              (offline)                  (needs DB)
+scan ──► schema.json ──► generate ──► data.json ──┬─► insert ──► database
+(needs DB)              (offline)                 └─► sql ─► load.sql ─► psql
+                                                     (offline)
 ```
 
 ## Quick start
@@ -47,17 +48,19 @@ syndata insert --url jdbc:postgresql://localhost:5432/mydb -U me -P secret \
 
 Introspects the database and writes a schema file containing, per table:
 columns (name, Postgres type, length/precision/scale, nullability, defaults),
-primary key, foreign keys, unique constraints, CHECK constraints (with the
-allowed values parsed out of simple `IN (...)` checks), Postgres enum labels,
-identity/serial flags, and which sequence feeds each column. Pure association
-(join) tables are flagged. The file doubles as a human-readable inventory of
-your schema.
+primary key, foreign keys, unique constraints, CHECK constraints (allowed
+values parsed out of simple `IN (...)` checks, and min/max bounds out of simple
+numeric ranges such as `price >= 0`, `quantity > 0`, or BETWEEN), Postgres enum
+labels, identity/serial flags, and which sequence feeds each column. Pure
+association (join) tables are flagged. The file doubles as a human-readable
+inventory of your schema.
 
 | Option | Meaning |
 |---|---|
 | `-o schema.json` | output file |
 | `-i / --include`, `-x / --exclude` | table name patterns (`*`/`?` wildcards, repeatable) |
 | `--with-dependencies` | pull in tables referenced by the included ones, transitively |
+| `--capture-keys [N]` | sample up to N (default 1000) existing PK values per table into the schema file |
 | `--db-schema public` | database schema |
 | `--sequence hibernate_sequence` | name of the global id sequence |
 | `--entities-path`, `--entities-package` | optional JPA entity enrichment (below) |
@@ -65,6 +68,14 @@ your schema.
 Scanning a subset (e.g. `-i 'order*' --with-dependencies`) is the intended way
 to work with a 500–1000 table database: export just the corner you care about,
 and the FK closure keeps it generatable.
+
+**Inserting into a non-empty database:** with `--capture-keys`, FK targets
+*outside* the selection become key-only stub tables carrying sampled existing
+PK values. `generate` then points foreign keys at those **existing rows**
+instead of creating new parents — e.g.
+`scan -i 'order*' --capture-keys` followed by `generate` + `insert` adds new
+orders for customers and products that already live in the target database.
+The same fallback applies to any table forced to zero rows with `-t table=0`.
 
 ### `syndata generate`
 
@@ -77,9 +88,11 @@ Reads a schema file and writes a data file. No database connection.
   the data file and applied via UPDATE after loading.
 - Sequence-backed PKs are written as **negative local ids**; real values are
   allocated only at insert time.
-- Values honor Postgres **enum types**, `CHECK (col IN (...))` lists, column
-  **lengths**, **NOT NULL**, and **unique** constraints (including composite
-  uniques and join-table pairs — generation stops early if combinations run out).
+- Values honor Postgres **enum types**, `CHECK (col IN (...))` lists, numeric
+  **range checks** (`>=`, `>`, `<=`, `<`, BETWEEN — hard bounds beat name
+  heuristics), column **lengths**, **NOT NULL**, and **unique** constraints
+  (including composite uniques and join-table pairs — generation stops early if
+  combinations run out).
 - **Column-name heuristics** (DataFaker) make text realistic: `first_name`,
   `email`, `phone`, `street`/`city`/`postal_code`/`country_code`, `company`,
   `description`, `price`/`amount`/`salary`, `quantity`, `date_of_birth`,
@@ -111,6 +124,20 @@ Because ids always come from the live sequences, you can insert several
 generated files into the same database — just generate each with a different
 seed, since *natural* unique values (emails, names) in a single file can only
 be loaded once.
+
+### `syndata sql`
+
+Renders a data file to a **plain SQL script** (`-o load.sql`) that runs with
+psql or any SQL client — useful for environments where only a script can be
+shipped. No database connection needed: the script itself allocates real ids
+(a temporary local→real id mapping table filled with `nextval()`, referenced
+through scalar subqueries), inserts in dependency order, applies deferred FK
+updates, and wraps everything in one transaction.
+
+```bash
+syndata sql -s schema.json -d data.json -o load.sql
+psql -h dbhost -U me -d mydb -f load.sql
+```
 
 ## Configuration
 
