@@ -89,6 +89,7 @@ function show(view) {
     b.classList.toggle('active', b.dataset.view === view));
   if (view === 'learn' && !learnRendered) renderLearn();
   if (view === 'analysis') renderDatasetInfo();
+  if (view === 'control' || view === 'learn' || view === 'analysis') audio.narrate(view);
 }
 document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => { audio.click(); show(b.dataset.view); });
 $('btn-start-sim').onclick = () => { audio.click(); show('control'); };
@@ -267,7 +268,9 @@ $('btn-run').onclick = () => {
 $('btn-dump').onclick = () => { machine.dump(); audio.dump(); };
 $('btn-goto-events').onclick = () => show('events');
 
+const PHASE_NARRATION = { INJECT: 'inject', RAMP: 'ramp', SQUEEZE: 'squeeze', STABLE: 'stable', DUMP: 'dump' };
 machine.on('phase', (p) => {
+  if (PHASE_NARRATION[p.key]) audio.narrate(PHASE_NARRATION[p.key]);
   if (p.key === 'STABLE') {
     state.collisionsReady = true;
     state.frozen = machine.snapshot();
@@ -372,6 +375,7 @@ function triggerOptions() {
 
 function selectDetector(key) {
   state.detector = key;
+  audio.narrate(key.toLowerCase());
   renderDetectorCards();
   $('event-controls').classList.remove('hidden');
   $('ed-title').textContent = `${DETECTORS[key].name} — ${DETECTORS[key].full}`;
@@ -662,13 +666,32 @@ function renderDatasetInfo() {
 }
 
 // ---------------------------------------------------------------------------
-// Audio toggle
+// Audio + narration toggles, captions
 // ---------------------------------------------------------------------------
 $('audio-toggle').onclick = () => {
   const on = audio.toggle();
   $('audio-toggle').textContent = on ? '🔊' : '🔇';
-  if (on) audio.playNarration();
-  toast(on ? 'Sound on — ambient soundtrack and machine sounds enabled.' : 'Sound off.');
+  $('audio-toggle').classList.toggle('off', !on);
+  toast(on ? 'Sound on — music, machine sounds and voice narration enabled.' : 'Sound off.');
+  if (on) {
+    if (!audio.played.has('welcome')) {
+      audio.narrate('welcome');
+    } else if (state.view !== 'home') {
+      // sound switched on mid-session: catch up with the current context
+      audio.narrate(state.view === 'events' && state.detector ? state.detector.toLowerCase() : state.view);
+    }
+  }
+};
+$('voice-toggle').onclick = () => {
+  const on = audio.toggleVoice();
+  $('voice-toggle').classList.toggle('off', !on);
+  toast(on ? 'Voice narration on.' : 'Voice narration off — music and machine sounds stay on.');
+};
+$('caption-close').onclick = () => audio.stopNarration();
+audio.onCaption = (text) => {
+  $('caption').classList.toggle('hidden', !text);
+  $('voice-toggle').classList.toggle('speaking', !!text);
+  if (text) $('caption-text').textContent = text;
 };
 
 // ---------------------------------------------------------------------------

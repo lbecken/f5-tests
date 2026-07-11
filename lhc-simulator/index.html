@@ -27,6 +27,7 @@
   </nav>
   <div class="topbar-right">
     <button id="audio-toggle" title="Toggle sound">&#128263;</button>
+    <button id="voice-toggle" title="Toggle voice narration (needs sound on)">&#127908;</button>
     <div id="level-badge" title="Change expertise level on the Home screen">SPECTATOR</div>
   </div>
 </header>
@@ -181,8 +182,12 @@
 </main>
 
 <div id="toast" class="toast hidden"></div>
+<div id="caption" class="caption hidden">
+  <span class="caption-icon">&#127908;</span>
+  <span id="caption-text"></span>
+  <button id="caption-close" title="Dismiss">&times;</button>
+</div>
 <audio id="ambient-audio" loop preload="none" src="assets/audio/ambient.mp3"></audio>
-<audio id="narration-audio" preload="none" src="assets/audio/welcome.mp3"></audio>
 
 <script type="module" src="js/main.js"></script>
 </body>

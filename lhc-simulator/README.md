@@ -70,8 +70,12 @@ kinematics (p<sub>T</sub>, η, invariant mass, MET), one deep page per experimen
 
 ## Media
 - Hero artwork generated with **Recraft** (`assets/img/tunnel.webp`)
-- Ambient loop and welcome narration generated with **ElevenLabs** (`assets/audio/`) —
-  toggle with the 🔊 button; all machine sounds are synthesised live with WebAudio.
+- Ambient loop + 13 contextual **voice narration** clips generated with **ElevenLabs**
+  (`assets/audio/`). Narration follows you through the app: entering the Control Room, each
+  machine phase (injection, ramp, squeeze, stable beams, dump), each detector you select, the
+  Learn and Analysis sections. Clips play once per session, duck the music while speaking, and
+  show an on-screen caption (dismissible) for accessibility. 🔊 toggles all sound; 🎙 toggles
+  just the voice. All machine sounds are synthesised live with WebAudio.
 
 ## Fidelity notes
 Numbers follow LHC Run 3 (2022–2026) operating conditions and PDG values: 6.8 TeV/beam, 2808

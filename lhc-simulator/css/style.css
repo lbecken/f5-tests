@@ -64,7 +64,25 @@ sub, sup { line-height: 0; }
 .nav-btn.active { color: var(--accent); border-color: var(--line); background: var(--bg2); }
 .nav-btn.locked { opacity: .35; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
-#audio-toggle { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 15px; }
+#audio-toggle, #voice-toggle { background: none; border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; font-size: 15px; }
+#voice-toggle.off, #audio-toggle.off { opacity: .45; }
+#voice-toggle.speaking { border-color: var(--accent); box-shadow: 0 0 10px rgba(79,195,247,.5); }
+
+/* narration caption bar */
+.caption {
+  position: fixed; bottom: 20px; left: 20px; max-width: 520px; z-index: 90;
+  display: flex; align-items: flex-start; gap: 10px;
+  background: #0c1526f2; border: 1px solid var(--accent); border-radius: 12px;
+  padding: 12px 14px; font-size: 13.5px; color: #cfe2f8; line-height: 1.5;
+  box-shadow: 0 8px 30px rgba(0,0,0,.55);
+  animation: toast-in .25s ease;
+}
+.caption .caption-icon { font-size: 16px; margin-top: 1px; }
+.caption #caption-close {
+  background: none; border: none; color: var(--txt-dim); font-size: 17px; line-height: 1;
+  padding: 0 2px; margin-left: 4px;
+}
+.caption #caption-close:hover { color: var(--txt); }
 #level-badge {
   font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
   border: 1px solid var(--accent); color: var(--accent);
