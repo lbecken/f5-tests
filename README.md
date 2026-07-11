@@ -42,6 +42,12 @@ existing UML tools and libraries that led to this design.
   auto-lays them out (layered top-down, inheritance parents on top), and
   opens the result as a new tab of fully editable shapes with arrows bound
   to the right class compartments; export → import round-trips
+- **Sequence diagrams as text, both ways** — import Mermaid
+  `sequenceDiagram` or PlantUML sequence syntax (actors/participants, sync,
+  async and return messages, self-messages, `activate`/`+`/`-` activations,
+  `alt`/`loop`/`opt` fragments with `else`, notes) rendered with lifelines
+  and activation bars; the Text export recognizes lifelines and messages on
+  the canvas and generates `sequenceDiagram` / PlantUML sequence text
 - **UML shape library export** — all stencils are preloaded into the
   editor's built-in Library panel, and the "UML lib" button downloads them
   as a standard `.excalidrawlib` file you can load on excalidraw.com or in
@@ -84,6 +90,7 @@ src/
   library.ts                     stencils as an Excalidraw library (.excalidrawlib)
   textExport.ts                  scene -> Mermaid / PlantUML text generator
   textImport.ts                  Mermaid / PlantUML parser + auto layout -> shapes
+  sequence.ts                    sequence diagrams: parse, render, recognize, generate
   components/Palette.tsx         UML stencil sidebar (search, groups, previews)
   components/Toolbar.tsx         top bar (New / Open / Save / PNG / SVG / theme)
   components/Tabs.tsx            diagram tabs (switch, rename, close, add)

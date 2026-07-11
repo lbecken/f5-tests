@@ -157,6 +157,56 @@ if (!flowCount || flowCount < 10) {
 }
 await page.screenshot({ path: `${shots}/10-imported-flow.png` });
 
+// Import a Mermaid sequence diagram
+await page.click('button:has-text("Import")');
+await page.waitForSelector(".text-import-input", { timeout: 10000 });
+await page.fill(
+  ".text-import-input",
+  `sequenceDiagram
+  actor U as User
+  participant W as WebApp
+  participant DB as Database
+  U->>+W: login(credentials)
+  W->>+DB: findUser()
+  DB-->>-W: user
+  alt valid
+    W-->>U: session
+  else invalid
+    W-->>U: error
+  end
+  Note over U,W: retry up to 3 times
+  deactivate W`,
+);
+await page.click('.text-export-actions button:has-text("Import")');
+await page.waitForTimeout(1000);
+tabs = await page.locator(".tab").count();
+if (tabs !== 5) fail(`expected 5 tabs after sequence import, got ${tabs}`);
+const seqCount = await activeDocElementCount();
+console.log("sequence import element count:", seqCount);
+if (!seqCount || seqCount < 20) {
+  fail(`expected >= 20 elements from sequence import, got ${seqCount}`);
+}
+await page.screenshot({ path: `${shots}/11-imported-seq.png` });
+
+// Export the imported sequence diagram back to text
+await page.click('button:has-text("Text")');
+await page.waitForSelector(".text-export-output", { timeout: 10000 });
+const seqText = await page.inputValue(".text-export-output");
+console.log("sequence export:\n" + seqText);
+if (!seqText.startsWith("sequenceDiagram")) {
+  fail("expected sequenceDiagram export for sequence scene");
+}
+if (!seqText.includes("actor")) fail("expected actor in sequence export");
+if (!/->>.*login/.test(seqText)) fail("expected sync login message");
+if (!seqText.includes("-->>")) fail("expected return message");
+const detected = await page.textContent(".text-export-detected");
+console.log("detected:", detected);
+if (!detected.includes("sequence diagram")) {
+  fail(`expected sequence detection, got: ${detected}`);
+}
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+
 // Switch back to the first tab — its scene must come back
 await page.click(".tab >> nth=0");
 await page.waitForTimeout(800);
@@ -165,7 +215,7 @@ console.log("doc 1 element count after switching back:", backCount);
 if (backCount !== saved) fail(`doc 1 changed: ${saved} -> ${backCount}`);
 
 // Close the extra tabs (auto-accepted confirms)
-for (const idx of [3, 2, 1]) {
+for (const idx of [4, 3, 2, 1]) {
   await page.click(`.tab >> nth=${idx} >> .tab-close`);
   await page.waitForTimeout(500);
 }

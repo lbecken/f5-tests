@@ -16,6 +16,11 @@ import {
   label,
 } from "./stencils/builders";
 import type { Skeleton } from "./stencils/types";
+import {
+  parseMermaidSequence,
+  parsePlantUMLSequence,
+  type SeqModel,
+} from "./sequence";
 import type {
   EdgeKind,
   NodeShape,
@@ -26,10 +31,20 @@ import type {
 } from "./textExport";
 
 export interface ImportResult {
+  kind: "graph";
   model: SceneModel;
   format: "mermaid-class" | "mermaid-flow" | "plantuml";
   warnings: string[];
 }
+
+export interface SequenceImportResult {
+  kind: "sequence";
+  seq: SeqModel;
+  format: "mermaid-seq" | "plantuml-seq";
+  warnings: string[];
+}
+
+export type ParsedDiagram = ImportResult | SequenceImportResult;
 
 // ---------------------------------------------------------------------------
 // Shared parsing helpers
@@ -171,6 +186,7 @@ function parseMermaidClass(lines: string[]): ImportResult {
     warnings.push(`Skipped: ${line}`);
   }
   return {
+    kind: "graph",
     model: finishClassModel(classAcc, new Map(), edges),
     format: "mermaid-class",
     warnings,
@@ -273,6 +289,7 @@ function parseMermaidFlow(lines: string[]): ImportResult {
     if (failed) warnings.push(`Skipped: ${line}`);
   }
   return {
+    kind: "graph",
     model: { classes: [], nodes: [...nodeAcc.values()], edges },
     format: "mermaid-flow",
     warnings,
@@ -392,6 +409,7 @@ function parsePlantUML(lines: string[]): ImportResult {
     warnings.push(`Skipped: ${line}`);
   }
   return {
+    kind: "graph",
     model: finishClassModel(classAcc, nodeAcc, edges),
     format: "plantuml",
     warnings,
@@ -402,11 +420,45 @@ function parsePlantUML(lines: string[]): ImportResult {
 // Entry point
 // ---------------------------------------------------------------------------
 
-export function parseDiagramText(input: string): ImportResult | { error: string } {
+/** True when PlantUML text uses sequence-diagram syntax rather than class. */
+function looksLikePlantUMLSequence(lines: string[]): boolean {
+  for (const raw of lines) {
+    const line = raw.replace(/'.*$/, "").trim();
+    if (/^(class|interface|enum|abstract)\s/i.test(line)) return false;
+    if (/^(participant|boundary|control|entity|database|collections|queue|activate|deactivate|autonumber)\b/i.test(line)) {
+      return true;
+    }
+    // A single-dash arrow (A -> B, A ->> B, A <- B) only exists in sequences.
+    const m = line.match(/^[\w."]+\s*([<>|*o.-]+)\s*[\w."]+/);
+    if (m && /^(->>?|<<?-)$/.test(m[1])) return true;
+  }
+  return false;
+}
+
+function checkSeq(
+  result: SequenceImportResult,
+): SequenceImportResult | { error: string } {
+  if (result.seq.participants.length === 0) {
+    return { error: "No participants or messages could be parsed." };
+  }
+  return result;
+}
+
+export function parseDiagramText(
+  input: string,
+): ParsedDiagram | { error: string } {
   const text = input.trim();
   if (!text) return { error: "Paste some Mermaid or PlantUML text first." };
   const lines = text.split("\n");
-  if (/@startuml/i.test(text) || /^\s*(class|interface|enum|rectangle|usecase|actor)\s+[\w"]/im.test(text) && !/^\s*(classDiagram|flowchart|graph)\b/m.test(text)) {
+  if (/^\s*sequenceDiagram\b/m.test(text)) {
+    const { model, warnings } = parseMermaidSequence(lines);
+    return checkSeq({ kind: "sequence", seq: model, format: "mermaid-seq", warnings });
+  }
+  if (/@startuml/i.test(text) || /^\s*(class|interface|enum|rectangle|usecase|actor|participant)\s+[\w"]/im.test(text) && !/^\s*(classDiagram|flowchart|graph)\b/m.test(text)) {
+    if (looksLikePlantUMLSequence(lines)) {
+      const { model, warnings } = parsePlantUMLSequence(lines);
+      return checkSeq({ kind: "sequence", seq: model, format: "plantuml-seq", warnings });
+    }
     const result = parsePlantUML(lines);
     if (
       result.model.classes.length + result.model.nodes.length === 0 &&
@@ -423,7 +475,7 @@ export function parseDiagramText(input: string): ImportResult | { error: string 
   if (pu.model.classes.length + pu.model.nodes.length > 0) return pu;
   return {
     error:
-      "Could not detect the format. Start with `classDiagram`, `flowchart TD`, or `@startuml`.",
+      "Could not detect the format. Start with `classDiagram`, `flowchart TD`, `sequenceDiagram`, or `@startuml`.",
   };
 }
 

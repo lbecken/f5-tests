@@ -23,6 +23,7 @@ import { Tabs } from "./components/Tabs";
 import { TemplateDialog } from "./components/TemplateDialog";
 import { TextExportDialog } from "./components/TextExportDialog";
 import { TextImportDialog } from "./components/TextImportDialog";
+import { seqToSkeletons } from "./sequence";
 import { modelToSkeletons, parseDiagramText } from "./textImport";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
@@ -316,12 +317,17 @@ export default function App() {
     (text: string): string | null => {
       const parsed = parseDiagramText(text);
       if ("error" in parsed) return parsed.error;
-      const skeletons = modelToSkeletons(parsed.model);
+      const skeletons =
+        parsed.kind === "sequence"
+          ? seqToSkeletons(parsed.seq)
+          : modelToSkeletons(parsed.model);
       if (skeletons.length === 0) return "Nothing to import.";
       const name =
-        parsed.format === "mermaid-flow"
-          ? "Imported flowchart"
-          : "Imported class diagram";
+        parsed.kind === "sequence"
+          ? "Imported sequence diagram"
+          : parsed.format === "mermaid-flow"
+            ? "Imported flowchart"
+            : "Imported class diagram";
       createDoc({ name, elements: skeletons });
       setShowTextImport(false);
       return null;

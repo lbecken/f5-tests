@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  analyzeSequenceScene,
+  generateMermaidSequence,
+  generatePlantUMLSequence,
+} from "../sequence";
+import {
   analyzeScene,
   generateMermaid,
   generatePlantUML,
@@ -27,16 +32,26 @@ export function TextExportDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const model = useMemo(() => analyzeScene(elements), [elements]);
-  const text = useMemo(
-    () =>
-      format === "mermaid" ? generateMermaid(model) : generatePlantUML(model),
-    [model, format],
+  const seq = useMemo(() => analyzeSequenceScene(elements), [elements]);
+  const model = useMemo(
+    () => (seq ? null : analyzeScene(elements)),
+    [elements, seq],
   );
-  const detected =
-    model.classes.length > 0
-      ? `class diagram (${model.classes.length} classes, ${model.edges.length} relations)`
-      : `flowchart (${model.nodes.length} nodes, ${model.edges.length} edges)`;
+  const text = useMemo(() => {
+    if (seq) {
+      return format === "mermaid"
+        ? generateMermaidSequence(seq)
+        : generatePlantUMLSequence(seq);
+    }
+    return format === "mermaid"
+      ? generateMermaid(model!)
+      : generatePlantUML(model!);
+  }, [seq, model, format]);
+  const detected = seq
+    ? `sequence diagram (${seq.participants.length} participants, ${seq.events.length} messages)`
+    : model!.classes.length > 0
+      ? `class diagram (${model!.classes.length} classes, ${model!.edges.length} relations)`
+      : `flowchart (${model!.nodes.length} nodes, ${model!.edges.length} edges)`;
 
   const copy = async () => {
     try {
