@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio2midi"
+version = "0.1.0"
+description = "Audio-to-MIDI transcription tool with source separation, multiple analysis modes and tempo detection"
+readme = "README.md"
+requires-python = ">=3.9,<3.12"
+dependencies = [
+    "numpy",
+    "scipy",
+    "librosa>=0.10",
+    "soundfile",
+    "pretty_midi>=0.2.10",
+    "basic-pitch[onnx]>=0.4",
+    "demucs>=4.0",
+    "torch>=2.0",
+    "torchaudio",
+    "click>=8.0",
+]
+
+[project.scripts]
+audio2midi = "audio2midi.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
