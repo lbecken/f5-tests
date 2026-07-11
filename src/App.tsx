@@ -13,6 +13,11 @@ import {
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 
+import {
+  initialLibraryItems,
+  saveStoredLibrary,
+  umlLibraryJSON,
+} from "./library";
 import { Palette, STENCIL_MIME } from "./components/Palette";
 import { Tabs } from "./components/Tabs";
 import { TemplateDialog } from "./components/TemplateDialog";
@@ -64,11 +69,11 @@ export default function App() {
 
   const [initialData] = useState(() => {
     const scene = loadDocScene(workspace.activeId);
-    if (!scene) return null;
     return {
-      elements: scene.elements as never[],
-      appState: { ...(scene.appState ?? {}), collaborators: new Map() },
+      elements: (scene?.elements ?? []) as never[],
+      appState: { ...(scene?.appState ?? {}), collaborators: new Map() },
       scrollToContent: true,
+      libraryItems: initialLibraryItems(),
     };
   });
 
@@ -300,6 +305,13 @@ export default function App() {
     [docs, activeId],
   );
 
+  const handleExportLibrary = useCallback(() => {
+    downloadBlob(
+      new Blob([umlLibraryJSON()], { type: "application/json" }),
+      "umldraw-uml.excalidrawlib",
+    );
+  }, []);
+
   const toggleTheme = useCallback(() => {
     setDark((d) => {
       localStorage.setItem(THEME_KEY, d ? "light" : "dark");
@@ -316,6 +328,7 @@ export default function App() {
         onSave={handleSave}
         onExportPng={() => handleExport("png")}
         onExportSvg={() => handleExport("svg")}
+        onExportLibrary={handleExportLibrary}
         onToggleTheme={toggleTheme}
       />
       <Tabs
@@ -358,6 +371,7 @@ export default function App() {
             initialData={initialData}
             theme={dark ? "dark" : "light"}
             onChange={scheduleAutosave}
+            onLibraryChange={saveStoredLibrary}
             UIOptions={{
               canvasActions: { toggleTheme: false },
             }}

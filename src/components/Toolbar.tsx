@@ -5,6 +5,7 @@ export function Toolbar({
   onSave,
   onExportPng,
   onExportSvg,
+  onExportLibrary,
   onToggleTheme,
 }: {
   dark: boolean;
@@ -13,6 +14,7 @@ export function Toolbar({
   onSave: () => void;
   onExportPng: () => void;
   onExportSvg: () => void;
+  onExportLibrary: () => void;
   onToggleTheme: () => void;
 }) {
   return (
@@ -41,6 +43,12 @@ export function Toolbar({
         <span className="divider" />
         <button onClick={onExportPng}>PNG</button>
         <button onClick={onExportSvg}>SVG</button>
+        <button
+          onClick={onExportLibrary}
+          title="Download all UML shapes as an .excalidrawlib library — load it on excalidraw.com or any Excalidraw app"
+        >
+          UML lib
+        </button>
         <span className="divider" />
         <button
           onClick={onToggleTheme}

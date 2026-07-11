@@ -1,7 +1,7 @@
 // End-to-end smoke test: drives the built app in headless Chromium.
 // Usage: npm run build && npm run preview -- --port 4173 & npm run smoke
 import { chromium } from "playwright-core";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -112,6 +112,31 @@ const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
 await page.click('button:has-text("PNG")');
 const download = await downloadPromise;
 console.log("png export download:", download.suggestedFilename());
+
+// UML library export downloads a valid .excalidrawlib with all stencils
+const libDownloadPromise = page.waitForEvent("download", { timeout: 15000 });
+await page.click('button:has-text("UML lib")');
+const libDownload = await libDownloadPromise;
+const lib = JSON.parse(readFileSync(await libDownload.path(), "utf8"));
+console.log(
+  "library download:",
+  libDownload.suggestedFilename(),
+  `type=${lib.type}`,
+  `items=${lib.libraryItems?.length}`,
+);
+if (lib.type !== "excalidrawlib") fail(`bad library type: ${lib.type}`);
+if ((lib.libraryItems?.length ?? 0) < 50) {
+  fail(`expected >= 50 library items, got ${lib.libraryItems?.length}`);
+}
+
+// The embedded editor's Library panel is preloaded with the UML shapes
+await page.click(".excalidraw .sidebar-trigger");
+await page.waitForTimeout(800);
+const libUnits = await page.locator(".library-menu-items-container").count();
+console.log("library panel containers:", libUnits);
+await page.screenshot({ path: `${shots}/07-library.png` });
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
 
 // Toggle dark theme
 await page.click('button[aria-label="Toggle theme"]');

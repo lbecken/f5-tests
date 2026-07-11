@@ -32,6 +32,11 @@ existing UML tools and libraries that led to this design.
 - **Save / Open** standard `.excalidraw` files (interoperable with
   excalidraw.com); opening a file adds it as a new tab
 - **Export** the current tab to PNG and SVG
+- **UML shape library export** — all stencils are preloaded into the
+  editor's built-in Library panel, and the "UML lib" button downloads them
+  as a standard `.excalidrawlib` file you can load on excalidraw.com or in
+  any other Excalidraw instance; shapes you add to the library yourself are
+  persisted too
 - Fully client-side and offline-capable (fonts are self-hosted); TypeScript +
   React + Vite
 
@@ -66,6 +71,7 @@ npm run smoke      # set CHROMIUM_PATH if Chromium lives elsewhere
 src/
   App.tsx                        app shell: canvas, tabs, insert/save/load/export
   workspace.ts                   multi-document store on top of localStorage
+  library.ts                     stencils as an Excalidraw library (.excalidrawlib)
   components/Palette.tsx         UML stencil sidebar (search, groups, previews)
   components/Toolbar.tsx         top bar (New / Open / Save / PNG / SVG / theme)
   components/Tabs.tsx            diagram tabs (switch, rename, close, add)
