@@ -160,10 +160,11 @@ while cached stays flat), and **the bill** (§8.4's table computed live).
 
 ![kv-cache timing](diagrams/kv-cache-timing.png)
 
-Left: per-token latency — naive climbs linearly while cached stays flat;
-the late blue spike is the cache hitting `T_max` and falling back to a
-full re-encode (exactly the punt exercise 8.4 asks you to fix). Right:
-cumulative time — the quadratic-vs-linear separation.
+Left: per-token latency — naive climbs linearly while cached stays flat.
+(If your run shows a tall blue spike near the end, that is the cache
+hitting `T_max` and falling back to a full re-encode — exactly the punt
+exercise 8.4 asks you to fix; the plot annotates it when it stands out.)
+Right: cumulative time — the quadratic-vs-linear separation.
 
 ## 8.6 Exercises
 
