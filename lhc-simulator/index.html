@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LHC Simulator — Large Hadron Collider Control Room</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='%234fc3f7' stroke-width='8'/><circle cx='50' cy='50' r='6' fill='%23ffd54f'/></svg>">
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-ring"></div>
+    <div class="brand-text">
+      <span class="brand-title">LHC SIMULATOR</span>
+      <span class="brand-sub">CERN · Large Hadron Collider</span>
+    </div>
+  </div>
+  <nav id="main-nav">
+    <button class="nav-btn active" data-view="home">Home</button>
+    <button class="nav-btn" data-view="learn">Learn</button>
+    <button class="nav-btn" data-view="control">Control Room</button>
+    <button class="nav-btn" data-view="events" id="nav-events">Event Display</button>
+    <button class="nav-btn" data-view="analysis" id="nav-analysis">Analysis</button>
+  </nav>
+  <div class="topbar-right">
+    <button id="audio-toggle" title="Toggle sound">&#128263;</button>
+    <div id="level-badge" title="Change expertise level on the Home screen">SPECTATOR</div>
+  </div>
+</header>
+
+<main id="app">
+
+<!-- ============ HOME ============ -->
+<section id="view-home" class="view active">
+  <div class="hero">
+    <canvas id="hero-canvas"></canvas>
+    <div class="hero-content">
+      <h1>The Large Hadron Collider</h1>
+      <p class="hero-tagline">A 26.7 km ring of superconducting magnets, colder than outer space,
+      colliding protons at 99.999999% of the speed of light — recreated as an interactive simulation.</p>
+      <div class="hero-facts">
+        <div class="fact"><span class="fact-num">13.6</span><span class="fact-label">TeV collision energy</span></div>
+        <div class="fact"><span class="fact-num">26.7</span><span class="fact-label">km circumference</span></div>
+        <div class="fact"><span class="fact-num">1.9</span><span class="fact-label">K magnet temperature</span></div>
+        <div class="fact"><span class="fact-num">~1&#160;billion</span><span class="fact-label">collisions / second</span></div>
+      </div>
+      <div class="hero-buttons">
+        <button class="btn btn-primary btn-lg" id="btn-start-sim">Enter the Control Room</button>
+        <button class="btn btn-ghost btn-lg" id="btn-start-learn">Explore CERN &amp; the Machine</button>
+      </div>
+      <p class="hero-note" id="ls3-note">⚙ The real LHC completed Run 3 in June 2026 and is now in Long Shutdown 3,
+      being upgraded to the High-Luminosity LHC. This simulator reproduces Run 3 operating conditions.</p>
+    </div>
+  </div>
+
+  <div class="level-section">
+    <h2>Choose your level of expertise</h2>
+    <p class="level-intro">Your level controls how much of the machine you are allowed to touch — from
+    watching over the operators' shoulders to owning the full fill configuration — and how much detail
+    the physics displays reveal.</p>
+    <div id="level-cards" class="level-cards"><!-- filled by JS --></div>
+  </div>
+</section>
+
+<!-- ============ LEARN ============ -->
+<section id="view-learn" class="view">
+  <div class="learn-layout">
+    <aside id="learn-nav" class="learn-nav"><!-- filled by JS --></aside>
+    <article id="learn-content" class="learn-content"><!-- filled by JS --></article>
+  </div>
+</section>
+
+<!-- ============ CONTROL ROOM ============ -->
+<section id="view-control" class="view">
+  <div class="control-layout">
+
+    <aside class="panel config-panel" id="config-panel">
+      <h3 class="panel-title">FILL CONFIGURATION</h3>
+      <div id="config-controls"><!-- filled by JS --></div>
+      <div class="config-actions">
+        <button class="btn btn-primary" id="btn-run">START FILL</button>
+        <button class="btn btn-danger" id="btn-dump" disabled>BEAM DUMP</button>
+      </div>
+      <div id="config-hint" class="config-hint"></div>
+    </aside>
+
+    <div class="control-center">
+      <div class="page1" id="page1">
+        <div class="page1-header">
+          <span id="p1-title">LHC Page 1</span>
+          <span id="p1-fill">Fill: —</span>
+          <span id="p1-clock">--:--:--</span>
+        </div>
+        <div class="page1-mode" id="p1-mode">NO BEAM</div>
+        <div class="page1-comment" id="p1-comment">Machine ready. Configure the fill and inject beam.</div>
+        <div class="page1-bars">
+          <div class="p1-bar"><label>Beam 1 intensity</label><div class="bar"><div id="p1-b1" class="bar-fill bar-b1"></div></div><span id="p1-b1v">0.0e0 p</span></div>
+          <div class="p1-bar"><label>Beam 2 intensity</label><div class="bar"><div id="p1-b2" class="bar-fill bar-b2"></div></div><span id="p1-b2v">0.0e0 p</span></div>
+          <div class="p1-bar"><label>Beam energy</label><div class="bar"><div id="p1-en" class="bar-fill bar-en"></div></div><span id="p1-env">0 GeV</span></div>
+        </div>
+      </div>
+      <div class="ring-wrap">
+        <canvas id="ring-canvas"></canvas>
+      </div>
+      <div class="injector-wrap">
+        <canvas id="injector-canvas" height="120"></canvas>
+      </div>
+    </div>
+
+    <aside class="panel readout-panel">
+      <h3 class="panel-title">MACHINE READOUTS</h3>
+      <div id="readouts" class="readouts"><!-- filled by JS --></div>
+      <h3 class="panel-title" style="margin-top:14px">LUMINOSITY (10<sup>34</sup> cm<sup>-2</sup>s<sup>-1</sup>)</h3>
+      <div id="lumi-readouts" class="readouts"><!-- filled by JS --></div>
+      <div id="collision-cta" class="collision-cta hidden">
+        <p><b>STABLE BEAMS</b> — the experiments are recording collisions.</p>
+        <button class="btn btn-primary" id="btn-goto-events">Open Event Display →</button>
+      </div>
+      <div id="log-panel" class="log-panel"></div>
+    </aside>
+
+  </div>
+</section>
+
+<!-- ============ EVENT DISPLAY ============ -->
+<section id="view-events" class="view">
+  <div class="events-layout">
+    <aside class="panel detector-panel">
+      <h3 class="panel-title">SELECT DETECTOR</h3>
+      <div id="detector-cards"><!-- filled by JS --></div>
+      <div id="event-controls" class="event-controls hidden">
+        <h3 class="panel-title">EVENT STREAM</h3>
+        <div id="trigger-select-wrap"></div>
+        <div class="event-nav">
+          <button class="btn" id="btn-prev-ev">◀</button>
+          <button class="btn btn-primary" id="btn-next-ev">Next event ▶</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="chk-autoplay"> Auto-play events</label>
+        <div id="display-toggles"></div>
+      </div>
+    </aside>
+    <div class="events-center">
+      <div class="ed-header">
+        <span id="ed-title">No detector selected</span>
+        <span id="ed-eventinfo"></span>
+      </div>
+      <canvas id="event-canvas"></canvas>
+      <div class="ed-legend" id="ed-legend"></div>
+    </div>
+    <aside class="panel particles-panel">
+      <h3 class="panel-title">EVENT DATA</h3>
+      <div id="event-summary"></div>
+      <div id="particle-table"></div>
+      <div id="event-physics" class="event-physics"></div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ ANALYSIS ============ -->
+<section id="view-analysis" class="view">
+  <div class="analysis-layout">
+    <aside class="panel analysis-panel">
+      <h3 class="panel-title">DATASET</h3>
+      <div id="dataset-info"></div>
+      <button class="btn btn-primary" id="btn-collect">Record more data</button>
+      <h3 class="panel-title" style="margin-top:16px">ANALYSIS CHANNEL</h3>
+      <div id="channel-select"></div>
+      <div id="cuts-panel"></div>
+    </aside>
+    <div class="analysis-center">
+      <div class="ana-header" id="ana-header">Select an analysis channel</div>
+      <canvas id="histo-canvas"></canvas>
+      <div id="ana-explain" class="ana-explain"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div id="toast" class="toast hidden"></div>
+<audio id="ambient-audio" loop preload="none" src="assets/audio/ambient.mp3"></audio>
+<audio id="narration-audio" preload="none" src="assets/audio/welcome.mp3"></audio>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
