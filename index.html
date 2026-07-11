@@ -16,6 +16,8 @@
           <button id="btn-open" class="btn" title="Open a MIDI file (.mid)">Open MIDI…</button>
           <input type="file" id="file-input" accept=".mid,.midi,audio/midi" hidden />
           <button id="btn-demo" class="btn subtle" title="Load the bundled demo piece">Demo</button>
+          <button id="btn-audio" class="btn subtle" title="Load an audio recording that is in sync with the MIDI (played instead of the sampled piano)" disabled>Audio…</button>
+          <input type="file" id="audio-input" accept="audio/*" hidden />
         </div>
 
         <div class="group mode-switch" role="radiogroup" aria-label="Mode">
@@ -37,11 +39,24 @@
           <button id="tempo-reset" class="btn subtle small" title="Reset tempo to 100%">reset</button>
         </div>
 
+        <div class="group">
+          <button id="zoom-out" class="btn icon small" title="Wider spacing off / zoom out">−</button>
+          <button id="zoom-in" class="btn icon small" title="More space between notes / zoom in">+</button>
+        </div>
+
         <span id="clock" class="mono clock">0:00 / 0:00</span>
       </div>
 
       <div class="toolbar-row secondary">
         <span id="piece-info" class="piece-info">No file loaded — open a MIDI file or try the demo.</span>
+
+        <div class="group" id="audio-track-group" hidden>
+          <label class="check" title="Play the loaded recording instead of the sampled piano">
+            <input type="checkbox" id="use-backing" checked /> Backing audio
+          </label>
+          <span id="audio-track-name" class="mono"></span>
+          <button id="btn-audio-clear" class="btn subtle small" title="Remove the audio track">✕</button>
+        </div>
 
         <div class="group practice-settings" id="practice-settings" hidden>
           <label for="midi-in">MIDI input</label>

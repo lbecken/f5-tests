@@ -107,6 +107,48 @@ export class PianoSampler {
     };
   }
 
+  /** Decode an audio file (for the backing-track feature). */
+  decode(data: ArrayBuffer): Promise<AudioBuffer> {
+    return this.ctx.decodeAudioData(data);
+  }
+
+  /**
+   * Start a backing-track buffer at absolute context time `when`, from
+   * `offset` seconds into the buffer, at the given playback rate. The rate
+   * can be changed live without a position glitch.
+   */
+  playBacking(
+    buffer: AudioBuffer,
+    when: number,
+    offset: number,
+    rate: number,
+  ): { setRate(rate: number): void } & VoiceHandle {
+    if (offset >= buffer.duration || offset < 0) return { setRate: () => {}, cancel: () => {} };
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    src.playbackRate.value = rate;
+    const gain = this.ctx.createGain();
+    src.connect(gain);
+    gain.connect(this.master);
+    src.start(Math.max(when, this.ctx.currentTime), offset);
+
+    const voice = { src, gain };
+    this.live.add(voice);
+    src.onended = () => this.live.delete(voice);
+    return {
+      setRate: (r: number) => src.playbackRate.setValueAtTime(r, this.ctx.currentTime),
+      cancel: () => {
+        try {
+          const t = this.ctx.currentTime;
+          gain.gain.setTargetAtTime(0, t, 0.02);
+          src.stop(t + 0.1);
+        } catch {
+          /* already ended */
+        }
+      },
+    };
+  }
+
   /** Fade out and stop everything currently sounding or scheduled. */
   stopAll(): void {
     for (const { src, gain } of this.live) {

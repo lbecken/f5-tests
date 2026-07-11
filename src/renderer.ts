@@ -7,7 +7,7 @@ const HALF_STEP = STAFF_SPACE / 2; // one diatonic step
 const TREBLE_TOP = 100; // y of the treble staff's top line
 const BASS_TOP = 200;
 const SVG_HEIGHT = 320;
-const PX_PER_QUARTER = 64;
+const DEFAULT_PX_PER_QUARTER = 64;
 const PAD_LEFT = 36;
 const PAD_RIGHT = 80;
 const FONT_SIZE = 4 * STAFF_SPACE; // SMuFL: 1 em = staff height
@@ -31,11 +31,33 @@ const GLYPH = {
   timeSigDigit: (d: number) => cp(0xe080 + d),
 };
 
+const BEAM_THICKNESS = 5; // 0.5 staff space
+
 interface DurationGlyph {
   head: string;
   hasStem: boolean;
   flags: number; // 0..3 (index+1 into flag glyph arrays)
   dotted: boolean;
+}
+
+interface ChordInfo {
+  notes: ScoreNote[]; // sorted by step
+  staff: Staff;
+  ticks: number;
+  x: number;
+  dur: DurationGlyph;
+  stemUpDefault: boolean;
+  /** Beat-unit index (unique across measures), filled in by computeBeams. */
+  unit?: number;
+}
+
+interface Beam {
+  chords: ChordInfo[];
+  stemUp: boolean;
+  x0: number; // stem x of the first chord
+  y0: number; // beam y at x0
+  slope: number;
+  flags: number;
 }
 
 /** Quantize a duration in quarter notes to the closest notatable value. */
@@ -97,6 +119,7 @@ export class ScoreRenderer {
   private cursor: SVGLineElement | null = null;
   private noteGroups: SVGGElement[] = [];
   private pxPerTick = 0;
+  pxPerQuarter = DEFAULT_PX_PER_QUARTER;
   contentWidth = 0;
 
   constructor(headerEl: HTMLElement, contentEl: HTMLElement) {
@@ -122,9 +145,16 @@ export class ScoreRenderer {
 
   render(score: Score): void {
     this.score = score;
-    this.pxPerTick = PX_PER_QUARTER / score.ppq;
+    this.pxPerTick = this.pxPerQuarter / score.ppq;
     this.renderHeader(score);
     this.renderContent(score);
+    this.refreshAllStates();
+  }
+
+  /** Change the horizontal note spacing and re-render. */
+  setZoom(pxPerQuarter: number): void {
+    this.pxPerQuarter = pxPerQuarter;
+    if (this.score) this.render(this.score);
   }
 
   // ------------------------------------------------------------------
@@ -215,14 +245,23 @@ export class ScoreRenderer {
     }, svg);
 
     // Group simultaneous notes on the same staff into chords.
-    const chords = new Map<string, ScoreNote[]>();
+    const chordMap = new Map<string, ScoreNote[]>();
     for (const note of score.notes) {
       const key = `${note.staff}:${note.ticks}`;
-      let chord = chords.get(key);
-      if (!chord) chords.set(key, (chord = []));
+      let chord = chordMap.get(key);
+      if (!chord) chordMap.set(key, (chord = []));
       chord.push(note);
     }
-    for (const chord of chords.values()) this.drawChord(svg, chord);
+    const chords: ChordInfo[] = [...chordMap.values()]
+      .map((notes) => this.layoutChord(notes))
+      .sort((a, b) => a.ticks - b.ticks);
+
+    const beams = this.computeBeams(chords, score);
+    const beamed = new Map<ChordInfo, Beam>();
+    for (const beam of beams) for (const c of beam.chords) beamed.set(c, beam);
+
+    for (const chord of chords) this.drawChord(svg, chord, beamed.get(chord));
+    for (const beam of beams) this.drawBeam(svg, beam);
 
     // Playback cursor.
     this.cursor = el('line', {
@@ -241,45 +280,161 @@ export class ScoreRenderer {
     }
   }
 
-  private drawChord(svg: SVGElement, chord: ScoreNote[]): void {
+  private layoutChord(notes: ScoreNote[]): ChordInfo {
     const score = this.score!;
-    const staff = chord[0].staff;
-    chord.sort((a, b) => a.step - b.step);
-
-    const x = this.xForTicks(chord[0].ticks);
-    const maxDur = Math.max(...chord.map((n) => n.durationTicks));
-    const dur = classifyDuration(maxDur / score.ppq);
-
+    const staff = notes[0].staff;
+    notes.sort((a, b) => a.step - b.step);
+    const maxDur = Math.max(...notes.map((n) => n.durationTicks));
     const middleStep = staff === 'treble' ? 34 : 22; // B4 / D3 (middle line)
-    const avgStep = chord.reduce((s, n) => s + n.step, 0) / chord.length;
-    const stemUp = avgStep < middleStep;
+    const avgStep = notes.reduce((s, n) => s + n.step, 0) / notes.length;
+    return {
+      notes,
+      staff,
+      ticks: notes[0].ticks,
+      x: this.xForTicks(notes[0].ticks),
+      dur: classifyDuration(maxDur / score.ppq),
+      stemUpDefault: avgStep < middleStep,
+    };
+  }
+
+  /**
+   * Group runs of flagged chords into beams: same staff, same flag count,
+   * inside the same beat (dotted-quarter beats for x/8 meters, otherwise the
+   * meter's denominator beat), with nothing else in between.
+   */
+  private computeBeams(chords: ChordInfo[], score: Score): Beam[] {
+    // Beat-unit index for every chord (chords are sorted by ticks, so the
+    // measure/time-signature pointers only ever move forward).
+    let m = 0;
+    let t = 0;
+    for (const chord of chords) {
+      while (m + 1 < score.measures.length && score.measures[m + 1].ticks <= chord.ticks) m++;
+      while (t + 1 < score.timeSignatures.length && score.timeSignatures[t + 1].ticks <= chord.ticks) t++;
+      const den = score.timeSignatures[t].denominator;
+      const beatTicks = den >= 8 ? score.ppq * 1.5 : score.ppq * (4 / den);
+      chord.unit =
+        m * 256 + Math.floor((chord.ticks - score.measures[m].ticks) / beatTicks);
+    }
+
+    const beams: Beam[] = [];
+    for (const staff of ['treble', 'bass'] as const) {
+      const seq = chords.filter((c) => c.staff === staff);
+      let run: ChordInfo[] = [];
+      const flush = () => {
+        if (run.length >= 2) beams.push(this.buildBeam(run));
+        run = [];
+      };
+      for (const chord of seq) {
+        if (chord.dur.flags === 0) {
+          flush();
+          continue;
+        }
+        if (
+          run.length > 0 &&
+          (chord.dur.flags !== run[0].dur.flags || chord.unit !== run[0].unit)
+        ) {
+          flush();
+        }
+        run.push(chord);
+      }
+      flush();
+    }
+    return beams;
+  }
+
+  private buildBeam(chords: ChordInfo[]): Beam {
+    const staff = chords[0].staff;
+    const middleStep = staff === 'treble' ? 34 : 22;
+    const steps = chords.flatMap((c) => c.notes.map((n) => n.step));
+    const stemUp = steps.reduce((a, b) => a + b, 0) / steps.length < middleStep;
+
+    const stemXOf = (c: ChordInfo) => (stemUp ? c.x + HEAD_W - 0.7 : c.x + 0.7);
+    // Ideal stem-tip y for each chord (a full stem beyond the outermost head).
+    const tipOf = (c: ChordInfo) => {
+      const ys = c.notes.map((n) => this.yFor(n.step, staff));
+      return stemUp ? Math.min(...ys) - STEM_LEN : Math.max(...ys) + STEM_LEN;
+    };
+
+    const first = chords[0];
+    const last = chords[chords.length - 1];
+    const x0 = stemXOf(first);
+    const x1 = stemXOf(last);
+    // Gentle slope through the outer chords, limited to one staff space.
+    const rise = Math.max(-STAFF_SPACE, Math.min(STAFF_SPACE, tipOf(last) - tipOf(first)));
+    const slope = x1 > x0 ? rise / (x1 - x0) : 0;
+    let y0 = tipOf(first);
+
+    // Shift the beam so every stem keeps a decent minimum length.
+    const minStem = 2.5 * STAFF_SPACE;
+    for (const c of chords) {
+      const yAt = y0 + slope * (stemXOf(c) - x0);
+      const headYs = c.notes.map((n) => this.yFor(n.step, staff));
+      if (stemUp) {
+        const limit = Math.min(...headYs) - minStem;
+        if (yAt > limit) y0 -= yAt - limit;
+      } else {
+        const limit = Math.max(...headYs) + minStem;
+        if (yAt < limit) y0 += limit - yAt;
+      }
+    }
+    return { chords, stemUp, x0, y0, slope, flags: chords[0].dur.flags };
+  }
+
+  private drawBeam(svg: SVGElement, beam: Beam): void {
+    const { stemUp, x0, y0, slope } = beam;
+    const first = beam.chords[0];
+    const last = beam.chords[beam.chords.length - 1];
+    const sx0 = stemUp ? first.x + HEAD_W - 0.7 : first.x + 0.7;
+    const sx1 = stemUp ? last.x + HEAD_W - 0.7 : last.x + 0.7;
+    const yAt = (sx: number) => y0 + slope * (sx - x0);
+    const t = stemUp ? BEAM_THICKNESS : -BEAM_THICKNESS;
+    for (let b = 0; b < beam.flags; b++) {
+      // Second/third beams stack toward the noteheads.
+      const off = stemUp ? b * (BEAM_THICKNESS + 2.5) : -b * (BEAM_THICKNESS + 2.5);
+      const points = [
+        `${sx0 - 0.8},${yAt(sx0) + off}`,
+        `${sx1 + 0.8},${yAt(sx1) + off}`,
+        `${sx1 + 0.8},${yAt(sx1) + off + t}`,
+        `${sx0 - 0.8},${yAt(sx0) + off + t}`,
+      ].join(' ');
+      el('polygon', { points, class: 'beam' }, svg);
+    }
+  }
+
+  private drawChord(svg: SVGElement, chord: ChordInfo, beam?: Beam): void {
+    const { notes, staff, x, dur } = chord;
+    const stemUp = beam ? beam.stemUp : chord.stemUpDefault;
 
     // Noteheads a second apart sit on opposite sides of the stem.
-    const flipped: boolean[] = chord.map(() => false);
-    for (let i = 1; i < chord.length; i++) {
-      if (chord[i].step - chord[i - 1].step <= 1 && !flipped[i - 1]) flipped[i] = true;
+    const flipped: boolean[] = notes.map(() => false);
+    for (let i = 1; i < notes.length; i++) {
+      if (notes[i].step - notes[i - 1].step <= 1 && !flipped[i - 1]) flipped[i] = true;
     }
 
     const stemX = stemUp ? x + HEAD_W - 0.7 : x + 0.7;
-    const headXs = chord.map((_, i) => {
+    const headXs = notes.map((_, i) => {
       if (!flipped[i]) return x;
       return stemUp ? stemX : stemX - HEAD_W; // flipped heads cross the stem
     });
 
     // Ledger lines.
-    for (let i = 0; i < chord.length; i++) {
-      this.drawLedgers(svg, chord[i], headXs[i]);
+    for (let i = 0; i < notes.length; i++) {
+      this.drawLedgers(svg, notes[i], headXs[i]);
     }
 
-    // Stem spanning the chord.
+    // Stem spanning the chord (up to the beam when part of one).
     if (dur.hasStem) {
-      const ys = chord.map((n) => this.yFor(n.step, staff));
+      const ys = notes.map((n) => this.yFor(n.step, staff));
       const yLow = Math.max(...ys);
       const yHigh = Math.min(...ys);
       const stemY1 = stemUp ? yLow : yHigh;
-      const stemY2 = stemUp ? yHigh - STEM_LEN : yLow + STEM_LEN;
+      const stemY2 = beam
+        ? beam.y0 + beam.slope * (stemX - beam.x0)
+        : stemUp
+          ? yHigh - STEM_LEN
+          : yLow + STEM_LEN;
       el('line', { x1: stemX, y1: stemY1, x2: stemX, y2: stemY2, class: 'stem' }, svg);
-      if (dur.flags > 0) {
+      if (!beam && dur.flags > 0) {
         const flagGlyph = (stemUp ? GLYPH.flagUp : GLYPH.flagDown)[dur.flags - 1];
         glyphText(svg, flagGlyph, stemX, stemY2, 'smufl flag');
       }
@@ -287,8 +442,8 @@ export class ScoreRenderer {
 
     // Heads, accidentals, dots — one group per note so practice feedback
     // can color notes individually.
-    for (let i = 0; i < chord.length; i++) {
-      const note = chord[i];
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
       const y = this.yFor(note.step, staff);
       const group = el('g', { class: 'note', 'data-id': note.id }, svg);
       glyphText(group, dur.head, headXs[i], y);

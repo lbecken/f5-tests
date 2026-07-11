@@ -14,6 +14,12 @@ const ui = {
   open: $<HTMLButtonElement>('btn-open'),
   file: $<HTMLInputElement>('file-input'),
   demo: $<HTMLButtonElement>('btn-demo'),
+  audio: $<HTMLButtonElement>('btn-audio'),
+  audioInput: $<HTMLInputElement>('audio-input'),
+  audioGroup: $<HTMLDivElement>('audio-track-group'),
+  audioName: $<HTMLSpanElement>('audio-track-name'),
+  audioClear: $<HTMLButtonElement>('btn-audio-clear'),
+  useBacking: $<HTMLInputElement>('use-backing'),
   modeListen: $<HTMLButtonElement>('mode-listen'),
   modePractice: $<HTMLButtonElement>('mode-practice'),
   restart: $<HTMLButtonElement>('btn-restart'),
@@ -90,6 +96,7 @@ async function loadMidi(data: ArrayBuffer, fileName: string): Promise<void> {
     ui.scoreEmpty.hidden = true;
     ui.scorePanel.hidden = false;
     ui.play.disabled = false;
+    ui.audio.disabled = false;
     ui.scoreScroll.scrollLeft = 0;
     const measures = score.measures.length;
     ui.pieceInfo.innerHTML =
@@ -113,6 +120,41 @@ ui.file.addEventListener('change', async () => {
   const file = ui.file.files?.[0];
   if (file) await loadMidi(await file.arrayBuffer(), file.name);
   ui.file.value = '';
+});
+
+// ------------------------------------------------------------------
+// Backing audio track (optional, assumed in sync with the MIDI)
+// ------------------------------------------------------------------
+
+ui.audio.addEventListener('click', () => ui.audioInput.click());
+ui.audioInput.addEventListener('change', async () => {
+  const file = ui.audioInput.files?.[0];
+  ui.audioInput.value = '';
+  if (!file) return;
+  try {
+    setStatus(`Decoding ${file.name}…`);
+    const buffer = await sampler.decode(await file.arrayBuffer());
+    player.backingBuffer = buffer;
+    player.setUseBacking(ui.useBacking.checked);
+    ui.audioGroup.hidden = false;
+    ui.audioName.textContent = `${file.name} (${fmtTime(buffer.duration)})`;
+    setStatus(
+      `Audio track loaded. It plays instead of the piano and follows the tempo slider ` +
+        `(speed changes also shift its pitch).`,
+    );
+  } catch {
+    setStatus(`Could not decode ${file.name} — not a supported audio format?`, true);
+  }
+});
+
+ui.useBacking.addEventListener('change', () => player.setUseBacking(ui.useBacking.checked));
+
+ui.audioClear.addEventListener('click', () => {
+  player.backingBuffer = null;
+  player.setUseBacking(false);
+  ui.audioGroup.hidden = true;
+  ui.audioName.textContent = '';
+  setStatus('Audio track removed — using the sampled piano.');
 });
 
 ui.demo.addEventListener('click', async () => {
@@ -217,6 +259,21 @@ ui.tempo.addEventListener('input', () => applyTempo(Number(ui.tempo.value)));
 ui.tempoReset.addEventListener('click', () => applyTempo(100));
 
 // ------------------------------------------------------------------
+// Zoom (horizontal note spacing)
+// ------------------------------------------------------------------
+
+function zoom(factor: number): void {
+  if (!score) return;
+  renderer.setZoom(Math.min(200, Math.max(24, renderer.pxPerQuarter * factor)));
+  lastPos = -1; // force a cursor/scroll refresh on the rebuilt SVG
+  const cursorX = renderer.setCursorTicks(score.secondsToTicks(player.position));
+  ui.scoreScroll.scrollLeft = Math.max(0, cursorX - ui.scoreScroll.clientWidth * 0.3);
+}
+
+$<HTMLButtonElement>('zoom-in').addEventListener('click', () => zoom(1.25));
+$<HTMLButtonElement>('zoom-out').addEventListener('click', () => zoom(0.8));
+
+// ------------------------------------------------------------------
 // Mode switching
 // ------------------------------------------------------------------
 
@@ -244,6 +301,8 @@ ui.modePractice.addEventListener('click', () => setMode('practice'));
 
 ui.guideAudio.addEventListener('change', () => {
   player.guideAudio = mode === 'listening' || ui.guideAudio.checked;
+  // Restart audio sources so an already-sounding backing track obeys the toggle.
+  if (player.isPlaying) player.seek(player.position);
 });
 
 ui.timingWindow.addEventListener('change', () => {

@@ -23,8 +23,12 @@ export class Player {
   private voices: VoiceHandle[] = [];
 
   tempoFactor = 1;
-  /** When false (practice without guide audio), notes are not sounded. */
+  /** When false (practice without guide audio), nothing is sounded. */
   guideAudio = true;
+  /** Optional synced audio recording that replaces the sampled piano. */
+  backingBuffer: AudioBuffer | null = null;
+  useBacking = false;
+  private backingHandle: ({ setRate(rate: number): void } & VoiceHandle) | null = null;
   onEnded: (() => void) | null = null;
 
   constructor(sampler: PianoSampler) {
@@ -59,8 +63,24 @@ export class Player {
     this.anchorPos = this.posSec;
     this.schedIndex = this.firstNoteAtOrAfter(this.posSec);
     this.playing = true;
+    if (this.backingActive && this.guideAudio) {
+      // Backing audio and score are assumed to share the same timeline, so
+      // the buffer offset is simply the transport position; the playback
+      // rate follows the tempo factor (which also shifts pitch — inherent
+      // to simple resampling).
+      this.backingHandle = this.sampler.playBacking(
+        this.backingBuffer!,
+        this.anchorCtx,
+        this.anchorPos,
+        this.tempoFactor,
+      );
+    }
     this.tick();
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
+  }
+
+  private get backingActive(): boolean {
+    return this.useBacking && this.backingBuffer !== null;
   }
 
   pause(): void {
@@ -70,6 +90,7 @@ export class Player {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;
     this.voices = [];
+    this.backingHandle = null;
     this.sampler.stopAll();
   }
 
@@ -84,10 +105,19 @@ export class Player {
     if (this.playing) {
       // Re-anchor so the transition is seamless; the few notes already
       // scheduled inside the lookahead keep their old timing (≤150 ms).
+      // The backing track's rate changes at the same instant, so buffer
+      // offset and transport position stay locked together.
       this.anchorPos = this.position;
       this.anchorCtx = this.sampler.now;
+      this.backingHandle?.setRate(factor);
     }
     this.tempoFactor = factor;
+  }
+
+  /** Switch between sampled piano and the backing track (may occur mid-play). */
+  setUseBacking(use: boolean): void {
+    this.useBacking = use;
+    if (this.playing) this.seek(this.position); // restart audio sources
   }
 
   private firstNoteAtOrAfter(sec: number): number {
@@ -109,7 +139,7 @@ export class Player {
     const notes = this.score.notes;
     while (this.schedIndex < notes.length && notes[this.schedIndex].time < horizon) {
       const note = notes[this.schedIndex++];
-      if (this.guideAudio) {
+      if (this.guideAudio && !this.backingActive) {
         const when = this.anchorCtx + (note.time - this.anchorPos) / this.tempoFactor;
         this.voices.push(
           this.sampler.play(note.midi, note.velocity, when, note.duration / this.tempoFactor),
