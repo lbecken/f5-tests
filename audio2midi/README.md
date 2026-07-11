@@ -35,7 +35,7 @@ run offline on CPU (GPU used if available):
 |------|-------------------|-----|
 | Source separation | [Demucs v4 (htdemucs)](https://github.com/adefossez/demucs), Meta | Reference open-source model for vocals/drums/bass/other stems |
 | Note transcription | [Basic Pitch](https://github.com/spotify/basic-pitch), Spotify (ICASSP 2022) | Lightweight polyphonic audio-to-MIDI network, runs via ONNX/TF locally, outputs onsets, offsets, amplitude and pitch bends |
-| Tempo & beats | [librosa](https://librosa.org) beat tracker | Robust DSP baseline; beat grid also drives quantization |
+| Tempo & beats | [librosa](https://librosa.org) beat tracker (flexible tightness) | Follows tempo changes/rubato; beat grid drives the tempo map and quantization |
 | Chords | CQT chroma + template matching + Viterbi | Transparent, tunable, no extra model download |
 | Drums | Per-band (low/mid/high) spectral onset flux | Handles simultaneous kick + hi-hat hits |
 
@@ -80,6 +80,7 @@ events, which most DAWs and notation apps display.
 
 ```
 --bpm 128                  override tempo detection
+--static-tempo             write one average BPM instead of a tempo-change map
 --quantize off|4|8|16|32   snap to grid (default: 16th notes); quantization is
                            beat-aware, so it follows tempo drift in the recording
 --melody-source auto|vocals|instrumental
@@ -100,7 +101,11 @@ events, which most DAWs and notation apps display.
 
 ### Reading the output
 
-* **Tempo** — written into the MIDI header; bars/beats line up in your DAW.
+* **Tempo** — a full tempo map is written on the conductor track: tempo
+  changes measured from the performance (accelerando, section changes,
+  rubato) appear as `set_tempo` events, so playback follows the recording's
+  pace while bars/beats stay aligned to the grid. `--static-tempo` writes a
+  single average BPM instead.
 * **Melody** — a strictly monophonic line. Extracted from the vocal stem
   when vocals dominate, otherwise from the lead instrument stem, then
   reduced to a single voice preferring louder notes and small intervals.
@@ -143,16 +148,20 @@ simpler, more predictable split. The separation seam is narrow
 (`separation.py`), so a dedicated orchestral model can be plugged in when
 one becomes available.
 
-**Quantization is beat-aware.** Notes are mapped into beat space using the
-*detected* beat times (which follow the performance's tempo drift), snapped
-to the chosen subdivision, and re-emitted on a constant-BPM timeline — so
-notation stays aligned to barlines even for human performances.
+**Tempo map + beat-aware quantization.** Notes are placed at their *beat
+position* (via interpolation over the detected beat times) rather than at
+wall-clock seconds, and the conductor track carries the measured tempo
+changes (median-smoothed, with hysteresis so beat-tracker jitter doesn't
+become micro tempo events). Quantization snaps in beat space. The result:
+notation stays aligned to barlines even for human performances with tempo
+drift, and playback timing still matches the recording.
 
 ## Limitations
 
 * Transcription quality tracks Basic Pitch's: dense polyphony, heavy
   distortion/reverb, and extreme registers reduce accuracy.
-* One global tempo/time signature is written (no tempo-change map yet).
+* One global time signature is written (tempo changes are mapped, meter
+  changes are not).
 * Drum vocabulary is kick/snare/hat/crash; toms and cymbal nuances land on
   the nearest of those.
 * Orchestral section assignment is heuristic (see above).

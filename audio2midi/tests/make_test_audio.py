@@ -52,15 +52,16 @@ def tri(f, t):
     return 2 * np.abs(saw(f, t)) - 1
 
 
-def render(n_bars=4, with_drums=True, with_vocal_band=False):
-    total = int(n_bars * 4 * BEAT * SR)
+def render(n_bars=4, with_drums=True, bpm=BPM):
+    beat = 60.0 / bpm
+    total = int(n_bars * 4 * beat * SR)
     mix = np.zeros(total)
 
     # Pads (chords), one per bar
     for bar in range(n_bars):
         _, pitches = PROGRESSION[bar % len(PROGRESSION)]
-        start = int(bar * 4 * BEAT * SR)
-        n = int(4 * BEAT * SR)
+        start = int(bar * 4 * beat * SR)
+        n = int(4 * beat * SR)
         t = np.arange(n) / SR
         seg = sum(tri(midi_hz(p), t) for p in pitches[1:]) / len(pitches)
         seg += 0.6 * np.sin(2 * np.pi * midi_hz(pitches[0]) * t) / len(pitches)
@@ -68,18 +69,18 @@ def render(n_bars=4, with_drums=True, with_vocal_band=False):
 
     # Melody: one note per beat
     for i, pitch in enumerate(MELODY[: n_bars * 4]):
-        start = int(i * BEAT * SR)
-        n = int(BEAT * 0.9 * SR)
+        start = int(i * beat * SR)
+        n = int(beat * 0.9 * SR)
         t = np.arange(n) / SR
         vib = 1 + 0.003 * np.sin(2 * np.pi * 5.5 * t)
         seg = saw(midi_hz(pitch) * vib, t)
         mix[start : start + n] += 0.30 * seg * adsr(n, SR, a=0.015, r=0.08)
 
     if with_drums:
-        for beat in range(n_bars * 4):
-            start = int(beat * BEAT * SR)
+        for step in range(n_bars * 4):
+            start = int(step * beat * SR)
             # Kick on 1 and 3
-            if beat % 2 == 0:
+            if step % 2 == 0:
                 n = int(0.12 * SR)
                 t = np.arange(n) / SR
                 f = 110 * np.exp(-t * 30) + 45
@@ -90,16 +91,16 @@ def render(n_bars=4, with_drums=True, with_vocal_band=False):
             else:
                 n = int(0.10 * SR)
                 t = np.arange(n) / SR
-                noise = np.random.default_rng(beat).normal(0, 1, n)
+                noise = np.random.default_rng(step).normal(0, 1, n)
                 tone = np.sin(2 * np.pi * 190 * t)
                 mix[start : start + n] += 0.5 * (0.6 * noise + 0.4 * tone) * np.exp(
                     -t * 35
                 )
             # Hats on eighth notes
             for sub in (0, 0.5):
-                hstart = int((beat + sub) * BEAT * SR)
+                hstart = int((step + sub) * beat * SR)
                 n = int(0.03 * SR)
-                noise = np.random.default_rng(1000 + beat).normal(0, 1, n)
+                noise = np.random.default_rng(1000 + step).normal(0, 1, n)
                 # crude highpass: difference
                 noise = np.diff(noise, prepend=0.0)
                 if hstart + n < total:

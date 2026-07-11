@@ -40,6 +40,7 @@ class Config:
     stems_dir: Optional[Path] = None
     time_signature: Tuple[int, int] = (4, 4)
     separate_files: bool = False
+    static_tempo: bool = False  # single average BPM instead of a tempo map
 
 
 @dataclass
@@ -103,6 +104,7 @@ def transcribe_file(input_path: str | Path, output_path: str | Path, cfg: Config
         output_path,
         time_signature=cfg.time_signature,
         separate_files=cfg.separate_files,
+        static_tempo=cfg.static_tempo,
     )
     return result, files
 

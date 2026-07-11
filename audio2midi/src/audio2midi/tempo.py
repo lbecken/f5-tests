@@ -24,8 +24,10 @@ def detect_tempo(
     import librosa
 
     onset_env = librosa.onset.onset_strength(y=y_mono, sr=sr, aggregate=np.median)
+    # tightness=25 lets the tracker follow tempo changes/rubato; at steady
+    # tempo it stays as stable as the rigid default.
     tempo, beat_frames = librosa.beat.beat_track(
-        onset_envelope=onset_env, sr=sr, trim=False
+        onset_envelope=onset_env, sr=sr, trim=False, tightness=25
     )
     tempo = float(np.atleast_1d(tempo)[0])
     beat_times = librosa.frames_to_time(beat_frames, sr=sr)

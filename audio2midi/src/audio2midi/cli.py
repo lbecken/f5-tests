@@ -120,6 +120,12 @@ MODE_ALIASES = {
     is_flag=True,
     help="Additionally write one MIDI file per part.",
 )
+@click.option(
+    "--static-tempo",
+    is_flag=True,
+    help="Write one average BPM instead of a tempo-change map following "
+    "the performance.",
+)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose logging.")
 def main(
     input_file,
@@ -138,6 +144,7 @@ def main(
     time_signature,
     stems_dir,
     separate_files,
+    static_tempo,
     verbose,
 ):
     """Transcribe an audio file (song or orchestral piece) into a MIDI file.
@@ -180,6 +187,7 @@ def main(
         stems_dir=Path(stems_dir) if stems_dir else None,
         time_signature=(num, den),
         separate_files=separate_files,
+        static_tempo=static_tempo,
     )
 
     click.echo(f"Analyzing {input_file} [mode={canonical_mode}]...")

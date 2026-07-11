@@ -132,6 +132,46 @@ def test_full_pipeline_modes():
             print(f"  mode {mode}: {len(pm.instruments)} tracks, {n_notes} notes ok")
 
 
+def test_tempo_map():
+    """A 100->135 BPM piece must yield a MIDI tempo map covering both."""
+    import pretty_midi
+    import soundfile as sf
+
+    from audio2midi.pipeline import Config, transcribe_file
+
+    audio = np.concatenate(
+        [synth.render(n_bars=4, bpm=100), synth.render(n_bars=4, bpm=135)]
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = Path(tmp) / "ramp.wav"
+        sf.write(wav, audio, SR)
+        out = Path(tmp) / "ramp.mid"
+        cfg = Config(mode="melody", no_separation=True)
+        transcribe_file(wav, out, cfg)
+        pm = pretty_midi.PrettyMIDI(str(out))
+        _, tempi = pm.get_tempo_changes()
+        assert len(tempi) >= 2, f"expected a tempo map, got {tempi}"
+        assert any(abs(t - 100) < 8 for t in tempi), f"no ~100 BPM region: {tempi}"
+        assert any(abs(t - 135) < 8 for t in tempi), f"no ~135 BPM region: {tempi}"
+
+        # Playback fidelity: quantized note times must stay close to the
+        # audio-domain truth (one melody note per beat).
+        b1, b2 = 60.0 / 100, 60.0 / 135
+        truth = [i * b1 for i in range(16)] + [16 * b1 + i * b2 for i in range(16)]
+        starts = [n.start for inst in pm.instruments for n in inst.notes]
+        hits = sum(1 for t in truth if any(abs(s - t) < 0.12 for s in starts))
+        assert hits >= 22, f"only {hits}/32 melody onsets near truth"
+
+        # Static mode: same content, single tempo event.
+        out2 = Path(tmp) / "static.mid"
+        cfg2 = Config(mode="melody", no_separation=True, static_tempo=True)
+        transcribe_file(wav, out2, cfg2)
+        _, tempi2 = pretty_midi.PrettyMIDI(str(out2)).get_tempo_changes()
+        assert len(tempi2) == 1
+    print(f"  tempo map: {len(tempi)} changes, spans 100->135 BPM, "
+          f"{hits}/32 onsets aligned ok")
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
