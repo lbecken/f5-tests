@@ -35,6 +35,8 @@ different species. This course is the bridge.
 | 4 | [Attention — the heart of the transformer](part-4-attention.md) | Scaled dot-product attention in ~10 lines, then multi-head, then causal masking |
 | 5 | [The decoder-only transformer, block by block](part-5-decoder-only-transformer.md) | A complete mini-GPT you train on real text on a laptop CPU |
 | 6 | [GPT-2 in practice](part-6-gpt2-in-practice.md) | Load real GPT-2 weights, dissect them, generate text, visualize attention |
+| 7 | [Fine-tuning](part-7-fine-tuning.md) | Make GPT-2 Shakespearean three ways: full, frozen-layers, and LoRA from scratch |
+| 8 | [The KV cache](part-8-kv-cache.md) | Build the cache, prove it exact, benchmark the speedup, do the memory arithmetic |
 
 Each chapter ends with **exercises** (with hints, not solutions — the
 struggle is the point) and a short **historical context** section, because
@@ -51,6 +53,8 @@ knowing *why* an idea appeared makes it far easier to remember *what* it is.
 | [`code/05_attention_step_by_step.py`](code/05_attention_step_by_step.py) | 4 | any CPU, seconds |
 | [`code/06_mini_gpt.py`](code/06_mini_gpt.py) | 5 | CPU ~10 min / GPU ~1 min |
 | [`code/07_gpt2_explore.py`](code/07_gpt2_explore.py) | 6 | CPU, downloads ~500 MB once |
+| [`code/08_finetune_gpt2.py`](code/08_finetune_gpt2.py) | 7 | LoRA: CPU ~10 min / full: GPU |
+| [`code/09_kv_cache.py`](code/09_kv_cache.py) | 8 | any CPU, ~5 min |
 
 Notebook versions of the same material live in [`notebooks/`](notebooks/) —
 they are ready for **Google Colab** (each has an "Open in Colab" badge).

@@ -91,8 +91,9 @@ GPT. Natural continuations, in rough order:
   precision, gradient accumulation, schedules) are the production layer
   this course deliberately skipped. His
   [`llm.c`](https://github.com/karpathy/llm.c) re-does it in raw C/CUDA.
-- **Fine-tuning**: take `07_gpt2_explore.py`'s model, continue training on
-  your own text (it's the §1.8 loop again). Then read about LoRA.
+- **Fine-tuning**: [Part 7](part-7-fine-tuning.md) does it properly —
+  full, frozen-layers, and LoRA from scratch — and [Part 8](part-8-kv-cache.md)
+  follows with the KV cache that makes generation fast.
 - **The modern deltas** (each a bounded read now): RoPE (§3.5), GQA (§4.7),
   RMSNorm & SwiGLU (§5.3–5.4 variants), mixture-of-experts (many MLPs, a
   learned router), RLHF/instruction tuning (§5.9's history note).
@@ -135,4 +136,4 @@ Total new concepts required: zero. That is the punchline of the course.
 
 ---
 
-*Back to the [README](README.md) · Previous: [Part 5](part-5-decoder-only-transformer.md)*
+→ [Part 7 — Fine-tuning](part-7-fine-tuning.md)

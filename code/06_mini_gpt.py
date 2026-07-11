@@ -146,6 +146,17 @@ class MiniGPT(nn.Module):
         self.ln_f = nn.LayerNorm(d)              # final LN       5.5
         self.lm_head = nn.Linear(d, V, bias=False)
         self.lm_head.weight = self.tok_emb.weight  # WEIGHT TYING  5.5
+        self.apply(self._init)
+
+    @staticmethod
+    def _init(m):
+        # GPT-2's init: small weights (std 0.02) keep initial logits small,
+        # so the untrained model starts honestly uncertain: loss ~ log(V)
+        # (exercise 5.2). PyTorch defaults would start it confidently wrong.
+        if isinstance(m, (nn.Linear, nn.Embedding)):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.zeros_(m.bias)
 
     def forward(self, idx, targets=None):
         B, t = idx.shape

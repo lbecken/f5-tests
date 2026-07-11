@@ -192,7 +192,8 @@ So: cache every layer's K and V; each new step computes Q/K/V **only for
 the newest token**, attends against the cached K/V, appends its own. This
 is also why Axis 3 of §4.7 (MQA/GQA) exists: at long contexts the cache,
 not the weights, dominates GPU memory. `06_mini_gpt.py` implements
-generation the simple way; implementing the cache is Exercise 5.6.
+generation the simple way; implementing the cache is Exercise 5.6, and
+[Part 8](part-8-kv-cache.md) is a full walkthrough of it.
 
 ## 5.8 The code — `code/06_mini_gpt.py`
 
