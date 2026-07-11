@@ -17,7 +17,7 @@ from .quantize import Quantizer
 
 log = logging.getLogger(__name__)
 
-MODES = ("orchestral", "3section", "2section", "melody", "harmony")
+MODES = ("orchestral", "3section", "2section", "melody", "harmony", "full")
 
 VOCAL_MELODY_PROGRAM = 52       # Choir Aahs
 INSTRUMENTAL_MELODY_PROGRAM = 73  # Flute
@@ -36,6 +36,7 @@ class Config:
     onset_threshold: float = 0.5
     frame_threshold: float = 0.3
     min_note_len_ms: float = 80.0
+    transcriber: str = "basic-pitch"     # basic-pitch | piano
     orchestral_strategy: str = "timbre"  # timbre | register
     stems_dir: Optional[Path] = None
     time_signature: Tuple[int, int] = (4, 4)
@@ -52,6 +53,7 @@ class _Material:
     harmony: np.ndarray
     percussion: Optional[np.ndarray]
     pitched: np.ndarray              # everything pitched (orchestral mode)
+    raw: Optional[np.ndarray] = None  # untouched input (full mode, no sep.)
     bass: Optional[np.ndarray] = None
     stems: Dict[str, np.ndarray] = field(default_factory=dict)
 
@@ -76,6 +78,8 @@ def analyze(input_path: str | Path, cfg: Config) -> AnalysisResult:
 
     if cfg.mode == "orchestral":
         _run_orchestral(result, material, sr, cfg)
+    elif cfg.mode == "full":
+        _run_full(result, material, sr, cfg)
     else:
         if cfg.mode in ("melody", "2section", "3section"):
             _run_melody(result, material, sr, cfg)
@@ -125,6 +129,7 @@ def _prepare_material(y: np.ndarray, sr: int, cfg: Config) -> _Material:
             harmony=harm,
             percussion=perc,
             pitched=harm,
+            raw=mono,
         )
 
     from . import separation
@@ -156,6 +161,8 @@ def _run_melody(result: AnalysisResult, m: _Material, sr: int, cfg: Config):
         onset_threshold=cfg.onset_threshold,
         frame_threshold=cfg.frame_threshold,
         min_note_len_ms=cfg.min_note_len_ms,
+        backend=cfg.transcriber,
+        device=cfg.device,
     )
     line = melody.monophonic_reduction(notes)
     program = (
@@ -191,6 +198,32 @@ def _run_rhythm(result: AnalysisResult, m: _Material, sr: int):
     result.parts.append(Part(name="Rhythm", program=0, is_drum=True, notes=hits))
 
 
+def _run_full(result: AnalysisResult, m: _Material, sr: int, cfg: Config):
+    """Complete note-for-note transcription into a single track."""
+    if m.raw is not None:
+        audio = m.raw  # piano models want the untouched signal
+    else:
+        from . import separation
+
+        audio = separation.mix_stems(m.stems, ["bass", "other", "vocals"])
+
+    log.info("Transcribing full polyphony (%s backend)...", cfg.transcriber)
+    pedal = []
+    if cfg.transcriber == "piano":
+        notes, pedal = transcription.transcribe_piano(
+            audio, sr, min_note_len_ms=cfg.min_note_len_ms, device=cfg.device
+        )
+    else:
+        notes = transcription.transcribe(
+            audio,
+            sr,
+            onset_threshold=cfg.onset_threshold,
+            frame_threshold=cfg.frame_threshold,
+            min_note_len_ms=cfg.min_note_len_ms,
+        )
+    result.parts.append(Part(name="Piano", program=0, notes=notes, pedal=pedal))
+
+
 def _run_orchestral(result: AnalysisResult, m: _Material, sr: int, cfg: Config):
     log.info("Transcribing orchestral body...")
     body_notes = transcription.transcribe(
@@ -199,6 +232,8 @@ def _run_orchestral(result: AnalysisResult, m: _Material, sr: int, cfg: Config):
         onset_threshold=cfg.onset_threshold,
         frame_threshold=cfg.frame_threshold,
         min_note_len_ms=cfg.min_note_len_ms,
+        backend=cfg.transcriber,
+        device=cfg.device,
     )
     sections = orchestral.classify_notes(
         body_notes, m.pitched, sr, strategy=cfg.orchestral_strategy

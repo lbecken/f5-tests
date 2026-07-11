@@ -35,6 +35,7 @@ run offline on CPU (GPU used if available):
 |------|-------------------|-----|
 | Source separation | [Demucs v4 (htdemucs)](https://github.com/adefossez/demucs), Meta | Reference open-source model for vocals/drums/bass/other stems |
 | Note transcription | [Basic Pitch](https://github.com/spotify/basic-pitch), Spotify (ICASSP 2022) | Lightweight polyphonic audio-to-MIDI network, runs via ONNX/TF locally, outputs onsets, offsets, amplitude and pitch bends |
+| Piano transcription (optional) | [TransKun v2](https://github.com/Yujia-Yan/Skipping-The-Frame-Level) (Yan et al., NeurIPS 2021) | Piano-specific model trained on MAESTRO; much higher accuracy on piano recordings, with per-note velocities and sustain-pedal capture |
 | Tempo & beats | [librosa](https://librosa.org) beat tracker (flexible tightness) | Follows tempo changes/rubato; beat grid drives the tempo map and quantization |
 | Chords | CQT chroma + template matching + Viterbi | Transparent, tunable, no extra model download |
 | Drums | Per-band (low/mid/high) spectral onset flux | Handles simultaneous kick + hi-hat hits |
@@ -46,10 +47,11 @@ Requires Python 3.9–3.11 (Basic Pitch does not support 3.12 yet).
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install ./audio2midi
+pip install './audio2midi[piano]'   # optional: TransKun piano model
 ```
 
 The first run downloads the Demucs weights (~80 MB) to the torch cache.
-The Basic Pitch model ships inside the pip package.
+The Basic Pitch and TransKun models ship inside their pip packages.
 
 ## Usage
 
@@ -59,6 +61,9 @@ audio2midi piece.wav -m orchestral        # woodwinds/brass/strings/basses/percu
 audio2midi song.flac -m melody            # just the tune
 audio2midi song.wav -m harmony            # just the chords
 audio2midi song.wav -m 2-section -o out.mid
+
+# solo piano: note-for-note transcription with the piano-specific model
+audio2midi sonata.wav -m full --transcriber piano --no-separation
 ```
 
 Output defaults to `<input>.<mode>.mid`. The file is a format-1 MIDI with
@@ -75,6 +80,7 @@ events, which most DAWs and notation apps display.
 | `2-section` | Melody, Harmony |
 | `melody` | Melody only |
 | `harmony` | Harmony only (chords) |
+| `full` (alias `piano`) | Complete note-for-note transcription on one track, including sustain pedal (CC64) when the piano transcriber is used |
 
 ### Useful options
 
@@ -85,6 +91,10 @@ events, which most DAWs and notation apps display.
                            beat-aware, so it follows tempo drift in the recording
 --melody-source auto|vocals|instrumental
                            auto uses vocals when they carry enough energy
+--transcriber basic-pitch|piano
+                           'piano' = TransKun, far more accurate on piano
+                           recordings (real velocities, pedal); needs the
+                           [piano] extra
 --chord-vocab triads|sevenths
 --orchestral-strategy timbre|register
 --no-separation            skip Demucs (for already-isolated material);
@@ -132,6 +142,19 @@ multi-instrument transcription but is JAX-based and impractical to run
 locally; Spotify's Basic Pitch is the best quality/weight trade-off and is
 what several commercial converters build on.
 
+**Piano gets its own model.** General-purpose transcribers plateau on
+piano's dense polyphony. The optional `--transcriber piano` backend runs
+[TransKun v2](https://github.com/Yujia-Yan/Skipping-The-Frame-Level)
+("Skipping the Frame-Level: Event-Based Piano Transcription With Neural
+Semi-CRFs"), trained on the MAESTRO dataset — state-of-the-art-class
+accuracy with genuine per-note MIDI velocities and sustain-pedal events
+(written as CC64). It was chosen over ByteDance's high-resolution piano
+model because its weights ship inside the pip package (no runtime
+checkpoint download) and its benchmark results are as good or better. For
+solo piano recordings use `-m full --transcriber piano --no-separation`:
+the model sees the untouched signal, and the output is a single Piano
+track with pedal, ready for notation software.
+
 **Orchestral mode is heuristic.** True orchestral *family* separation
 (strings vs. woodwinds vs. brass) is an open research problem — datasets
 and models exist ([SynthSOD](https://arxiv.org/html/2409.10995v1),
@@ -158,8 +181,10 @@ drift, and playback timing still matches the recording.
 
 ## Limitations
 
-* Transcription quality tracks Basic Pitch's: dense polyphony, heavy
-  distortion/reverb, and extreme registers reduce accuracy.
+* Transcription quality tracks the chosen backend's: for Basic Pitch,
+  dense polyphony, heavy distortion/reverb and extreme registers reduce
+  accuracy; the piano backend is excellent on piano but wrong for other
+  instruments.
 * One global time signature is written (tempo changes are mapped, meter
   changes are not).
 * Drum vocabulary is kick/snare/hat/crash; toms and cymbal nuances land on

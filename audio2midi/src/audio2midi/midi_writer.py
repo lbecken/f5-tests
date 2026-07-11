@@ -73,10 +73,13 @@ def _build(
 ) -> mido.MidiFile:
     # Pickup notes before the first detected beat get negative beat
     # positions; shift everything right by whole beats so ticks stay >= 0.
+    # Sub-tenth-of-a-beat negatives (onset jitter around beat one) are just
+    # clamped to zero instead — shifting a whole beat for those would move
+    # the entire piece off the audio timeline.
     starts = [n.start for p in parts for n in p.notes]
     starts += [c.start for c in result.chords]
     min_beat = min((tmap.time_to_beat(t) for t in starts), default=0.0)
-    beat_offset = float(math.ceil(-min_beat)) if min_beat < 0 else 0.0
+    beat_offset = float(math.ceil(-min_beat)) if min_beat < -0.1 else 0.0
 
     def to_tick(t: float) -> int:
         return max(0, int(round((tmap.time_to_beat(t) + beat_offset) * TICKS_PER_BEAT)))
@@ -149,6 +152,19 @@ def _build(
             events.append(
                 (off, 2, mido.Message(
                     "note_off", note=int(n.pitch), velocity=0, channel=channel, time=0
+                ))
+            )
+        for start, end in part.pedal:
+            on = to_tick(start)
+            off = max(to_tick(end), on + 1)
+            events.append(
+                (on, 1, mido.Message(
+                    "control_change", control=64, value=110, channel=channel, time=0
+                ))
+            )
+            events.append(
+                (off, 1, mido.Message(
+                    "control_change", control=64, value=0, channel=channel, time=0
                 ))
             )
         mid.tracks.append(_to_track(events, name=part.name))

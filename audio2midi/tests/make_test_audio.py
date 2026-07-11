@@ -112,6 +112,51 @@ def render(n_bars=4, with_drums=True, bpm=BPM):
     return mix.astype(np.float32)
 
 
+def piano_note(pitch, dur, vel=0.5):
+    """Piano-ish tone: decaying inharmonic partials with a fast attack."""
+    f0 = midi_hz(pitch)
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for k in range(1, 9):
+        f = f0 * k * np.sqrt(1 + 0.0004 * k * k)
+        if f > SR / 2 - 500:
+            break
+        out += (0.7 ** k) * np.sin(2 * np.pi * f * t + 0.1 * k)
+    env = np.exp(-t * (2.5 + f0 / 300)) * (1 - np.exp(-t * 800))
+    return vel * out * env
+
+
+PIANO_BPM = 100.0
+PIANO_RH = [(72, 1), (74, 1), (76, 1), (79, 1), (76, 1), (74, 1), (72, 2),
+            (69, 1), (72, 1), (76, 1), (77, 1), (76, 1), (74, 1), (72, 2)]
+PIANO_LH = [[48, 55, 64], [45, 52, 60], [41, 48, 57], [43, 50, 59]]
+
+
+def render_piano():
+    """Two-hand piano piece at 100 BPM. Returns (audio, truth) where truth
+    is a list of (onset_seconds, midi_pitch)."""
+    beat = 60.0 / PIANO_BPM
+    total = int(16 * beat * SR) + SR
+    mix = np.zeros(total)
+    truth = []
+    tcur = 0.0
+    for p, beats in PIANO_RH:
+        seg = piano_note(p, beats * beat * 1.1, 0.55)
+        a = int(tcur * SR)
+        mix[a : a + len(seg)] += seg
+        truth.append((tcur, p))
+        tcur += beats * beat
+    for bar in range(4):
+        for p in PIANO_LH[bar % 4]:
+            seg = piano_note(p, 4 * beat, 0.4)
+            a = int(bar * 4 * beat * SR)
+            mix[a : a + len(seg)] += seg
+            truth.append((bar * 4 * beat, p))
+    mix /= max(np.max(np.abs(mix)), 1e-9) / 0.8
+    return mix.astype(np.float32), truth
+
+
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "test_song.wav"
     bars = int(sys.argv[2]) if len(sys.argv) > 2 else 4

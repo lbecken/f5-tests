@@ -9,3 +9,5 @@ demucs>=4.0
 torch>=2.0
 torchaudio
 click>=8.0
+# Optional, for --transcriber piano (or: pip install 'audio2midi[piano]'):
+# transkun>=2.0

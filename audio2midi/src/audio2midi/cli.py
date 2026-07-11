@@ -21,6 +21,8 @@ MODE_ALIASES = {
     "harmony": "harmony",
     "harmony-only": "harmony",
     "chords": "harmony",
+    "full": "full",
+    "piano": "full",
 }
 
 
@@ -55,6 +57,15 @@ MODE_ALIASES = {
     default="auto",
     show_default=True,
     help="Which stem carries the melody.",
+)
+@click.option(
+    "--transcriber",
+    type=click.Choice(["basic-pitch", "piano"]),
+    default="basic-pitch",
+    show_default=True,
+    help="Note transcription model. 'piano' uses TransKun, a piano-specific "
+    "model with much higher accuracy on piano recordings (needs the "
+    "audio2midi[piano] extra).",
 )
 @click.option(
     "--chord-vocab",
@@ -127,13 +138,16 @@ MODE_ALIASES = {
     "the performance.",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Verbose logging.")
+@click.pass_context
 def main(
+    ctx,
     input_file,
     output,
     mode,
     bpm,
     quantize,
     melody_source,
+    transcriber,
     chord_vocab,
     orchestral_strategy,
     no_separation,
@@ -156,6 +170,9 @@ def main(
       2-section    melody + harmony
       melody       melody line only
       harmony      chords only (labels embedded as lyric events)
+      full         complete note-for-note transcription on one track
+                   (pairs well with --transcriber piano --no-separation
+                   for solo piano recordings; captures sustain pedal)
     """
     logging.basicConfig(
         level=logging.INFO if verbose else logging.WARNING,
@@ -163,6 +180,16 @@ def main(
     )
 
     canonical_mode = MODE_ALIASES[mode.lower()]
+
+    # The piano model resolves much shorter notes (trills, grace notes) than
+    # the default floor tuned for Basic Pitch; relax it unless the user set
+    # an explicit value.
+    if (
+        transcriber == "piano"
+        and ctx.get_parameter_source("min_note_len")
+        == click.core.ParameterSource.DEFAULT
+    ):
+        min_note_len = 30.0
 
     try:
         num, den = (int(x) for x in time_signature.split("/"))
@@ -184,6 +211,7 @@ def main(
         onset_threshold=onset_threshold,
         frame_threshold=frame_threshold,
         min_note_len_ms=min_note_len,
+        transcriber=transcriber,
         stems_dir=Path(stems_dir) if stems_dir else None,
         time_signature=(num, den),
         separate_files=separate_files,

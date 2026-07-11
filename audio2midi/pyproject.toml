@@ -22,6 +22,9 @@ dependencies = [
     "click>=8.0",
 ]
 
+[project.optional-dependencies]
+piano = ["transkun>=2.0"]
+
 [project.scripts]
 audio2midi = "audio2midi.cli:main"
 

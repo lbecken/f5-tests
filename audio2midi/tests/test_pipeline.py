@@ -172,6 +172,46 @@ def test_tempo_map():
           f"{hits}/32 onsets aligned ok")
 
 
+def test_piano_transcriber():
+    """Full mode with the TransKun piano model on a synthetic piano piece."""
+    try:
+        import transkun  # noqa: F401
+    except ImportError:
+        print("  piano: transkun not installed, skipping (pip install "
+              "'audio2midi[piano]')")
+        return
+
+    import pretty_midi
+    import soundfile as sf
+
+    from audio2midi.pipeline import Config, transcribe_file
+
+    audio, truth = synth.render_piano()
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = Path(tmp) / "piano.wav"
+        sf.write(wav, audio, SR)
+        out = Path(tmp) / "piano.mid"
+        cfg = Config(
+            mode="full",
+            transcriber="piano",
+            no_separation=True,
+            quantize=0,          # compare raw timings against truth
+            min_note_len_ms=30.0,
+            device="cpu",
+        )
+        transcribe_file(wav, out, cfg)
+        pm = pretty_midi.PrettyMIDI(str(out))
+        assert len(pm.instruments) == 1 and pm.instruments[0].name == "Piano"
+        det = [(n.start, n.pitch) for n in pm.instruments[0].notes]
+        score = _f1(det, truth, tol=0.12)
+        assert score >= 0.85, f"piano F1 {score:.2f} too low"
+        # Dynamics must survive: the LH (vel 0.4) should be quieter than RH.
+        vels = [n.velocity for n in pm.instruments[0].notes]
+        assert max(vels) - min(vels) >= 10, "velocities look flat"
+    print(f"  piano: F1={score:.2f} over {len(det)} notes, dynamic range "
+          f"{min(vels)}-{max(vels)} ok")
+
+
 if __name__ == "__main__":
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):

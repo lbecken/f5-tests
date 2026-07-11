@@ -31,6 +31,7 @@ class Part:
     program: int = 0            # General MIDI program number
     is_drum: bool = False
     notes: List[NoteEvent] = field(default_factory=list)
+    pedal: List[tuple] = field(default_factory=list)  # (start, end) sustain
 
 
 @dataclass
