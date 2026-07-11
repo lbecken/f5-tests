@@ -5,6 +5,7 @@ export function Toolbar({
   onSave,
   onExportPng,
   onExportSvg,
+  onExportText,
   onExportLibrary,
   onToggleTheme,
 }: {
@@ -14,6 +15,7 @@ export function Toolbar({
   onSave: () => void;
   onExportPng: () => void;
   onExportSvg: () => void;
+  onExportText: () => void;
   onExportLibrary: () => void;
   onToggleTheme: () => void;
 }) {
@@ -43,6 +45,12 @@ export function Toolbar({
         <span className="divider" />
         <button onClick={onExportPng}>PNG</button>
         <button onClick={onExportSvg}>SVG</button>
+        <button
+          onClick={onExportText}
+          title="Export the diagram as Mermaid or PlantUML text"
+        >
+          Text
+        </button>
         <button
           onClick={onExportLibrary}
           title="Download all UML shapes as an .excalidrawlib library — load it on excalidraw.com or any Excalidraw app"

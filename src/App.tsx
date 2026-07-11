@@ -21,6 +21,7 @@ import {
 import { Palette, STENCIL_MIME } from "./components/Palette";
 import { Tabs } from "./components/Tabs";
 import { TemplateDialog } from "./components/TemplateDialog";
+import { TextExportDialog } from "./components/TextExportDialog";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
 import {
@@ -64,6 +65,9 @@ export default function App() {
   const [docs, setDocs] = useState<DocMeta[]>(workspace.docs);
   const [activeId, setActiveId] = useState(workspace.activeId);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [textExportElements, setTextExportElements] = useState<
+    readonly object[] | null
+  >(null);
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
 
@@ -305,6 +309,17 @@ export default function App() {
     [docs, activeId],
   );
 
+  const openTextExport = useCallback(() => {
+    const api = apiRef.current;
+    if (!api) return;
+    const elements = api.getSceneElements();
+    if (elements.length === 0) {
+      window.alert("Nothing to export — the canvas is empty.");
+      return;
+    }
+    setTextExportElements(elements);
+  }, []);
+
   const handleExportLibrary = useCallback(() => {
     downloadBlob(
       new Blob([umlLibraryJSON()], { type: "application/json" }),
@@ -328,6 +343,7 @@ export default function App() {
         onSave={handleSave}
         onExportPng={() => handleExport("png")}
         onExportSvg={() => handleExport("svg")}
+        onExportText={openTextExport}
         onExportLibrary={handleExportLibrary}
         onToggleTheme={toggleTheme}
       />
@@ -387,6 +403,15 @@ export default function App() {
           </Excalidraw>
         </div>
       </div>
+      {textExportElements && (
+        <TextExportDialog
+          elements={textExportElements}
+          onDownload={(content, filename) => {
+            downloadBlob(new Blob([content], { type: "text/plain" }), filename);
+          }}
+          onClose={() => setTextExportElements(null)}
+        />
+      )}
       {showTemplates && (
         <TemplateDialog
           dark={dark}

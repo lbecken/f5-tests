@@ -32,6 +32,11 @@ existing UML tools and libraries that led to this design.
 - **Save / Open** standard `.excalidraw` files (interoperable with
   excalidraw.com); opening a file adds it as a new tab
 - **Export** the current tab to PNG and SVG
+- **Text export to Mermaid / PlantUML** — the "Text" button reconstructs a
+  best-effort semantic model from the drawing (compartment stacks → classes,
+  arrowheads → relationship kinds, bindings/proximity → connections) and
+  generates a Mermaid `classDiagram`/`flowchart` or PlantUML source you can
+  copy or download (`.mmd`/`.puml`)
 - **UML shape library export** — all stencils are preloaded into the
   editor's built-in Library panel, and the "UML lib" button downloads them
   as a standard `.excalidrawlib` file you can load on excalidraw.com or in
@@ -72,6 +77,7 @@ src/
   App.tsx                        app shell: canvas, tabs, insert/save/load/export
   workspace.ts                   multi-document store on top of localStorage
   library.ts                     stencils as an Excalidraw library (.excalidrawlib)
+  textExport.ts                  scene -> Mermaid / PlantUML text generator
   components/Palette.tsx         UML stencil sidebar (search, groups, previews)
   components/Toolbar.tsx         top bar (New / Open / Save / PNG / SVG / theme)
   components/Tabs.tsx            diagram tabs (switch, rename, close, add)

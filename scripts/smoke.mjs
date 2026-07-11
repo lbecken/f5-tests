@@ -94,6 +94,30 @@ if (!templateElements || templateElements < 10) {
   fail(`expected a populated template doc, got ${templateElements}`);
 }
 
+// Text export on the class template: Mermaid classDiagram with inheritance
+await page.click('button:has-text("Text")');
+await page.waitForSelector(".text-export-output", { timeout: 10000 });
+const mermaid = await page.inputValue(".text-export-output");
+console.log("mermaid export:\n" + mermaid);
+if (!mermaid.includes("classDiagram")) fail("expected Mermaid classDiagram");
+if (!mermaid.includes("Customer")) fail("expected Customer class in export");
+if (!mermaid.includes("--|>")) fail("expected inheritance relation in export");
+if (!mermaid.includes("places")) fail("expected association label in export");
+await page.click('.text-export-controls label:has-text("PlantUML")');
+await page.waitForTimeout(300);
+const plantuml = await page.inputValue(".text-export-output");
+if (!plantuml.startsWith("@startuml")) fail("expected PlantUML output");
+if (!plantuml.includes("class \"Customer\"")) {
+  fail("expected PlantUML class Customer");
+}
+const textDownloadPromise = page.waitForEvent("download", { timeout: 15000 });
+await page.click('.text-export-actions button:has-text("Download")');
+const textDownload = await textDownloadPromise;
+console.log("text export download:", textDownload.suggestedFilename());
+await page.screenshot({ path: `${shots}/08-text-export.png` });
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+
 // Switch back to the first tab — its scene must come back
 await page.click(".tab >> nth=0");
 await page.waitForTimeout(800);
