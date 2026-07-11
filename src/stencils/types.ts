@@ -6,6 +6,7 @@ export type Skeleton = NonNullable<
 >[number];
 
 export type DiagramKind =
+  | "common"
   | "class"
   | "package"
   | "sequence"

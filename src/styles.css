@@ -311,3 +311,216 @@ body {
     width: 190px;
   }
 }
+
+/* ---- Tabs ---- */
+
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  padding: 6px 10px 0;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tab:hover {
+  background: var(--card-hover);
+}
+
+.tab.active {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+  font-weight: 600;
+  position: relative;
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--bg);
+}
+
+.tab-close {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.tab-rename {
+  font: inherit;
+  font-size: 13px;
+  width: 110px;
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+}
+
+.tab-add {
+  appearance: none;
+  border: 1px dashed var(--border);
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  padding: 5px 10px;
+  margin-bottom: 5px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.tab-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ---- Template dialog ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.modal {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  width: min(720px, calc(100vw - 40px));
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -0.01em;
+}
+
+.modal-close {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--card-hover);
+  color: var(--text);
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.template-card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.08s ease;
+}
+
+.template-card:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.template-preview {
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.template-preview svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.template-blank {
+  font-size: 40px;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.template-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.template-desc {
+  font-size: 12px;
+  color: var(--muted);
+}

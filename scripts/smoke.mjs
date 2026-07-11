@@ -11,6 +11,11 @@ const executablePath =
   process.env.CHROMIUM_PATH ??
   "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
+const fail = (msg) => {
+  console.error(`FAIL: ${msg}`);
+  process.exit(1);
+};
+
 const browser = await chromium.launch({ executablePath });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
@@ -18,6 +23,16 @@ page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(`console: ${m.text()}`);
 });
+// Auto-accept confirm() dialogs (tab close)
+page.on("dialog", (d) => d.accept());
+
+const activeDocElementCount = () =>
+  page.evaluate(() => {
+    const active = localStorage.getItem("umldraw.activeDoc");
+    const raw = localStorage.getItem(`umldraw.doc.${active}`);
+    if (!raw) return null;
+    return JSON.parse(raw).elements.length;
+  });
 
 await page.goto(url, { waitUntil: "networkidle" });
 await page.waitForSelector(".excalidraw", { timeout: 20000 });
@@ -26,7 +41,7 @@ await page.waitForTimeout(1500);
 await page.screenshot({ path: `${shots}/01-initial.png` });
 
 // Click-insert a Class stencil
-await page.click('.stencil-card[title^="Class"]');
+await page.click('.stencil-card[title^="Class "]');
 await page.waitForTimeout(600);
 
 // Open the Sequence group and insert a lifeline
@@ -54,14 +69,43 @@ await page.evaluate(() => {
 await page.waitForTimeout(600);
 await page.screenshot({ path: `${shots}/02-inserted.png` });
 
-// Verify localStorage autosave captured elements
+// Verify per-document autosave captured elements
 await page.waitForTimeout(1200);
-const saved = await page.evaluate(() => {
-  const raw = localStorage.getItem("umldraw.scene");
-  if (!raw) return null;
-  return JSON.parse(raw).elements.length;
-});
-console.log("autosaved element count:", saved);
+const saved = await activeDocElementCount();
+console.log("autosaved element count (doc 1):", saved);
+// 3 class compartments + 2 lifeline parts + 1 use case (+ bound label texts)
+if (!saved || saved < 6) fail(`expected >= 6 autosaved elements, got ${saved}`);
+
+// New tab from the "Class diagram" template
+await page.click('.topbar-actions button:has-text("New")');
+await page.waitForSelector(".template-grid", { timeout: 10000 });
+await page.waitForTimeout(1000);
+await page.screenshot({ path: `${shots}/05-templates.png` });
+await page.click('.template-card:has-text("Class diagram")');
+await page.waitForTimeout(1000);
+await page.screenshot({ path: `${shots}/06-template-tab.png` });
+
+const tabCount = await page.locator(".tab").count();
+console.log("tab count after template:", tabCount);
+if (tabCount !== 2) fail(`expected 2 tabs, got ${tabCount}`);
+const templateElements = await activeDocElementCount();
+console.log("template doc element count:", templateElements);
+if (!templateElements || templateElements < 10) {
+  fail(`expected a populated template doc, got ${templateElements}`);
+}
+
+// Switch back to the first tab — its scene must come back
+await page.click(".tab >> nth=0");
+await page.waitForTimeout(800);
+const backCount = await activeDocElementCount();
+console.log("doc 1 element count after switching back:", backCount);
+if (backCount !== saved) fail(`doc 1 changed: ${saved} -> ${backCount}`);
+
+// Close the template tab (auto-accepted confirm)
+await page.click(".tab >> nth=1 >> .tab-close");
+await page.waitForTimeout(600);
+const tabsAfterClose = await page.locator(".tab").count();
+if (tabsAfterClose !== 1) fail(`expected 1 tab after close, got ${tabsAfterClose}`);
 
 // PNG export triggers a download
 const downloadPromise = page.waitForEvent("download", { timeout: 15000 });
@@ -82,10 +126,4 @@ await page.screenshot({ path: `${shots}/04-search.png` });
 console.log("screenshots in:", shots);
 console.log("errors:", errors.length ? errors : "none");
 await browser.close();
-
-// 3 class compartments + 2 lifeline parts + 1 use case (+ bound label texts)
-if (!saved || saved < 6) {
-  console.error("FAIL: expected at least 6 autosaved elements, got", saved);
-  process.exit(1);
-}
 console.log("SMOKE OK");

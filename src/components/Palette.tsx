@@ -1,33 +1,9 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { convertToExcalidrawElements, exportToSvg } from "@excalidraw/excalidraw";
+import { memo, useMemo, useState } from "react";
 import { STENCIL_GROUPS } from "../stencils";
 import type { Stencil } from "../stencils/types";
+import { useSkeletonPreview } from "./previews";
 
 export const STENCIL_MIME = "application/x-uml-stencil";
-
-const previewCache = new Map<string, string>();
-
-async function renderPreview(stencil: Stencil, dark: boolean): Promise<string> {
-  const key = `${stencil.id}:${dark ? "dark" : "light"}`;
-  const cached = previewCache.get(key);
-  if (cached) return cached;
-  const svg = await exportToSvg({
-    elements: convertToExcalidrawElements(stencil.elements),
-    appState: {
-      exportBackground: false,
-      exportWithDarkMode: dark,
-      exportEmbedScene: false,
-    },
-    files: null,
-    exportPadding: 6,
-  });
-  svg.setAttribute("width", "100%");
-  svg.setAttribute("height", "100%");
-  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-  const html = svg.outerHTML;
-  previewCache.set(key, html);
-  return html;
-}
 
 const StencilCard = memo(function StencilCard({
   stencil,
@@ -38,18 +14,7 @@ const StencilCard = memo(function StencilCard({
   dark: boolean;
   onInsert: (stencil: Stencil) => void;
 }) {
-  const [svg, setSvg] = useState<string>("");
-  const alive = useRef(true);
-
-  useEffect(() => {
-    alive.current = true;
-    renderPreview(stencil, dark).then((html) => {
-      if (alive.current) setSvg(html);
-    });
-    return () => {
-      alive.current = false;
-    };
-  }, [stencil, dark]);
+  const svg = useSkeletonPreview(stencil.id, stencil.elements, dark);
 
   return (
     <button
@@ -78,7 +43,10 @@ export function Palette({
   dark: boolean;
   onInsert: (stencil: Stencil) => void;
 }) {
-  const [open, setOpen] = useState<Record<string, boolean>>({ class: true });
+  const [open, setOpen] = useState<Record<string, boolean>>({
+    common: true,
+    class: true,
+  });
   const [query, setQuery] = useState("");
 
   const groups = useMemo(() => {

@@ -1,91 +1,58 @@
-import type { Skeleton, Stencil, StencilGroup } from "./types";
+import type { Stencil, StencilGroup } from "./types";
+import {
+  BLUE,
+  DASHED,
+  FILLED,
+  GREEN,
+  NOTE,
+  PEACH,
+  ROUNDED,
+  TEAL,
+  VIOLET,
+  WHITE,
+  YELLOW,
+  actor,
+  arrow,
+  classBox,
+  diamond,
+  ellipse,
+  label,
+  line,
+  rect,
+  text,
+} from "./builders";
 
-const STROKE = "#1e1e1e";
-const WHITE = "#ffffff";
+// ---------------------------------------------------------------------------
+// Common (shared across all diagram types)
+// ---------------------------------------------------------------------------
 
-// Accent fill per diagram family (Excalidraw open-color light shades).
-const BLUE = "#d0ebff"; // class
-const YELLOW = "#fff3bf"; // package
-const VIOLET = "#e5dbff"; // sequence
-const GREEN = "#d3f9d8"; // activity
-const TEAL = "#c3fae8"; // state
-const PEACH = "#ffe8cc"; // use case
-const NOTE = "#fff9db";
-
-const base = {
-  strokeColor: STROKE,
-  strokeWidth: 1,
-  fillStyle: "solid",
-  roughness: 1,
-} as const;
-
-const rect = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  opts: Record<string, unknown> = {},
-): Skeleton =>
-  ({ type: "rectangle", x, y, width, height, ...base, ...opts }) as Skeleton;
-
-const ellipse = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  opts: Record<string, unknown> = {},
-): Skeleton =>
-  ({ type: "ellipse", x, y, width, height, ...base, ...opts }) as Skeleton;
-
-const diamond = (
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  opts: Record<string, unknown> = {},
-): Skeleton =>
-  ({ type: "diamond", x, y, width, height, ...base, ...opts }) as Skeleton;
-
-const line = (
-  x: number,
-  y: number,
-  points: number[][],
-  opts: Record<string, unknown> = {},
-): Skeleton => ({ type: "line", x, y, points, ...base, ...opts }) as Skeleton;
-
-const arrow = (
-  x: number,
-  y: number,
-  points: number[][],
-  opts: Record<string, unknown> = {},
-): Skeleton => ({ type: "arrow", x, y, points, ...base, ...opts }) as Skeleton;
-
-const text = (
-  x: number,
-  y: number,
-  content: string,
-  opts: Record<string, unknown> = {},
-): Skeleton =>
-  ({ type: "text", x, y, text: content, fontSize: 14, ...opts }) as Skeleton;
-
-const label = (t: string, opts: Record<string, unknown> = {}) => ({
-  text: t,
-  fontSize: 15,
-  ...opts,
-});
-
-const ROUNDED = { roundness: { type: 3 } };
-const DASHED = { strokeStyle: "dashed" };
-const FILLED = { backgroundColor: STROKE };
-
-/** Stick figure used by sequence + use case diagrams. */
-const actor = (name: string): Skeleton[] => [
-  ellipse(19, 0, 26, 26, { backgroundColor: WHITE }),
-  line(32, 26, [[0, 0], [0, 38]]),
-  line(8, 38, [[0, 0], [48, 0]]),
-  line(32, 64, [[0, 0], [-20, 28]]),
-  line(32, 64, [[0, 0], [20, 28]]),
-  text(12, 98, name),
+const commonStencils: Stencil[] = [
+  {
+    id: "note",
+    name: "Note",
+    elements: [
+      rect(0, 0, 200, 80, {
+        backgroundColor: NOTE,
+        label: label("Note…", { fontSize: 14 }),
+      }),
+    ],
+  },
+  {
+    id: "text-label",
+    name: "Text",
+    elements: [text(0, 0, "Label", { fontSize: 16 })],
+  },
+  {
+    id: "frame-title",
+    name: "Title frame",
+    elements: [
+      rect(0, 0, 360, 240, { backgroundColor: "transparent" }),
+      rect(0, 0, 120, 30, {
+        backgroundColor: WHITE,
+        label: label("Diagram", { fontSize: 14 }),
+      }),
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -96,13 +63,30 @@ const classStencils: Stencil[] = [
   {
     id: "class",
     name: "Class",
+    elements: classBox(
+      0,
+      0,
+      "ClassName",
+      "+ attribute: Type",
+      "+ operation(): Type",
+    ),
+  },
+  {
+    id: "class-simple",
+    name: "Class (simple)",
     elements: [
-      rect(0, 0, 220, 44, { backgroundColor: BLUE, label: label("ClassName") }),
-      rect(0, 44, 220, 52, {
-        backgroundColor: WHITE,
-        label: label("+ attribute: Type", { fontSize: 14 }),
+      rect(0, 0, 180, 52, { backgroundColor: BLUE, label: label("ClassName") }),
+    ],
+  },
+  {
+    id: "abstract-class",
+    name: "Abstract class",
+    elements: [
+      rect(0, 0, 220, 60, {
+        backgroundColor: BLUE,
+        label: label("«abstract»\nClassName"),
       }),
-      rect(0, 96, 220, 52, {
+      rect(0, 60, 220, 52, {
         backgroundColor: WHITE,
         label: label("+ operation(): Type", { fontSize: 14 }),
       }),
@@ -137,14 +121,9 @@ const classStencils: Stencil[] = [
     ],
   },
   {
-    id: "note",
-    name: "Note",
-    elements: [
-      rect(0, 0, 200, 80, {
-        backgroundColor: NOTE,
-        label: label("Note…", { fontSize: 14 }),
-      }),
-    ],
+    id: "multiplicity",
+    name: "Multiplicity",
+    elements: [text(0, 0, "1..*", { fontSize: 14 })],
   },
   {
     id: "association",
@@ -260,6 +239,11 @@ const packageStencils: Stencil[] = [
 
 const sequenceStencils: Stencil[] = [
   { id: "seq-actor", name: "Actor", elements: actor("Actor") },
+  {
+    id: "actor-lifeline",
+    name: "Actor lifeline",
+    elements: [...actor("Actor"), line(32, 120, [[0, 0], [0, 220]], DASHED)],
+  },
   {
     id: "lifeline",
     name: "Lifeline",
@@ -537,6 +521,7 @@ const useCaseStencils: Stencil[] = [
 ];
 
 export const STENCIL_GROUPS: StencilGroup[] = [
+  { kind: "common", title: "Common", stencils: commonStencils },
   { kind: "class", title: "Class", stencils: classStencils },
   { kind: "package", title: "Package", stencils: packageStencils },
   { kind: "sequence", title: "Sequence", stencils: sequenceStencils },

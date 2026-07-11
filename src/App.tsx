@@ -14,6 +14,8 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@excalidraw/excalidraw/index.css";
 
 import { Palette, STENCIL_MIME } from "./components/Palette";
+import { Tabs } from "./components/Tabs";
+import { TemplateDialog } from "./components/TemplateDialog";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
 import {
@@ -21,24 +23,19 @@ import {
   translateSkeleton,
   type Stencil,
 } from "./stencils/types";
+import type { Template } from "./templates";
+import {
+  deleteDocScene,
+  loadDocScene,
+  loadWorkspace,
+  newDocId,
+  nextDocName,
+  persistWorkspace,
+  saveDocScene,
+  type DocMeta,
+} from "./workspace";
 
-const SCENE_KEY = "umldraw.scene";
 const THEME_KEY = "umldraw.theme";
-
-function loadInitialData() {
-  try {
-    const raw = localStorage.getItem(SCENE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    return {
-      elements: data.elements ?? [],
-      appState: { ...(data.appState ?? {}), collaborators: new Map() },
-      scrollToContent: true,
-    };
-  } catch {
-    return null;
-  }
-}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -58,7 +55,137 @@ export default function App() {
   const [dark, setDark] = useState(
     () => localStorage.getItem(THEME_KEY) === "dark",
   );
-  const [initialData] = useState(loadInitialData);
+  const [workspace] = useState(loadWorkspace);
+  const [docs, setDocs] = useState<DocMeta[]>(workspace.docs);
+  const [activeId, setActiveId] = useState(workspace.activeId);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
+  const [initialData] = useState(() => {
+    const scene = loadDocScene(workspace.activeId);
+    if (!scene) return null;
+    return {
+      elements: scene.elements as never[],
+      appState: { ...(scene.appState ?? {}), collaborators: new Map() },
+      scrollToContent: true,
+    };
+  });
+
+  const serializeCurrent = useCallback(() => {
+    const api = apiRef.current;
+    if (!api) return null;
+    return serializeAsJSON(
+      api.getSceneElements(),
+      api.getAppState(),
+      api.getFiles(),
+      "local",
+    );
+  }, []);
+
+  /** Immediately persist the current scene to the active document. */
+  const flushSave = useCallback(() => {
+    clearTimeout(saveTimer.current);
+    const json = serializeCurrent();
+    if (json) saveDocScene(activeIdRef.current, json);
+  }, [serializeCurrent]);
+
+  const scheduleAutosave = useCallback(() => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const json = serializeCurrent();
+      if (json) saveDocScene(activeIdRef.current, json);
+    }, 500);
+  }, [serializeCurrent]);
+
+  /** Replace the canvas contents with the given document's scene. */
+  const loadDocIntoCanvas = useCallback((id: string) => {
+    const api = apiRef.current;
+    if (!api) return;
+    const scene = loadDocScene(id);
+    api.resetScene();
+    if (scene && scene.elements.length > 0) {
+      api.updateScene({
+        elements: scene.elements as never[],
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      api.scrollToContent(undefined, { fitToContent: true });
+    }
+    api.history.clear();
+  }, []);
+
+  const switchDoc = useCallback(
+    (id: string) => {
+      if (id === activeIdRef.current) return;
+      flushSave();
+      setActiveId(id);
+      setDocs((d) => {
+        persistWorkspace(d, id);
+        return d;
+      });
+      loadDocIntoCanvas(id);
+    },
+    [flushSave, loadDocIntoCanvas],
+  );
+
+  const createDoc = useCallback(
+    (template: Template | null) => {
+      flushSave();
+      const id = newDocId();
+      if (template) {
+        const elements = convertToExcalidrawElements(template.elements, {
+          regenerateIds: false,
+        });
+        saveDocScene(id, JSON.stringify({ elements, appState: {} }));
+      }
+      setDocs((d) => {
+        const name = template ? template.name : nextDocName(d);
+        const docs = [...d, { id, name }];
+        persistWorkspace(docs, id);
+        return docs;
+      });
+      setActiveId(id);
+      loadDocIntoCanvas(id);
+      setShowTemplates(false);
+    },
+    [flushSave, loadDocIntoCanvas],
+  );
+
+  const closeDoc = useCallback(
+    (id: string) => {
+      const scene = loadDocScene(id);
+      const hasContent = (scene?.elements.length ?? 0) > 0;
+      if (
+        hasContent &&
+        !window.confirm("Close this tab? The diagram will be deleted.")
+      ) {
+        return;
+      }
+      deleteDocScene(id);
+      let next = docs.filter((doc) => doc.id !== id);
+      let nextActive = activeId;
+      if (next.length === 0) {
+        nextActive = newDocId();
+        next = [{ id: nextActive, name: "Diagram 1" }];
+      } else if (id === activeId) {
+        const idx = Math.max(0, docs.findIndex((doc) => doc.id === id) - 1);
+        nextActive = next[Math.min(idx, next.length - 1)].id;
+      }
+      setDocs(next);
+      setActiveId(nextActive);
+      if (id === activeId) loadDocIntoCanvas(nextActive);
+      persistWorkspace(next, nextActive);
+    },
+    [docs, activeId, loadDocIntoCanvas],
+  );
+
+  const renameDoc = useCallback((id: string, name: string) => {
+    setDocs((d) => {
+      const docs = d.map((doc) => (doc.id === id ? { ...doc, name } : doc));
+      persistWorkspace(docs, activeIdRef.current);
+      return docs;
+    });
+  }, []);
 
   const insertStencil = useCallback(
     (stencil: Stencil, at?: { clientX: number; clientY: number }) => {
@@ -93,106 +220,85 @@ export default function App() {
     [],
   );
 
-  const scheduleAutosave = useCallback(() => {
-    clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const api = apiRef.current;
-      if (!api) return;
-      try {
-        localStorage.setItem(
-          SCENE_KEY,
-          serializeAsJSON(
-            api.getSceneElements(),
-            api.getAppState(),
-            api.getFiles(),
-            "local",
-          ),
-        );
-      } catch {
-        // localStorage full or unavailable — autosave is best-effort.
-      }
-    }, 500);
-  }, []);
-
-  const handleNew = useCallback(() => {
-    const api = apiRef.current;
-    if (!api) return;
-    if (
-      api.getSceneElements().length > 0 &&
-      !window.confirm("Clear the canvas and start a new diagram?")
-    ) {
-      return;
-    }
-    api.resetScene();
-    localStorage.removeItem(SCENE_KEY);
-  }, []);
-
   const handleSave = useCallback(() => {
-    const api = apiRef.current;
-    if (!api) return;
-    const json = serializeAsJSON(
-      api.getSceneElements(),
-      api.getAppState(),
-      api.getFiles(),
-      "local",
-    );
+    const json = serializeCurrent();
+    if (!json) return;
+    const doc = docs.find((d) => d.id === activeId);
+    const name = (doc?.name ?? "diagram").replace(/[^\w.-]+/g, "-");
     downloadBlob(
       new Blob([json], { type: "application/json" }),
-      "diagram.excalidraw",
+      `${name}.excalidraw`,
     );
-  }, []);
+  }, [serializeCurrent, docs, activeId]);
 
-  const handleOpenFile = useCallback(async (file: File) => {
-    const api = apiRef.current;
-    if (!api) return;
-    try {
-      const restored = await loadFromBlob(file, null, null);
-      api.updateScene({
-        elements: restored.elements,
-        appState: restored.appState,
-        captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-      });
-      api.scrollToContent(undefined, { fitToContent: true });
-    } catch (error) {
-      window.alert(
-        `Could not open the file: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-  }, []);
+  const handleOpenFile = useCallback(
+    async (file: File) => {
+      try {
+        const restored = await loadFromBlob(file, null, null);
+        flushSave();
+        const id = newDocId();
+        saveDocScene(
+          id,
+          JSON.stringify({
+            elements: restored.elements,
+            appState: {},
+          }),
+        );
+        const name = file.name.replace(/\.(excalidraw|json)$/i, "");
+        setDocs((d) => {
+          const docs = [...d, { id, name: name || nextDocName(d) }];
+          persistWorkspace(docs, id);
+          return docs;
+        });
+        setActiveId(id);
+        loadDocIntoCanvas(id);
+      } catch (error) {
+        window.alert(
+          `Could not open the file: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+    [flushSave, loadDocIntoCanvas],
+  );
 
-  const handleExport = useCallback(async (format: "png" | "svg") => {
-    const api = apiRef.current;
-    if (!api) return;
-    const elements = api.getSceneElements();
-    if (elements.length === 0) {
-      window.alert("Nothing to export — the canvas is empty.");
-      return;
-    }
-    const appState = { ...api.getAppState(), exportBackground: true };
-    const files = api.getFiles();
-    if (format === "png") {
-      const blob = await exportToBlob({
-        elements,
-        appState,
-        files,
-        mimeType: "image/png",
-        exportPadding: 24,
-      });
-      downloadBlob(blob, "diagram.png");
-    } else {
-      const svg = await exportToSvg({
-        elements,
-        appState,
-        files,
-        exportPadding: 24,
-      });
-      const markup = new XMLSerializer().serializeToString(svg);
-      downloadBlob(
-        new Blob([markup], { type: "image/svg+xml" }),
-        "diagram.svg",
-      );
-    }
-  }, []);
+  const handleExport = useCallback(
+    async (format: "png" | "svg") => {
+      const api = apiRef.current;
+      if (!api) return;
+      const elements = api.getSceneElements();
+      if (elements.length === 0) {
+        window.alert("Nothing to export — the canvas is empty.");
+        return;
+      }
+      const appState = { ...api.getAppState(), exportBackground: true };
+      const files = api.getFiles();
+      const doc = docs.find((d) => d.id === activeId);
+      const name = (doc?.name ?? "diagram").replace(/[^\w.-]+/g, "-");
+      if (format === "png") {
+        const blob = await exportToBlob({
+          elements,
+          appState,
+          files,
+          mimeType: "image/png",
+          exportPadding: 24,
+        });
+        downloadBlob(blob, `${name}.png`);
+      } else {
+        const svg = await exportToSvg({
+          elements,
+          appState,
+          files,
+          exportPadding: 24,
+        });
+        const markup = new XMLSerializer().serializeToString(svg);
+        downloadBlob(
+          new Blob([markup], { type: "image/svg+xml" }),
+          `${name}.svg`,
+        );
+      }
+    },
+    [docs, activeId],
+  );
 
   const toggleTheme = useCallback(() => {
     setDark((d) => {
@@ -205,12 +311,20 @@ export default function App() {
     <div className={`app ${dark ? "dark" : ""}`}>
       <Toolbar
         dark={dark}
-        onNew={handleNew}
+        onNew={() => setShowTemplates(true)}
         onOpen={() => fileInputRef.current?.click()}
         onSave={handleSave}
         onExportPng={() => handleExport("png")}
         onExportSvg={() => handleExport("svg")}
         onToggleTheme={toggleTheme}
+      />
+      <Tabs
+        docs={docs}
+        activeId={activeId}
+        onSelect={switchDoc}
+        onClose={closeDoc}
+        onRename={renameDoc}
+        onAdd={() => setShowTemplates(true)}
       />
       <div className="main">
         <Palette dark={dark} onInsert={insertStencil} />
@@ -230,7 +344,10 @@ export default function App() {
             e.stopPropagation();
             const stencil = ALL_STENCILS.get(id);
             if (stencil) {
-              insertStencil(stencil, { clientX: e.clientX, clientY: e.clientY });
+              insertStencil(stencil, {
+                clientX: e.clientX,
+                clientY: e.clientY,
+              });
             }
           }}
         >
@@ -248,13 +365,21 @@ export default function App() {
             <WelcomeScreen>
               <WelcomeScreen.Center>
                 <WelcomeScreen.Center.Heading>
-                  Pick a UML shape from the left panel to get started
+                  Pick a UML shape from the left panel, or start from a
+                  template via “New”
                 </WelcomeScreen.Center.Heading>
               </WelcomeScreen.Center>
             </WelcomeScreen>
           </Excalidraw>
         </div>
       </div>
+      {showTemplates && (
+        <TemplateDialog
+          dark={dark}
+          onPick={createDoc}
+          onClose={() => setShowTemplates(false)}
+        />
+      )}
       <input
         ref={fileInputRef}
         type="file"
