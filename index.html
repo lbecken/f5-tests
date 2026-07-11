@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piano Practice</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="toolbar">
+      <div class="toolbar-row">
+        <span class="app-title">🎹 Piano Practice</span>
+
+        <div class="group">
+          <button id="btn-open" class="btn" title="Open a MIDI file (.mid)">Open MIDI…</button>
+          <input type="file" id="file-input" accept=".mid,.midi,audio/midi" hidden />
+          <button id="btn-demo" class="btn subtle" title="Load the bundled demo piece">Demo</button>
+        </div>
+
+        <div class="group mode-switch" role="radiogroup" aria-label="Mode">
+          <button id="mode-listen" class="btn mode active" title="Listen to the piece with the cursor following">Listening</button>
+          <button id="mode-practice" class="btn mode" title="Play along on your MIDI keyboard">Practice</button>
+        </div>
+
+        <div class="group transport">
+          <button id="btn-restart" class="btn icon" title="Restart (Home)">&#x23EE;&#xFE0E;</button>
+          <button id="btn-back" class="btn icon" title="Back 5s (&larr;)">&#x25C0;&#x25C0;&#xFE0E;</button>
+          <button id="btn-play" class="btn icon primary" title="Play / Pause (Space)" disabled>&#x25B6;&#xFE0E;</button>
+          <button id="btn-fwd" class="btn icon" title="Forward 5s (&rarr;)">&#x25B6;&#x25B6;&#xFE0E;</button>
+        </div>
+
+        <div class="group tempo-group">
+          <label for="tempo">Tempo</label>
+          <input type="range" id="tempo" min="25" max="150" value="100" step="5" />
+          <span id="tempo-label" class="mono">100%</span>
+          <button id="tempo-reset" class="btn subtle small" title="Reset tempo to 100%">reset</button>
+        </div>
+
+        <span id="clock" class="mono clock">0:00 / 0:00</span>
+      </div>
+
+      <div class="toolbar-row secondary">
+        <span id="piece-info" class="piece-info">No file loaded — open a MIDI file or try the demo.</span>
+
+        <div class="group practice-settings" id="practice-settings" hidden>
+          <label for="midi-in">MIDI input</label>
+          <select id="midi-in"><option value="">— no device —</option></select>
+          <label for="timing-window">Timing window</label>
+          <select id="timing-window">
+            <option value="200">Strict (±200 ms)</option>
+            <option value="350" selected>Normal (±350 ms)</option>
+            <option value="600">Relaxed (±600 ms)</option>
+          </select>
+          <label class="check"><input type="checkbox" id="guide-audio" checked /> Guide audio</label>
+          <span id="practice-stats" class="mono"></span>
+        </div>
+      </div>
+    </header>
+
+    <main id="score-wrap">
+      <div id="score-empty">
+        <p>Open a <strong>.mid</strong> file to see it on the grand staff.</p>
+        <p class="hint">Space = play/pause &nbsp;·&nbsp; &larr;/&rarr; = seek &nbsp;·&nbsp; Home = restart &nbsp;·&nbsp; click the score to jump</p>
+      </div>
+      <div id="score-panel" hidden>
+        <div id="score-header"></div>
+        <div id="score-scroll">
+          <div id="score-content"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="status-msg"></span>
+      <span class="credits">Piano: Salamander Grand (A. Holm, CC-BY) · Notation font: Bravura (Steinberg, OFL)</span>
+    </footer>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
