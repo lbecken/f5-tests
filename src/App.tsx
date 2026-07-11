@@ -22,6 +22,8 @@ import { Palette, STENCIL_MIME } from "./components/Palette";
 import { Tabs } from "./components/Tabs";
 import { TemplateDialog } from "./components/TemplateDialog";
 import { TextExportDialog } from "./components/TextExportDialog";
+import { TextImportDialog } from "./components/TextImportDialog";
+import { modelToSkeletons, parseDiagramText } from "./textImport";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
 import {
@@ -68,6 +70,7 @@ export default function App() {
   const [textExportElements, setTextExportElements] = useState<
     readonly object[] | null
   >(null);
+  const [showTextImport, setShowTextImport] = useState(false);
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
 
@@ -138,7 +141,7 @@ export default function App() {
   );
 
   const createDoc = useCallback(
-    (template: Template | null) => {
+    (template: { name: string; elements: Template["elements"] } | null) => {
       flushSave();
       const id = newDocId();
       if (template) {
@@ -309,6 +312,23 @@ export default function App() {
     [docs, activeId],
   );
 
+  const handleTextImport = useCallback(
+    (text: string): string | null => {
+      const parsed = parseDiagramText(text);
+      if ("error" in parsed) return parsed.error;
+      const skeletons = modelToSkeletons(parsed.model);
+      if (skeletons.length === 0) return "Nothing to import.";
+      const name =
+        parsed.format === "mermaid-flow"
+          ? "Imported flowchart"
+          : "Imported class diagram";
+      createDoc({ name, elements: skeletons });
+      setShowTextImport(false);
+      return null;
+    },
+    [createDoc],
+  );
+
   const openTextExport = useCallback(() => {
     const api = apiRef.current;
     if (!api) return;
@@ -340,6 +360,7 @@ export default function App() {
         dark={dark}
         onNew={() => setShowTemplates(true)}
         onOpen={() => fileInputRef.current?.click()}
+        onImportText={() => setShowTextImport(true)}
         onSave={handleSave}
         onExportPng={() => handleExport("png")}
         onExportSvg={() => handleExport("svg")}
@@ -403,6 +424,12 @@ export default function App() {
           </Excalidraw>
         </div>
       </div>
+      {showTextImport && (
+        <TextImportDialog
+          onImport={handleTextImport}
+          onClose={() => setShowTextImport(false)}
+        />
+      )}
       {textExportElements && (
         <TextExportDialog
           elements={textExportElements}

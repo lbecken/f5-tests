@@ -118,6 +118,45 @@ await page.screenshot({ path: `${shots}/08-text-export.png` });
 await page.keyboard.press("Escape");
 await page.waitForTimeout(300);
 
+// Round-trip: import the Mermaid text we just exported
+await page.click('button:has-text("Import")');
+await page.waitForSelector(".text-import-input", { timeout: 10000 });
+await page.fill(".text-import-input", mermaid);
+await page.click('.text-export-actions button:has-text("Import")');
+await page.waitForTimeout(1000);
+let tabs = await page.locator(".tab").count();
+if (tabs !== 3) fail(`expected 3 tabs after import, got ${tabs}`);
+const roundTrip = await activeDocElementCount();
+console.log("round-trip import element count:", roundTrip);
+// 3 classes x 3 compartments + 2 bound arrows (+ label texts)
+if (!roundTrip || roundTrip < 11) {
+  fail(`expected >= 11 elements from round-trip import, got ${roundTrip}`);
+}
+await page.screenshot({ path: `${shots}/09-imported.png` });
+
+// Import a Mermaid flowchart
+await page.click('button:has-text("Import")');
+await page.waitForSelector(".text-import-input", { timeout: 10000 });
+await page.fill(
+  ".text-import-input",
+  `flowchart TD
+  A([Start]) --> B{In stock?}
+  B -->|yes| C[Ship order]
+  B -->|no| D[Notify customer]
+  C --> E((Done))
+  D --> E`,
+);
+await page.click('.text-export-actions button:has-text("Import")');
+await page.waitForTimeout(1000);
+tabs = await page.locator(".tab").count();
+if (tabs !== 4) fail(`expected 4 tabs after flow import, got ${tabs}`);
+const flowCount = await activeDocElementCount();
+console.log("flowchart import element count:", flowCount);
+if (!flowCount || flowCount < 10) {
+  fail(`expected >= 10 elements from flowchart import, got ${flowCount}`);
+}
+await page.screenshot({ path: `${shots}/10-imported-flow.png` });
+
 // Switch back to the first tab — its scene must come back
 await page.click(".tab >> nth=0");
 await page.waitForTimeout(800);
@@ -125,9 +164,11 @@ const backCount = await activeDocElementCount();
 console.log("doc 1 element count after switching back:", backCount);
 if (backCount !== saved) fail(`doc 1 changed: ${saved} -> ${backCount}`);
 
-// Close the template tab (auto-accepted confirm)
-await page.click(".tab >> nth=1 >> .tab-close");
-await page.waitForTimeout(600);
+// Close the extra tabs (auto-accepted confirms)
+for (const idx of [3, 2, 1]) {
+  await page.click(`.tab >> nth=${idx} >> .tab-close`);
+  await page.waitForTimeout(500);
+}
 const tabsAfterClose = await page.locator(".tab").count();
 if (tabsAfterClose !== 1) fail(`expected 1 tab after close, got ${tabsAfterClose}`);
 

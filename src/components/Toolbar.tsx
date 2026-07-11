@@ -2,6 +2,7 @@ export function Toolbar({
   dark,
   onNew,
   onOpen,
+  onImportText,
   onSave,
   onExportPng,
   onExportSvg,
@@ -12,6 +13,7 @@ export function Toolbar({
   dark: boolean;
   onNew: () => void;
   onOpen: () => void;
+  onImportText: () => void;
   onSave: () => void;
   onExportPng: () => void;
   onExportSvg: () => void;
@@ -39,6 +41,12 @@ export function Toolbar({
       <div className="topbar-actions">
         <button onClick={onNew}>New</button>
         <button onClick={onOpen}>Open…</button>
+        <button
+          onClick={onImportText}
+          title="Import a diagram from Mermaid or PlantUML text"
+        >
+          Import
+        </button>
         <button onClick={onSave} className="primary">
           Save
         </button>

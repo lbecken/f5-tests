@@ -28,15 +28,15 @@ interface AnyEl {
   points?: readonly (readonly number[])[];
 }
 
-type NodeShape = "rect" | "rounded" | "ellipse" | "diamond" | "circle";
+export type NodeShape = "rect" | "rounded" | "ellipse" | "diamond" | "circle";
 
-interface TextNode {
+export interface TextNode {
   id: string;
   label: string;
   shape: NodeShape;
 }
 
-interface TextClass {
+export interface TextClass {
   id: string;
   name: string;
   stereotype?: string;
@@ -44,7 +44,7 @@ interface TextClass {
   methods: string[];
 }
 
-type EdgeKind =
+export type EdgeKind =
   | "inheritance"
   | "realization"
   | "composition"
@@ -53,7 +53,7 @@ type EdgeKind =
   | "arrow"
   | "line";
 
-interface TextEdge {
+export interface TextEdge {
   from: string;
   to: string;
   kind: EdgeKind;

@@ -609,3 +609,21 @@ body {
 .app.dark .text-export-actions button.primary {
   color: #1a1a1e;
 }
+
+/* ---- Text import dialog ---- */
+
+.text-import-input {
+  height: 260px;
+  white-space: pre;
+}
+
+.text-import-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #e03131;
+}
+
+.text-export-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

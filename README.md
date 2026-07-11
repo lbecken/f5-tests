@@ -37,6 +37,11 @@ existing UML tools and libraries that led to this design.
   arrowheads → relationship kinds, bindings/proximity → connections) and
   generates a Mermaid `classDiagram`/`flowchart` or PlantUML source you can
   copy or download (`.mmd`/`.puml`)
+- **Text import from Mermaid / PlantUML** — the "Import" button parses
+  Mermaid class diagrams and flowcharts or PlantUML class/shape diagrams,
+  auto-lays them out (layered top-down, inheritance parents on top), and
+  opens the result as a new tab of fully editable shapes with arrows bound
+  to the right class compartments; export → import round-trips
 - **UML shape library export** — all stencils are preloaded into the
   editor's built-in Library panel, and the "UML lib" button downloads them
   as a standard `.excalidrawlib` file you can load on excalidraw.com or in
@@ -78,6 +83,7 @@ src/
   workspace.ts                   multi-document store on top of localStorage
   library.ts                     stencils as an Excalidraw library (.excalidrawlib)
   textExport.ts                  scene -> Mermaid / PlantUML text generator
+  textImport.ts                  Mermaid / PlantUML parser + auto layout -> shapes
   components/Palette.tsx         UML stencil sidebar (search, groups, previews)
   components/Toolbar.tsx         top bar (New / Open / Save / PNG / SVG / theme)
   components/Tabs.tsx            diagram tabs (switch, rename, close, add)
