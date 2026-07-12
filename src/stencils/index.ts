@@ -2,6 +2,7 @@ import type { Stencil, StencilGroup } from "./types";
 import {
   BLUE,
   DASHED,
+  bindStrip,
   FILLED,
   GREEN,
   NOTE,
@@ -242,7 +243,11 @@ const sequenceStencils: Stencil[] = [
   {
     id: "actor-lifeline",
     name: "Actor lifeline",
-    elements: [...actor("Actor"), line(32, 120, [[0, 0], [0, 220]], DASHED)],
+    elements: [
+      ...actor("Actor"),
+      line(32, 120, [[0, 0], [0, 220]], DASHED),
+      bindStrip(32, 120, 220),
+    ],
   },
   {
     id: "lifeline",
@@ -253,6 +258,7 @@ const sequenceStencils: Stencil[] = [
         label: label("obj: Class"),
       }),
       line(65, 44, [[0, 0], [0, 260]], DASHED),
+      bindStrip(65, 44, 260),
     ],
   },
   {

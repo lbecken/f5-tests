@@ -1,6 +1,7 @@
 import type { DiagramKind, Skeleton } from "../stencils/types";
 import {
   DASHED,
+  bindStrip,
   grouped,
   FILLED,
   GREEN,
@@ -118,6 +119,7 @@ const sequenceTemplate: Skeleton[] = [
   ...grouped("grp-seq-user", [
     ...actor("User"),
     line(32, 120, [[0, 0], [0, 320]], DASHED),
+    bindStrip(32, 120, 320),
   ]),
   ...grouped("grp-seq-webapp", [
     rect(240, 40, 130, 44, {
@@ -125,6 +127,7 @@ const sequenceTemplate: Skeleton[] = [
       label: label(": WebApp"),
     }),
     line(305, 84, [[0, 0], [0, 356]], DASHED),
+    bindStrip(305, 84, 356),
   ]),
   ...grouped("grp-seq-db", [
     rect(520, 40, 130, 44, {
@@ -132,6 +135,7 @@ const sequenceTemplate: Skeleton[] = [
       label: label(": Database"),
     }),
     line(585, 84, [[0, 0], [0, 356]], DASHED),
+    bindStrip(585, 84, 356),
   ]),
   rect(298, 160, 14, 200, { backgroundColor: VIOLET }),
   rect(578, 210, 14, 70, { backgroundColor: VIOLET }),

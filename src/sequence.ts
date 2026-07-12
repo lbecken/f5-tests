@@ -8,6 +8,7 @@ import {
   VIOLET,
   actor as actorFigure,
   arrow,
+  bindStrip,
   grouped,
   label,
   line,
@@ -428,7 +429,13 @@ export function seqToSkeletons(model: SeqModel): Skeleton[] {
             label: label(p.name),
           }),
         ];
-    heads.push(...grouped(`part-${p.id}`, [...head, lifeline]));
+    heads.push(
+      ...grouped(`part-${p.id}`, [
+        ...head,
+        lifeline,
+        bindStrip(c, headBottom, bottom - headBottom),
+      ]),
+    );
   }
 
   return [...heads, ...activations, ...frames, ...body];

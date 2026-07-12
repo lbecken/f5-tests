@@ -17,6 +17,7 @@ interface AnyEl {
   height: number;
   isDeleted?: boolean;
   backgroundColor?: string;
+  strokeColor?: string;
   strokeStyle?: string;
   roundness?: unknown;
   startArrowhead?: string | null;
@@ -144,6 +145,13 @@ export function analyzeScene(elements: readonly object[]): SceneModel {
   for (const el of containers) {
     if (inStack.has(el.id)) continue;
     if ((el.backgroundColor ?? "").toLowerCase() === NOTE_BG) continue;
+    // Invisible helper shapes (lifeline binding strips) are not nodes.
+    if (
+      el.strokeColor === "transparent" &&
+      el.backgroundColor === "transparent"
+    ) {
+      continue;
+    }
     // Large transparent rectangles are frames/boundaries/swimlanes, not nodes.
     if (
       el.backgroundColor === "transparent" &&

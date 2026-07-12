@@ -89,6 +89,21 @@ export const grouped = (gid: string, els: Skeleton[]): Skeleton[] =>
       }) as unknown as Skeleton,
   );
 
+/**
+ * An invisible bindable strip laid over a lifeline's dashed line. Excalidraw
+ * arrows can only bind to bindable shapes (not lines), so this is what lets
+ * message arrows connect anywhere along a lifeline — and follow it.
+ */
+export const bindStrip = (
+  cx: number,
+  y: number,
+  height: number,
+): Skeleton =>
+  rect(cx - 10, y, 20, height, {
+    strokeColor: "transparent",
+    backgroundColor: "transparent",
+  });
+
 export const ROUNDED = { roundness: { type: 3 } };
 export const DASHED = { strokeStyle: "dashed" };
 export const FILLED = { backgroundColor: STROKE };

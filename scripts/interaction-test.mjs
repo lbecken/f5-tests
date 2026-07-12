@@ -61,6 +61,7 @@ const getScene = () =>
         points: e.points,
         startBinding: e.startBinding,
         endBinding: e.endBinding,
+        endArrowhead: e.endArrowhead,
         customData: e.customData,
         groupIds: e.groupIds,
         version: e.version,
@@ -297,6 +298,133 @@ if (!parts.every((e) => e.groupIds?.includes(gid))) {
   fail("ungroup was not reverted by the guard");
 }
 console.log("OK: ungrouping a lifeline is reverted");
+
+// --- 4) A message arrow connects to lifelines by hovering the vertical line
+await dropStencil("lifeline", 0.55, 0.35);
+s = await getScene();
+const dashedLines = s.elements.filter(
+  (e) => e.type === "line" && e.customData?.umlGroup,
+);
+if (dashedLines.length !== 2) fail("expected 2 lifelines on the canvas");
+// Sort left-to-right; each lifeline's bindable strip shares its group id.
+dashedLines.sort((a, b) => a.x - b.x);
+const stripOf = (lineEl) =>
+  s.elements.find(
+    (e) =>
+      e.type === "rectangle" &&
+      e.customData?.umlGroup === lineEl.customData.umlGroup &&
+      e.width <= 24 && // the narrow invisible strip, not the head box
+      Math.abs(e.x + e.width / 2 - (lineEl.x + lineEl.points[0][0])) < 12,
+  );
+const [lineA, lineB] = dashedLines;
+const stripA = stripOf(lineA);
+const stripB = stripOf(lineB);
+if (!stripA || !stripB) fail("lifelines have no bindable strip");
+
+// Drop a sync message between the two lifelines, well below the head boxes.
+const laX = lineA.x + lineA.points[0][0];
+const lbX = lineB.x + lineB.points[0][0];
+const msgY = Math.max(lineA.y, lineB.y) + 120; // inside both vertical lines
+{
+  const c = toClient(s, (laX + lbX) / 2, msgY);
+  const rect = await page.evaluate(() => {
+    const r = document.querySelector(".canvas-wrap").getBoundingClientRect();
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  });
+  await dropStencil(
+    "sync-message",
+    (c[0] - rect.left) / rect.width,
+    (c[1] - rect.top) / rect.height,
+  );
+}
+
+// Select the arrow and drag its endpoints onto the two vertical lines.
+s = await getScene();
+const msg = s.elements
+  .filter((e) => e.type === "arrow" && e.endArrowhead === "triangle")
+  .at(-1);
+if (!msg) fail("message arrow not inserted");
+const msgMid = toClient(
+  s,
+  msg.x + (msg.points[0][0] + msg.points.at(-1)[0]) / 2,
+  msg.y + (msg.points[0][1] + msg.points.at(-1)[1]) / 2,
+);
+await page.mouse.click(1300, 850);
+await page.waitForTimeout(200);
+await page.mouse.click(msgMid[0], msgMid[1]);
+await page.waitForTimeout(300);
+
+const dragEndpointTo = async (fromScene, toScene) => {
+  const f = toClient(s, fromScene[0], fromScene[1]);
+  const t = toClient(s, toScene[0], toScene[1]);
+  await page.mouse.move(f[0], f[1]);
+  await page.mouse.down();
+  await page.mouse.move(t[0], t[1], { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+};
+await dragEndpointTo(
+  [msg.x + msg.points.at(-1)[0], msg.y + msg.points.at(-1)[1]],
+  [lbX, msgY],
+);
+s = await getScene();
+let msg2 = s.elements.find((e) => e.id === msg.id);
+if (msg2.endBinding?.elementId !== stripB.id) {
+  fail(
+    `message end did not bind to the right lifeline strip (endBinding=${JSON.stringify(msg2.endBinding)})`,
+  );
+}
+// re-select and drag the start endpoint onto the left lifeline's line
+const mid3 = toClient(
+  s,
+  msg2.x + (msg2.points[0][0] + msg2.points.at(-1)[0]) / 2,
+  msg2.y + (msg2.points[0][1] + msg2.points.at(-1)[1]) / 2,
+);
+await page.mouse.click(1300, 850);
+await page.waitForTimeout(200);
+await page.mouse.click(mid3[0], mid3[1]);
+await page.waitForTimeout(300);
+await dragEndpointTo(
+  [msg2.x + msg2.points[0][0], msg2.y + msg2.points[0][1]],
+  [laX, msgY],
+);
+s = await getScene();
+msg2 = s.elements.find((e) => e.id === msg.id);
+if (msg2.startBinding?.elementId !== stripA.id) {
+  fail(
+    `message start did not bind to the left lifeline strip (startBinding=${JSON.stringify(msg2.startBinding)})`,
+  );
+}
+console.log("OK: message arrow bound to both lifelines via their vertical lines");
+
+// Moving a lifeline must drag the bound message endpoint along.
+const headB = s.elements.find(
+  (e) =>
+    e.type === "rectangle" &&
+    e.customData?.umlGroup === lineB.customData.umlGroup &&
+    e.id !== stripB.id,
+);
+const endXBefore = msg2.x + msg2.points.at(-1)[0];
+await page.mouse.click(1300, 850);
+await page.waitForTimeout(200);
+const hb = toClient(s, headB.x + headB.width / 2, headB.y + headB.height / 2);
+await page.mouse.move(hb[0], hb[1]);
+await page.mouse.down();
+await page.mouse.move(hb[0] + 70, hb[1], { steps: 15 });
+await page.mouse.up();
+await page.waitForTimeout(400);
+s = await getScene();
+msg2 = s.elements.find((e) => e.id === msg.id);
+const endXAfter = msg2.x + msg2.points.at(-1)[0];
+if (msg2.endBinding?.elementId !== stripB.id) {
+  fail("message lost its lifeline binding when the lifeline moved");
+}
+if (Math.abs(endXAfter - endXBefore - 70) > 25) {
+  fail(
+    `message endpoint did not follow the lifeline (moved ${(endXAfter - endXBefore).toFixed(1)}px, expected ~70px)`,
+  );
+}
+console.log("OK: message endpoint followed the lifeline when it moved");
 
 if (process.env.SHOTS_DIR) {
   await page.mouse.click(1300, 850);
