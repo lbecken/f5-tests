@@ -109,7 +109,11 @@ export function Palette({
           <p className="palette-empty">No shapes match “{query}”.</p>
         )}
       </div>
-      <p className="palette-hint">Drag onto the canvas, or click to insert.</p>
+      <p className="palette-hint">
+        Drag onto the canvas, or click to insert. To connect a relationship
+        arrow, select it and drag its endpoints onto the shapes — it stays
+        attached.
+      </p>
     </aside>
   );
 }

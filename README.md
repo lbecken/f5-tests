@@ -24,6 +24,10 @@ existing UML tools and libraries that led to this design.
   for each of the 6 diagram types (arrows come pre-bound to shapes, so they
   stay attached when you move things)
 - **Drag & drop** stencils onto the canvas, or click to insert at the center
+- **UML-friendly interactions** — rotation is disabled for UML shapes (the
+  rotate gesture snaps back instantly); to connect a relationship arrow,
+  select it and drag its endpoints onto the shapes — they bind and stay
+  attached when things move
 - Everything Excalidraw can do: move, resize, rotate, edit labels
   (double-click), arrows that stay bound to shapes, undo/redo, zoom/pan,
   multi-select, alignment, dark mode
@@ -78,7 +82,8 @@ autosave, PNG export, theme toggle):
 ```bash
 npm run build
 npm run preview -- --port 4173 &
-npm run smoke      # set CHROMIUM_PATH if Chromium lives elsewhere
+npm run smoke                # set CHROMIUM_PATH if Chromium lives elsewhere
+npm run test:interactions    # endpoint binding + no-rotation regression test
 ```
 
 ## Project structure

@@ -7,6 +7,7 @@ import {
   exportToBlob,
   exportToSvg,
   loadFromBlob,
+  newElementWith,
   serializeAsJSON,
   viewportCoordsToSceneCoords,
 } from "@excalidraw/excalidraw";
@@ -46,6 +47,58 @@ import {
 
 const THEME_KEY = "umldraw.theme";
 
+/**
+ * Post-processes elements created from UML stencils/templates/imports:
+ *
+ * - Tags them with customData.umlNoRotate. Rotation makes no sense for UML
+ *   shapes, and Excalidraw has no per-element way to remove the rotate
+ *   handle — tagged elements get their angle reset on change (see the guard
+ *   in onChange), which makes rotation inert.
+ * - Normalizes linear elements so points[0] is exactly [0, 0]. Excalidraw's
+ *   line editor relies on that invariant; convertToExcalidrawElements can
+ *   emit a slight offset, after which dragging an arrow endpoint corrupts
+ *   the element's geometry and it stops rendering ("the arrow disappears").
+ */
+interface LinearLike {
+  type?: string;
+  x?: number;
+  y?: number;
+  points?: readonly (readonly [number, number])[];
+  customData?: Record<string, unknown>;
+}
+
+/** Rebases arrow/line points so points[0] is [0, 0] (same rendered shape). */
+function normalizeLinearElements<T extends LinearLike>(
+  elements: readonly T[],
+): T[] {
+  return elements.map((el) => {
+    if (
+      (el.type === "arrow" || el.type === "line") &&
+      el.points &&
+      el.points.length > 0 &&
+      (el.points[0][0] !== 0 || el.points[0][1] !== 0)
+    ) {
+      const [px, py] = el.points[0];
+      return {
+        ...el,
+        x: (el.x ?? 0) + px,
+        y: (el.y ?? 0) + py,
+        points: el.points.map(
+          (p) => [p[0] - px, p[1] - py] as [number, number],
+        ),
+      };
+    }
+    return el;
+  });
+}
+
+function prepareUmlElements<T extends LinearLike>(elements: readonly T[]): T[] {
+  return normalizeLinearElements(elements).map((el) => ({
+    ...el,
+    customData: { ...el.customData, umlNoRotate: true },
+  }));
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -78,7 +131,9 @@ export default function App() {
   const [initialData] = useState(() => {
     const scene = loadDocScene(workspace.activeId);
     return {
-      elements: (scene?.elements ?? []) as never[],
+      elements: normalizeLinearElements(
+        (scene?.elements ?? []) as LinearLike[],
+      ) as never[],
       appState: { ...(scene?.appState ?? {}), collaborators: new Map() },
       scrollToContent: true,
       libraryItems: initialLibraryItems(),
@@ -111,6 +166,25 @@ export default function App() {
     }, 500);
   }, [serializeCurrent]);
 
+  /** Rotation is disabled for UML shapes: snap tagged elements back to 0. */
+  const handleChange = useCallback(() => {
+    const api = apiRef.current;
+    if (api) {
+      const els = api.getSceneElements();
+      if (els.some((el) => el.angle !== 0 && el.customData?.umlNoRotate)) {
+        api.updateScene({
+          elements: els.map((el) =>
+            el.angle !== 0 && el.customData?.umlNoRotate
+              ? newElementWith(el, { angle: 0 as typeof el.angle })
+              : el,
+          ),
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      }
+    }
+    scheduleAutosave();
+  }, [scheduleAutosave]);
+
   /** Replace the canvas contents with the given document's scene. */
   const loadDocIntoCanvas = useCallback((id: string) => {
     const api = apiRef.current;
@@ -119,7 +193,9 @@ export default function App() {
     api.resetScene();
     if (scene && scene.elements.length > 0) {
       api.updateScene({
-        elements: scene.elements as never[],
+        elements: normalizeLinearElements(
+          scene.elements as LinearLike[],
+        ) as never[],
         captureUpdate: CaptureUpdateAction.NEVER,
       });
       api.scrollToContent(undefined, { fitToContent: true });
@@ -146,9 +222,11 @@ export default function App() {
       flushSave();
       const id = newDocId();
       if (template) {
-        const elements = convertToExcalidrawElements(template.elements, {
-          regenerateIds: false,
-        });
+        const elements = prepareUmlElements(
+          convertToExcalidrawElements(template.elements, {
+            regenerateIds: false,
+          }),
+        );
         saveDocScene(id, JSON.stringify({ elements, appState: {} }));
       }
       setDocs((d) => {
@@ -211,13 +289,15 @@ export default function App() {
       };
       const scene = viewportCoordsToSceneCoords(viewport, appState);
       const { width, height } = skeletonBounds(stencil.elements);
-      const inserted = convertToExcalidrawElements(
-        translateSkeleton(
-          stencil.elements,
-          scene.x - width / 2,
-          scene.y - height / 2,
+      const inserted = prepareUmlElements(
+        convertToExcalidrawElements(
+          translateSkeleton(
+            stencil.elements,
+            scene.x - width / 2,
+            scene.y - height / 2,
+          ),
+          { regenerateIds: true },
         ),
-        { regenerateIds: true },
       );
       api.updateScene({
         elements: [...api.getSceneElements(), ...inserted],
@@ -410,10 +490,12 @@ export default function App() {
           <Excalidraw
             excalidrawAPI={(api) => {
               apiRef.current = api;
+              // Exposed for the smoke test and console debugging.
+              (window as unknown as Record<string, unknown>).__umldraw = api;
             }}
             initialData={initialData}
             theme={dark ? "dark" : "light"}
-            onChange={scheduleAutosave}
+            onChange={handleChange}
             onLibraryChange={saveStoredLibrary}
             UIOptions={{
               canvasActions: { toggleTheme: false },
