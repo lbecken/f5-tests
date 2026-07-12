@@ -28,7 +28,10 @@ import { modelToSkeletons, parseDiagramText } from "./textImport";
 import {
   findBoundMessageAt,
   fixUmlScene,
+  sideHandleAt,
   slideMessageTo,
+  stretchUmlGroup,
+  stretchableGroup,
 } from "./umlGuards";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
@@ -460,6 +463,79 @@ export default function App() {
   }, []);
 
   /**
+   * Owns the "stretch a UML group from a side edge" gesture. Excalidraw
+   * resizes a grouped selection (every multi-part UML shape) proportionally
+   * from any handle and scales its text — wrong for UML, where dragging the
+   * bottom edge of a class box should just make it taller. When a UML group
+   * is selected and the drag starts on one of its side edges, it is
+   * intercepted and turned into a single-axis stretch (see stretchUmlGroup);
+   * corners fall through to Excalidraw's proportional resize. Returns true
+   * when it took over the gesture.
+   */
+  const tryStretchGroup = useCallback(
+    (
+      e: React.PointerEvent<HTMLDivElement>,
+      api: ExcalidrawImperativeAPI,
+      scene: { x: number; y: number },
+    ): boolean => {
+      const appState = api.getAppState();
+      const selectedIds = Object.keys(appState.selectedElementIds ?? {});
+      const group = stretchableGroup(api.getSceneElements(), selectedIds);
+      if (!group) return false;
+      const side = sideHandleAt(
+        group.bounds,
+        scene.x,
+        scene.y,
+        appState.zoom.value,
+      );
+      if (!side) return false;
+      e.preventDefault();
+      e.stopPropagation();
+      const horizontal = side === "e" || side === "w";
+      // Snapshot the group at grab time so every move re-derives geometry
+      // from the original (no compounding drift).
+      const original = api.getSceneElements();
+      const onMove = (ev: PointerEvent) => {
+        const a = apiRef.current;
+        if (!a) return;
+        const sc = viewportCoordsToSceneCoords(
+          { clientX: ev.clientX, clientY: ev.clientY },
+          a.getAppState(),
+        );
+        const stretched = stretchUmlGroup(
+          original,
+          group.ids,
+          side,
+          group.bounds,
+          horizontal ? sc.x : sc.y,
+        );
+        if (stretched) {
+          a.updateScene({
+            elements: stretched,
+            captureUpdate: CaptureUpdateAction.NEVER,
+          });
+        }
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        const a = apiRef.current;
+        if (a) {
+          // one undo checkpoint for the whole stretch
+          a.updateScene({
+            elements: a.getSceneElements(),
+            captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+          });
+        }
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      return true;
+    },
+    [],
+  );
+
+  /**
    * Owns the "slide a message along its lifelines" gesture. Excalidraw
    * cannot body-drag an arrow whose both ends are bound (the endpoints are
    * pinned, so the drag is a no-op) — so pressing on a bound message is
@@ -477,6 +553,7 @@ export default function App() {
         { clientX: e.clientX, clientY: e.clientY },
         appState,
       );
+      if (tryStretchGroup(e, api, scene)) return;
       const hit = findBoundMessageAt(api.getSceneElements(), scene.x, scene.y);
       if (!hit) return;
       e.preventDefault();
@@ -519,7 +596,7 @@ export default function App() {
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
     },
-    [],
+    [tryStretchGroup],
   );
 
   const toggleTheme = useCallback(() => {

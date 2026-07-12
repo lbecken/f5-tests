@@ -467,6 +467,115 @@ if (
 }
 console.log("OK: dragging the message slid it along the lifelines, straight and connected");
 
+// --- 6) Side-edge drags on a UML group stretch on one axis (no scaling) ----
+// Excalidraw would resize a grouped selection proportionally and scale its
+// text; the app intercepts side edges and stretches a single axis instead,
+// leaving font sizes untouched. Corners still resize proportionally.
+{
+  // Fresh canvas with a single class box (3 grouped compartments + labels).
+  await page.evaluate(() => window.__umldraw.updateScene({ elements: [] }));
+  await page.waitForTimeout(200);
+  await dropStencil("class", 0.5, 0.4);
+
+  const groupBox = (sc) => {
+    const rs = sc.elements.filter((e) => e.type === "rectangle");
+    return [
+      Math.min(...rs.map((e) => e.x)),
+      Math.min(...rs.map((e) => e.y)),
+      Math.max(...rs.map((e) => e.x + e.width)),
+      Math.max(...rs.map((e) => e.y + e.height)),
+    ];
+  };
+  const fontsOf = (sc) =>
+    sc.elements.filter((e) => e.type === "text").map((e) => e.fontSize);
+  const selectGroup = async (sc) => {
+    const [bx1, by1, bx2, by2] = groupBox(sc);
+    const c = toClient(sc, (bx1 + bx2) / 2, (by1 + by2) / 2);
+    await page.mouse.click(1300, 850);
+    await page.waitForTimeout(150);
+    await page.mouse.click(c[0], c[1]);
+    await page.waitForTimeout(200);
+  };
+
+  // South edge: height grows, width and fonts stay put.
+  s = await getScene();
+  let [x1, y1, x2, y2] = groupBox(s);
+  const w0 = x2 - x1;
+  const h0 = y2 - y1;
+  const fonts0 = JSON.stringify(fontsOf(s));
+  await selectGroup(s);
+  let hp = toClient(s, (x1 + x2) / 2, y2);
+  await page.mouse.move(hp[0], hp[1] + 4);
+  await page.mouse.down();
+  await page.mouse.move(hp[0], hp[1] + 4 + 90, { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  s = await getScene();
+  let [nx1, ny1, nx2, ny2] = groupBox(s);
+  if (Math.abs(nx2 - nx1 - w0) > 1) {
+    fail(`south stretch changed width (${w0} -> ${nx2 - nx1})`);
+  }
+  if (ny2 - ny1 - h0 < 60) {
+    fail(`south stretch did not grow height (${h0} -> ${ny2 - ny1})`);
+  }
+  if (JSON.stringify(fontsOf(s)) !== fonts0) {
+    fail(`south stretch scaled the fonts (${fonts0} -> ${JSON.stringify(fontsOf(s))})`);
+  }
+  console.log("OK: south-edge drag stretched height only, fonts untouched");
+
+  // East edge: width grows, height and fonts stay put; labels re-center.
+  await page.evaluate(() => window.__umldraw.updateScene({ elements: [] }));
+  await page.waitForTimeout(200);
+  await dropStencil("class", 0.5, 0.4);
+  s = await getScene();
+  [x1, y1, x2, y2] = groupBox(s);
+  const ew0 = x2 - x1;
+  const eh0 = y2 - y1;
+  await selectGroup(s);
+  hp = toClient(s, x2, (y1 + y2) / 2);
+  await page.mouse.move(hp[0] + 4, hp[1]);
+  await page.mouse.down();
+  await page.mouse.move(hp[0] + 4 + 100, hp[1], { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  s = await getScene();
+  [nx1, ny1, nx2, ny2] = groupBox(s);
+  if (Math.abs(ny2 - ny1 - eh0) > 1) {
+    fail(`east stretch changed height (${eh0} -> ${ny2 - ny1})`);
+  }
+  if (nx2 - nx1 - ew0 < 60) {
+    fail(`east stretch did not grow width (${ew0} -> ${nx2 - nx1})`);
+  }
+  for (const t of s.elements.filter((e) => e.type === "text")) {
+    const c = s.elements.find((e) => e.id === t.containerId);
+    if (!c) continue;
+    if (Math.abs(t.x + t.width / 2 - (c.x + c.width / 2)) > 2) {
+      fail("east stretch left a label off-center in its widened compartment");
+    }
+  }
+  console.log("OK: east-edge drag stretched width only, labels re-centered");
+
+  // Corner: still a proportional resize (native Excalidraw), fonts scale.
+  await page.evaluate(() => window.__umldraw.updateScene({ elements: [] }));
+  await page.waitForTimeout(200);
+  await dropStencil("class", 0.5, 0.4);
+  s = await getScene();
+  [x1, y1, x2, y2] = groupBox(s);
+  await selectGroup(s);
+  hp = toClient(s, x2, y2);
+  await page.mouse.move(hp[0] + 6, hp[1] + 6);
+  await page.mouse.down();
+  await page.mouse.move(hp[0] + 6 + 80, hp[1] + 6 + 54, { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  s = await getScene();
+  [nx1, ny1, nx2, ny2] = groupBox(s);
+  if (nx2 - nx1 - (x2 - x1) < 20 || ny2 - ny1 - (y2 - y1) < 20) {
+    fail("corner drag did not resize the class box in both directions");
+  }
+  console.log("OK: corner drag still resizes proportionally");
+}
+
 if (process.env.SHOTS_DIR) {
   await page.mouse.click(1300, 850);
   await page.waitForTimeout(300);

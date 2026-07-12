@@ -282,3 +282,258 @@ export function slideMessageTo(
   if (updates.size === 0) return null;
   return elements.map((e) => updates.get(e.id) ?? e);
 }
+
+// ===========================================================================
+// Side-edge "stretch" for grouped UML shapes
+// ===========================================================================
+//
+// Excalidraw resizes a *multi-element* selection (which every multi-part UML
+// shape is — its parts share one group) proportionally from any handle, and
+// scales bound text with it. That is wrong for UML: dragging the bottom edge
+// of a class box should make the box taller, not scale the whole thing and
+// blow up the font. So the app intercepts side-edge drags on UML groups and
+// runs the stretch below instead — a single-axis resize that grows the shape
+// on one axis only and leaves text sizes untouched (corners are left to
+// Excalidraw, keeping proportional resize there).
+
+export type ResizeSide = "n" | "s" | "e" | "w";
+
+export type Bounds = readonly [number, number, number, number];
+
+const BOUND_TEXT_PADDING = 5;
+/** Smallest a group is allowed to get on the stretched axis. */
+const MIN_GROUP_SIZE = 20;
+
+interface Sized {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  points?: readonly (readonly [number, number])[];
+}
+
+/** Axis-aligned bounds of some elements, taking linear points into account. */
+export function elementsBounds(elements: readonly El[]): Bounds {
+  let x1 = Infinity;
+  let y1 = Infinity;
+  let x2 = -Infinity;
+  let y2 = -Infinity;
+  for (const raw of elements) {
+    const el = raw as unknown as Sized;
+    if (el.points && el.points.length > 0) {
+      for (const [px, py] of el.points) {
+        x1 = Math.min(x1, el.x + px);
+        y1 = Math.min(y1, el.y + py);
+        x2 = Math.max(x2, el.x + px);
+        y2 = Math.max(y2, el.y + py);
+      }
+    } else {
+      x1 = Math.min(x1, el.x);
+      y1 = Math.min(y1, el.y);
+      x2 = Math.max(x2, el.x + el.width);
+      y2 = Math.max(y2, el.y + el.height);
+    }
+  }
+  return [x1, y1, x2, y2];
+}
+
+/**
+ * The set of selected elements that form a single stretchable UML group:
+ * two or more UML parts (customData.umlNoRotate) sharing one group id. A
+ * single UML element resizes fine on its own — the bug is specific to the
+ * grouped, aspect-locked case — so those (and non-UML selections) return null.
+ */
+export function stretchableGroup(
+  elements: readonly El[],
+  selectedIds: readonly string[],
+): { ids: string[]; bounds: Bounds } | null {
+  const selected = elements.filter((el) => selectedIds.includes(el.id));
+  if (selected.length < 2) return null;
+  if (!selected.every((el) => el.customData?.umlNoRotate)) return null;
+  // A common group id across the whole selection means it is one UML shape.
+  let common: string[] = selected[0].groupIds as string[];
+  for (const el of selected.slice(1)) {
+    common = common.filter((g) => el.groupIds.includes(g));
+  }
+  if (common.length === 0) return null;
+  return { ids: selected.map((el) => el.id), bounds: elementsBounds(selected) };
+}
+
+/**
+ * Which side handle (n/s/e/w) the pointer is on for a selection with the
+ * given bounds, or null if it is on a corner / not on a side. Matches
+ * Excalidraw's own side-resize band: a thin strip just *outside* an edge,
+ * within that edge's span (corners are handled by Excalidraw). Coordinates
+ * and zoom are in scene space.
+ */
+export function sideHandleAt(
+  bounds: Bounds,
+  px: number,
+  py: number,
+  zoom: number,
+): ResizeSide | null {
+  const [x1, y1, x2, y2] = bounds;
+  const band = 8 / zoom; // how far outside the edge still counts as the handle
+  const inset = 1 / zoom; // ignore the pixel right on the border (that's a move)
+  const minForSides = 40 / zoom; // Excalidraw hides side handles on tiny shapes
+  const withinX = px >= x1 && px <= x2 && x2 - x1 > minForSides;
+  const withinY = py >= y1 && py <= y2 && y2 - y1 > minForSides;
+  if (withinX && py > y2 + inset && py <= y2 + band) return "s";
+  if (withinX && py < y1 - inset && py >= y1 - band) return "n";
+  if (withinY && px > x2 + inset && px <= x2 + band) return "e";
+  if (withinY && px < x1 - inset && px >= x1 - band) return "w";
+  return null;
+}
+
+/** Horizontal alignment of a text element (defaults to center). */
+const textAlignOf = (el: El): string =>
+  (el as unknown as { textAlign?: string }).textAlign ?? "center";
+const vAlignOf = (el: El): string =>
+  (el as unknown as { verticalAlign?: string }).verticalAlign ?? "middle";
+
+/**
+ * Repositions a container-bound label inside its (resized) container without
+ * changing its font size — Excalidraw would normally rescale it.
+ */
+function placeBoundText(container: El, text: El): { x: number; y: number } {
+  const c = container as unknown as Sized;
+  const t = text as unknown as Sized;
+  const P = BOUND_TEXT_PADDING;
+  let x: number;
+  switch (textAlignOf(text)) {
+    case "left":
+      x = c.x + P;
+      break;
+    case "right":
+      x = c.x + c.width - t.width - P;
+      break;
+    default:
+      x = c.x + (c.width - t.width) / 2;
+  }
+  let y: number;
+  switch (vAlignOf(text)) {
+    case "top":
+      y = c.y + P;
+      break;
+    case "bottom":
+      y = c.y + c.height - t.height - P;
+      break;
+    default:
+      y = c.y + (c.height - t.height) / 2;
+  }
+  return { x, y };
+}
+
+/**
+ * Stretches a UML group along one axis to the given pointer position,
+ * anchored at the opposite edge. Every part scales on that axis (positions,
+ * sizes and linear points); text keeps its font size and is re-centered in
+ * its container. Returns the updated scene, or null if nothing changed.
+ */
+export function stretchUmlGroup(
+  elements: readonly El[],
+  ids: readonly string[],
+  side: ResizeSide,
+  bounds: Bounds,
+  pointer: number,
+): El[] | null {
+  const [x1, y1, x2, y2] = bounds;
+  const horizontal = side === "e" || side === "w";
+  const size = horizontal ? x2 - x1 : y2 - y1;
+  if (size <= 0) return null;
+
+  // New size on the stretched axis, and the fixed (anchor) coordinate.
+  let newSize: number;
+  let anchor: number;
+  switch (side) {
+    case "e":
+      anchor = x1;
+      newSize = pointer - x1;
+      break;
+    case "w":
+      anchor = x2;
+      newSize = x2 - pointer;
+      break;
+    case "s":
+      anchor = y1;
+      newSize = pointer - y1;
+      break;
+    default: // "n"
+      anchor = y2;
+      newSize = y2 - pointer;
+  }
+  newSize = Math.max(newSize, MIN_GROUP_SIZE);
+  if (near(newSize, size)) return null; // sub-pixel change: nothing to do
+  const factor = newSize / size;
+
+  const idSet = new Set(ids);
+  const byId = new Map(elements.map((el) => [el.id, el]));
+  // Bound labels aren't part of the selection, but they belong to the shape
+  // and must be re-placed inside their resized containers.
+  for (const el of elements) {
+    const containerId = (el as unknown as { containerId?: string }).containerId;
+    if (el.type === "text" && containerId && idSet.has(containerId)) {
+      idSet.add(el.id);
+    }
+  }
+  const scale = (v: number) => anchor + (v - anchor) * factor;
+
+  const updates = new Map<string, El>();
+  const patch = (el: El, p: Parameters<typeof newElementWith>[1]) =>
+    updates.set(el.id, newElementWith(el as ExcalidrawElement, p) as El);
+
+  for (const el of elements) {
+    if (!idSet.has(el.id)) continue;
+    const s = el as unknown as Sized;
+    const isText = el.type === "text";
+    // A bound label is repositioned from its container afterwards, not scaled.
+    const isBoundLabel =
+      isText &&
+      typeof (el as unknown as { containerId?: string }).containerId ===
+        "string";
+
+    if (horizontal) {
+      // A lifeline's invisible bind strip must keep its narrow width (the
+      // message-binding logic only recognizes strips with width <= 24), so
+      // recenter it on the scaled position instead of widening it.
+      if (isStrip(el)) {
+        patch(el, {
+          x: scale(s.x + s.width / 2) - s.width / 2,
+        } as Parameters<typeof newElementWith>[1]);
+        continue;
+      }
+      const p: Record<string, unknown> = { x: scale(s.x) };
+      if (!isText) p.width = s.width * factor;
+      if (s.points) {
+        p.points = s.points.map(([px, py]) => [px * factor, py]);
+      }
+      if (isBoundLabel) delete p.x; // placed later from the container
+      patch(el, p as Parameters<typeof newElementWith>[1]);
+    } else {
+      const p: Record<string, unknown> = { y: scale(s.y) };
+      if (!isText) p.height = s.height * factor;
+      if (s.points) {
+        p.points = s.points.map(([px, py]) => [px, py * factor]);
+      }
+      if (isBoundLabel) delete p.y;
+      patch(el, p as Parameters<typeof newElementWith>[1]);
+    }
+  }
+
+  // Re-place bound labels inside their now-resized containers.
+  for (const el of elements) {
+    if (!idSet.has(el.id) || el.type !== "text") continue;
+    const containerId = (el as unknown as { containerId?: string }).containerId;
+    if (!containerId) continue;
+    const containerBase = byId.get(containerId);
+    if (!containerBase) continue;
+    const container = updates.get(containerId) ?? containerBase;
+    const text = updates.get(el.id) ?? el;
+    patch(text, placeBoundText(container, text) as unknown as Parameters<
+      typeof newElementWith
+    >[1]);
+  }
+
+  if (updates.size === 0) return null;
+  return elements.map((el) => updates.get(el.id) ?? el);
+}
