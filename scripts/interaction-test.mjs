@@ -574,6 +574,61 @@ console.log("OK: dragging the message slid it along the lifelines, straight and 
     fail("corner drag did not resize the class box in both directions");
   }
   console.log("OK: corner drag still resizes proportionally");
+
+  // Resizing a lifeline must not collapse its dashed line. The line's cached
+  // width/height come out of convert() inconsistent with its points (height 0
+  // for a tall vertical line); a proportional resize would divide by that
+  // zero and shrink the line to a point ("the lifeline disappears"). It must
+  // survive both a corner resize and a side stretch.
+  const lineLength = (sc) => {
+    const l = sc.elements.find(
+      (e) => e.type === "line" && e.customData?.umlGroup,
+    );
+    if (!l) return 0;
+    const ys = l.points.map((p) => p[1]);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  const lifelineBox = (sc) => {
+    const es = sc.elements.filter((e) => e.customData?.umlGroup);
+    const bottom = (e) =>
+      e.points ? e.y + Math.max(...e.points.map((p) => p[1])) : e.y + e.height;
+    return [
+      Math.min(...es.map((e) => e.x)),
+      Math.min(...es.map((e) => e.y)),
+      Math.max(...es.map((e) => (e.points ? e.x : e.x + e.width))),
+      Math.max(...es.map(bottom)),
+    ];
+  };
+  const selectLifeline = async (sc) => {
+    const head = sc.elements.find(
+      (e) => e.type === "rectangle" && e.customData?.umlGroup && e.width > 24,
+    );
+    const c = toClient(sc, head.x + head.width / 2, head.y + head.height / 2);
+    await page.mouse.click(1300, 850);
+    await page.waitForTimeout(150);
+    await page.mouse.click(c[0], c[1]);
+    await page.waitForTimeout(200);
+  };
+
+  await page.evaluate(() => window.__umldraw.updateScene({ elements: [] }));
+  await page.waitForTimeout(200);
+  await dropStencil("lifeline", 0.4, 0.28);
+  s = await getScene();
+  const len0 = lineLength(s);
+  if (len0 < 200) fail(`lifeline dashed line missing on insert (len ${len0})`);
+  let [lx1, ly1, lx2, ly2] = lifelineBox(s);
+  await selectLifeline(s);
+  hp = toClient(s, lx2, ly2);
+  await page.mouse.move(hp[0] + 6, hp[1] + 6);
+  await page.mouse.down();
+  await page.mouse.move(hp[0] + 6 + 60, hp[1] + 6 + 120, { steps: 20 });
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  s = await getScene();
+  if (lineLength(s) < len0 + 40) {
+    fail(`lifeline dashed line collapsed on corner resize (len ${lineLength(s)})`);
+  }
+  console.log("OK: corner-resizing a lifeline keeps (and grows) its dashed line");
 }
 
 if (process.env.SHOTS_DIR) {

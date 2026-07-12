@@ -70,11 +70,25 @@ interface LinearLike {
   type?: string;
   x?: number;
   y?: number;
+  width?: number;
+  height?: number;
   points?: readonly (readonly [number, number])[];
   customData?: Record<string, unknown>;
 }
 
-/** Rebases arrow/line points so points[0] is [0, 0] (same rendered shape). */
+/**
+ * Normalizes arrow/line elements so their geometry is self-consistent:
+ *
+ * - points[0] is rebased to [0, 0] (same rendered shape). Excalidraw's line
+ *   editor relies on that invariant; convertToExcalidrawElements can emit a
+ *   slight offset, after which dragging an endpoint corrupts the element and
+ *   it stops rendering.
+ * - width/height are recomputed from the points. Some stencil lines (e.g. the
+ *   vertical dashed lifeline) come out of convertToExcalidrawElements with
+ *   cached bounds that don't match their points (height 0 for a 260-tall
+ *   line). A proportional resize then divides by that zero and collapses the
+ *   line to a point — it "disappears".
+ */
 function normalizeLinearElements<T extends LinearLike>(
   elements: readonly T[],
 ): T[] {
@@ -82,17 +96,22 @@ function normalizeLinearElements<T extends LinearLike>(
     if (
       (el.type === "arrow" || el.type === "line") &&
       el.points &&
-      el.points.length > 0 &&
-      (el.points[0][0] !== 0 || el.points[0][1] !== 0)
+      el.points.length > 0
     ) {
-      const [px, py] = el.points[0];
+      const [ox, oy] = el.points[0];
+      const rebased =
+        ox !== 0 || oy !== 0
+          ? el.points.map((p) => [p[0] - ox, p[1] - oy] as [number, number])
+          : el.points;
+      const xs = rebased.map((p) => p[0]);
+      const ys = rebased.map((p) => p[1]);
       return {
         ...el,
-        x: (el.x ?? 0) + px,
-        y: (el.y ?? 0) + py,
-        points: el.points.map(
-          (p) => [p[0] - px, p[1] - py] as [number, number],
-        ),
+        x: (el.x ?? 0) + ox,
+        y: (el.y ?? 0) + oy,
+        points: rebased,
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
       };
     }
     return el;
