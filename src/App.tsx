@@ -7,7 +7,6 @@ import {
   exportToBlob,
   exportToSvg,
   loadFromBlob,
-  newElementWith,
   serializeAsJSON,
   viewportCoordsToSceneCoords,
 } from "@excalidraw/excalidraw";
@@ -26,6 +25,11 @@ import { TextExportDialog } from "./components/TextExportDialog";
 import { TextImportDialog } from "./components/TextImportDialog";
 import { seqToSkeletons } from "./sequence";
 import { modelToSkeletons, parseDiagramText } from "./textImport";
+import {
+  findBoundMessageAt,
+  fixUmlScene,
+  slideMessageTo,
+} from "./umlGuards";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
 import {
@@ -167,34 +171,20 @@ export default function App() {
   }, [serializeCurrent]);
 
   /**
-   * Keeps UML shapes well-formed on every change:
-   * - rotation is disabled (tagged elements snap back to angle 0)
-   * - multi-part shapes (lifelines, class boxes, actors, …) cannot be
-   *   ungrouped: if their group is removed, it is restored
+   * Keeps UML shapes well-formed on every change: no rotation, no
+   * ungrouping, and message arrows pinned straight between lifelines
+   * (see src/umlGuards.ts).
    */
   const handleChange = useCallback(() => {
     const api = apiRef.current;
     if (api) {
-      const els = api.getSceneElements();
-      const needsRotationFix = (el: (typeof els)[number]) =>
-        el.angle !== 0 && el.customData?.umlNoRotate;
-      const needsGroupFix = (el: (typeof els)[number]) =>
-        typeof el.customData?.umlGroup === "string" &&
-        el.groupIds.length === 0;
-      if (els.some((el) => needsRotationFix(el) || needsGroupFix(el))) {
+      const appState = api.getAppState();
+      const fixed = fixUmlScene(api.getSceneElements(), {
+        endpointDragging: Boolean(appState.selectedLinearElement?.isDragging),
+      });
+      if (fixed) {
         api.updateScene({
-          elements: els.map((el) => {
-            let out = el;
-            if (needsRotationFix(out)) {
-              out = newElementWith(out, { angle: 0 as typeof el.angle });
-            }
-            if (needsGroupFix(out)) {
-              out = newElementWith(out, {
-                groupIds: [out.customData!.umlGroup as string],
-              });
-            }
-            return out;
-          }),
+          elements: fixed,
           captureUpdate: CaptureUpdateAction.NEVER,
         });
       }
@@ -469,6 +459,69 @@ export default function App() {
     );
   }, []);
 
+  /**
+   * Owns the "slide a message along its lifelines" gesture. Excalidraw
+   * cannot body-drag an arrow whose both ends are bound (the endpoints are
+   * pinned, so the drag is a no-op) — so pressing on a bound message is
+   * intercepted before Excalidraw sees it, and the drag moves the message
+   * up/down its lifelines, keeping it straight and connected.
+   */
+  const handleCanvasPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.button !== 0 || e.detail > 1) return; // keep double-click editing
+      const api = apiRef.current;
+      if (!api) return;
+      const appState = api.getAppState();
+      if (appState.activeTool?.type !== "selection") return;
+      const scene = viewportCoordsToSceneCoords(
+        { clientX: e.clientX, clientY: e.clientY },
+        appState,
+      );
+      const hit = findBoundMessageAt(api.getSceneElements(), scene.x, scene.y);
+      if (!hit) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const grabOffset = hit.y - scene.y;
+      api.updateScene({
+        appState: { selectedElementIds: { [hit.id]: true } },
+      });
+      const onMove = (ev: PointerEvent) => {
+        const a = apiRef.current;
+        if (!a) return;
+        const sc = viewportCoordsToSceneCoords(
+          { clientX: ev.clientX, clientY: ev.clientY },
+          a.getAppState(),
+        );
+        const slid = slideMessageTo(
+          a.getSceneElements(),
+          hit.id,
+          sc.y + grabOffset,
+        );
+        if (slid) {
+          a.updateScene({
+            elements: slid,
+            captureUpdate: CaptureUpdateAction.NEVER,
+          });
+        }
+      };
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        // one undo checkpoint for the whole slide
+        const a = apiRef.current;
+        if (a) {
+          a.updateScene({
+            elements: a.getSceneElements(),
+            captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+          });
+        }
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    },
+    [],
+  );
+
   const toggleTheme = useCallback(() => {
     setDark((d) => {
       localStorage.setItem(THEME_KEY, d ? "light" : "dark");
@@ -502,6 +555,7 @@ export default function App() {
         <Palette dark={dark} onInsert={insertStencil} />
         <div
           className="canvas-wrap"
+          onPointerDownCapture={handleCanvasPointerDown}
           onDragOverCapture={(e) => {
             if (e.dataTransfer.types.includes(STENCIL_MIME)) {
               e.preventDefault();

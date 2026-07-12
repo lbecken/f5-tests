@@ -426,6 +426,47 @@ if (Math.abs(endXAfter - endXBefore - 70) > 25) {
 }
 console.log("OK: message endpoint followed the lifeline when it moved");
 
+// --- 5) Dragging a connected message slides it along the lifelines --------
+// (a bound message must stay straight and connected; the drag only changes
+// its height)
+s = await getScene();
+msg2 = s.elements.find((e) => e.id === msg.id);
+const yBefore = msg2.y;
+if (Math.abs(msg2.points[0][1] - msg2.points.at(-1)[1]) > 1) {
+  fail("message is not straight after normalization");
+}
+const midNow = toClient(
+  s,
+  msg2.x + msg2.points.at(-1)[0] / 2,
+  msg2.y,
+);
+await page.mouse.click(1300, 850);
+await page.waitForTimeout(200);
+await page.mouse.move(midNow[0], midNow[1]);
+await page.mouse.down();
+await page.mouse.move(midNow[0], midNow[1] + 60, { steps: 15 });
+await page.mouse.up();
+await page.waitForTimeout(600);
+s = await getScene();
+msg2 = s.elements.find((e) => e.id === msg.id);
+const sy2 = msg2.y + msg2.points[0][1];
+const ey2 = msg2.y + msg2.points.at(-1)[1];
+if (Math.abs(sy2 - ey2) > 1) {
+  fail(`message not straight after slide (start y ${sy2}, end y ${ey2})`);
+}
+if (Math.abs(msg2.y - (yBefore + 60)) > 30) {
+  fail(
+    `message did not slide vertically (~60px expected, got ${(msg2.y - yBefore).toFixed(1)}px)`,
+  );
+}
+if (
+  msg2.startBinding?.elementId !== stripA.id ||
+  msg2.endBinding?.elementId !== stripB.id
+) {
+  fail("message lost its lifeline bindings after sliding");
+}
+console.log("OK: dragging the message slid it along the lifelines, straight and connected");
+
 if (process.env.SHOTS_DIR) {
   await page.mouse.click(1300, 850);
   await page.waitForTimeout(300);

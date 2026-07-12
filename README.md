@@ -29,7 +29,9 @@ existing UML tools and libraries that led to this design.
   boxes, actors, packages, fragments) are grouped so they move as a single
   element and cannot be ungrouped; to connect a relationship arrow, select
   it and drag its endpoints onto the shapes — they bind and stay attached
-  when things move
+  when things move; a message arrow connected to two lifelines behaves like
+  a real sequence message: dragging it slides it up and down the lifelines,
+  always straight and connected
 - Everything Excalidraw can do: move, resize, rotate, edit labels
   (double-click), arrows that stay bound to shapes, undo/redo, zoom/pan,
   multi-select, alignment, dark mode
@@ -106,6 +108,7 @@ src/
   stencils/builders.ts           shared shape-builder helpers and colors
   stencils/index.ts              all UML stencil definitions (element skeletons)
   stencils/types.ts              skeleton helpers (bounds, translation)
+  umlGuards.ts                   scene guards: no rotation/ungroup, message slide
   templates/index.ts             starter example diagram per diagram type
 scripts/
   copy-fonts.mjs                 self-hosts Excalidraw fonts (pre dev/build)
