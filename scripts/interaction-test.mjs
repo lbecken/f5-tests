@@ -62,6 +62,8 @@ const getScene = () =>
         startBinding: e.startBinding,
         endBinding: e.endBinding,
         customData: e.customData,
+        groupIds: e.groupIds,
+        version: e.version,
       })),
       scrollX: a.scrollX,
       scrollY: a.scrollY,
@@ -236,6 +238,65 @@ const a3 = s.elements.find((e) => e.type === "arrow");
 if (!a3) fail("arrow disappeared after rotate attempt");
 if (a3.angle !== 0) fail(`arrow kept angle ${a3.angle}`);
 console.log("OK: rotate-handle drag left the class box unrotated and intact");
+
+// --- 3) A lifeline (box + dashed line) moves as a single grouped shape -----
+await dropStencil("lifeline", 0.8, 0.4);
+s = await getScene();
+const lifeLine = s.elements.find(
+  (e) => e.type === "line" && e.customData?.umlGroup,
+);
+const lifeHead = s.elements.find(
+  (e) =>
+    e.type === "rectangle" &&
+    e.customData?.umlGroup === lifeLine?.customData?.umlGroup,
+);
+if (!lifeLine || !lifeHead) fail("lifeline parts are not grouped");
+const gid = lifeLine.customData.umlGroup;
+
+// Drag the head box; the dashed line must follow.
+await page.mouse.click(1300, 850); // deselect
+await page.waitForTimeout(200);
+const headCenter = toClient(
+  s,
+  lifeHead.x + lifeHead.width / 2,
+  lifeHead.y + lifeHead.height / 2,
+);
+await page.mouse.move(headCenter[0], headCenter[1]);
+await page.mouse.down();
+await page.mouse.move(headCenter[0] - 90, headCenter[1] + 50, { steps: 15 });
+await page.mouse.up();
+await page.waitForTimeout(400);
+s = await getScene();
+const headAfter = s.elements.find((e) => e.id === lifeHead.id);
+const lineAfter = s.elements.find((e) => e.id === lifeLine.id);
+const dHead = [headAfter.x - lifeHead.x, headAfter.y - lifeHead.y];
+const dLine = [lineAfter.x - lifeLine.x, lineAfter.y - lifeLine.y];
+if (Math.abs(dHead[0]) < 50) fail("test error: lifeline head did not move");
+if (Math.abs(dHead[0] - dLine[0]) > 2 || Math.abs(dHead[1] - dLine[1]) > 2) {
+  fail(
+    `lifeline did not move as one: head moved ${dHead}, line moved ${dLine}`,
+  );
+}
+console.log("OK: lifeline (box + dashed line) moved as a single shape");
+
+// Ungrouping is not allowed: the guard restores the group.
+await page.evaluate((gid) => {
+  const api = window.__umldraw;
+  api.updateScene({
+    elements: api.getSceneElements().map((e) =>
+      e.customData?.umlGroup === gid
+        ? { ...e, groupIds: [], version: e.version + 1 }
+        : e,
+    ),
+  });
+}, gid);
+await page.waitForTimeout(600);
+s = await getScene();
+const parts = s.elements.filter((e) => e.customData?.umlGroup === gid);
+if (!parts.every((e) => e.groupIds?.includes(gid))) {
+  fail("ungroup was not reverted by the guard");
+}
+console.log("OK: ungrouping a lifeline is reverted");
 
 if (process.env.SHOTS_DIR) {
   await page.mouse.click(1300, 850);

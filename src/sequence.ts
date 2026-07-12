@@ -8,6 +8,7 @@ import {
   VIOLET,
   actor as actorFigure,
   arrow,
+  grouped,
   label,
   line,
   rect,
@@ -381,16 +382,22 @@ export function seqToSkeletons(model: SeqModel): Skeleton[] {
         const b = blockStack.pop();
         if (!b) break;
         frames.push(
-          rect(minX, b.yStart, maxX - minX, y - b.yStart, {
-            backgroundColor: "transparent",
-          }),
-          rect(minX, b.yStart, 64, 26, {
-            backgroundColor: VIOLET,
-            label: label(b.kind, { fontSize: 13 }),
-          }),
-          ...(b.label
-            ? [text(minX + 74, b.yStart + 4, `[${b.label}]`, { fontSize: 13 })]
-            : []),
+          ...grouped(`frag-${frames.length}`, [
+            rect(minX, b.yStart, maxX - minX, y - b.yStart, {
+              backgroundColor: "transparent",
+            }),
+            rect(minX, b.yStart, 64, 26, {
+              backgroundColor: VIOLET,
+              label: label(b.kind, { fontSize: 13 }),
+            }),
+            ...(b.label
+              ? [
+                  text(minX + 74, b.yStart + 4, `[${b.label}]`, {
+                    fontSize: 13,
+                  }),
+                ]
+              : []),
+          ]),
         );
         y += 30;
         break;
@@ -403,22 +410,25 @@ export function seqToSkeletons(model: SeqModel): Skeleton[] {
     while (starts.length > 0) endActivation(pid, bottom - 24);
   }
 
-  // --- Heads + lifelines ----------------------------------------------------
+  // --- Heads + lifelines (grouped so each participant moves as one) --------
   for (const p of participants) {
     const c = cx.get(p.id)!;
-    if (p.actor) {
-      heads.push(...actorFigure(p.name, c - 32, 0));
-    } else {
-      const w = boxW.get(p.id)!;
-      heads.push(
-        rect(c - w / 2, headBottom - 44, w, 44, {
-          id: p.id,
-          backgroundColor: VIOLET,
-          label: label(p.name),
-        }),
-      );
-    }
-    heads.push(line(c, headBottom, [[0, 0], [0, bottom - headBottom]], DASHED));
+    const lifeline = line(
+      c,
+      headBottom,
+      [[0, 0], [0, bottom - headBottom]],
+      DASHED,
+    );
+    const head = p.actor
+      ? actorFigure(p.name, c - 32, 0)
+      : [
+          rect(c - boxW.get(p.id)! / 2, headBottom - 44, boxW.get(p.id)!, 44, {
+            id: p.id,
+            backgroundColor: VIOLET,
+            label: label(p.name),
+          }),
+        ];
+    heads.push(...grouped(`part-${p.id}`, [...head, lifeline]));
   }
 
   return [...heads, ...activations, ...frames, ...body];

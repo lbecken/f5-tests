@@ -1,6 +1,7 @@
 import type { DiagramKind, Skeleton } from "../stencils/types";
 import {
   DASHED,
+  grouped,
   FILLED,
   GREEN,
   PEACH,
@@ -68,24 +69,30 @@ const classTemplate: Skeleton[] = [
 ];
 
 const packageTemplate: Skeleton[] = [
-  rect(0, 0, 90, 28, { backgroundColor: YELLOW }),
-  rect(0, 28, 230, 130, {
-    id: "pkg-app",
-    backgroundColor: WHITE,
-    label: label("app", { verticalAlign: "top" }),
-  }),
-  rect(430, 0, 90, 28, { backgroundColor: YELLOW }),
-  rect(430, 28, 230, 130, {
-    id: "pkg-domain",
-    backgroundColor: WHITE,
-    label: label("domain", { verticalAlign: "top" }),
-  }),
-  rect(215, 300, 90, 28, { backgroundColor: YELLOW }),
-  rect(215, 328, 230, 130, {
-    id: "pkg-infra",
-    backgroundColor: WHITE,
-    label: label("infrastructure", { verticalAlign: "top" }),
-  }),
+  ...grouped("grp-pkg-app", [
+    rect(0, 0, 90, 28, { backgroundColor: YELLOW }),
+    rect(0, 28, 230, 130, {
+      id: "pkg-app",
+      backgroundColor: WHITE,
+      label: label("app", { verticalAlign: "top" }),
+    }),
+  ]),
+  ...grouped("grp-pkg-domain", [
+    rect(430, 0, 90, 28, { backgroundColor: YELLOW }),
+    rect(430, 28, 230, 130, {
+      id: "pkg-domain",
+      backgroundColor: WHITE,
+      label: label("domain", { verticalAlign: "top" }),
+    }),
+  ]),
+  ...grouped("grp-pkg-infra", [
+    rect(215, 300, 90, 28, { backgroundColor: YELLOW }),
+    rect(215, 328, 230, 130, {
+      id: "pkg-infra",
+      backgroundColor: WHITE,
+      label: label("infrastructure", { verticalAlign: "top" }),
+    }),
+  ]),
   arrow(250, 90, [[0, 0], [160, 0]], {
     ...DASHED,
     endArrowhead: "arrow",
@@ -108,18 +115,24 @@ const packageTemplate: Skeleton[] = [
 ];
 
 const sequenceTemplate: Skeleton[] = [
-  ...actor("User"),
-  line(32, 120, [[0, 0], [0, 320]], DASHED),
-  rect(240, 40, 130, 44, {
-    backgroundColor: VIOLET,
-    label: label(": WebApp"),
-  }),
-  line(305, 84, [[0, 0], [0, 356]], DASHED),
-  rect(520, 40, 130, 44, {
-    backgroundColor: VIOLET,
-    label: label(": Database"),
-  }),
-  line(585, 84, [[0, 0], [0, 356]], DASHED),
+  ...grouped("grp-seq-user", [
+    ...actor("User"),
+    line(32, 120, [[0, 0], [0, 320]], DASHED),
+  ]),
+  ...grouped("grp-seq-webapp", [
+    rect(240, 40, 130, 44, {
+      backgroundColor: VIOLET,
+      label: label(": WebApp"),
+    }),
+    line(305, 84, [[0, 0], [0, 356]], DASHED),
+  ]),
+  ...grouped("grp-seq-db", [
+    rect(520, 40, 130, 44, {
+      backgroundColor: VIOLET,
+      label: label(": Database"),
+    }),
+    line(585, 84, [[0, 0], [0, 356]], DASHED),
+  ]),
   rect(298, 160, 14, 200, { backgroundColor: VIOLET }),
   rect(578, 210, 14, 70, { backgroundColor: VIOLET }),
   arrow(36, 165, [[0, 0], [258, 0]], {
@@ -164,8 +177,10 @@ const activityTemplate: Skeleton[] = [
     label: label("Notify customer"),
   }),
   diamond(125, 480, 70, 70, { id: "act-merge", backgroundColor: WHITE }),
-  ellipse(143, 610, 34, 34, { id: "act-end", backgroundColor: WHITE }),
-  ellipse(150, 617, 20, 20, FILLED),
+  ...grouped("grp-act-end", [
+    ellipse(143, 610, 34, 34, { id: "act-end", backgroundColor: WHITE }),
+    ellipse(150, 617, 20, 20, FILLED),
+  ]),
   arrow(160, 30, [[0, 0], [0, 55]], {
     endArrowhead: "arrow",
     start: { id: "act-start" },
@@ -219,8 +234,10 @@ const stateTemplate: Skeleton[] = [
     backgroundColor: TEAL,
     label: label("Running"),
   }),
-  ellipse(700, 35, 34, 34, { id: "st-end", backgroundColor: WHITE }),
-  ellipse(707, 42, 20, 20, FILLED),
+  ...grouped("grp-st-end", [
+    ellipse(700, 35, 34, 34, { id: "st-end", backgroundColor: WHITE }),
+    ellipse(707, 42, 20, 20, FILLED),
+  ]),
   arrow(30, 52, [[0, 0], [85, 0]], {
     endArrowhead: "arrow",
     start: { id: "st-start" },
@@ -247,7 +264,7 @@ const stateTemplate: Skeleton[] = [
 ];
 
 const useCaseTemplate: Skeleton[] = [
-  ...actor("User"),
+  ...grouped("grp-uc-user", actor("User")),
   rect(260, -60, 340, 400, {
     backgroundColor: "transparent",
     label: label("Web Shop", { verticalAlign: "top" }),

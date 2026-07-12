@@ -25,9 +25,11 @@ existing UML tools and libraries that led to this design.
   stay attached when you move things)
 - **Drag & drop** stencils onto the canvas, or click to insert at the center
 - **UML-friendly interactions** — rotation is disabled for UML shapes (the
-  rotate gesture snaps back instantly); to connect a relationship arrow,
-  select it and drag its endpoints onto the shapes — they bind and stay
-  attached when things move
+  rotate gesture snaps back instantly); multi-part shapes (lifelines, class
+  boxes, actors, packages, fragments) are grouped so they move as a single
+  element and cannot be ungrouped; to connect a relationship arrow, select
+  it and drag its endpoints onto the shapes — they bind and stay attached
+  when things move
 - Everything Excalidraw can do: move, resize, rotate, edit labels
   (double-click), arrows that stay bound to shapes, undo/redo, zoom/pan,
   multi-select, alignment, dark mode

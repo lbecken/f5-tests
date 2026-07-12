@@ -166,18 +166,35 @@ export default function App() {
     }, 500);
   }, [serializeCurrent]);
 
-  /** Rotation is disabled for UML shapes: snap tagged elements back to 0. */
+  /**
+   * Keeps UML shapes well-formed on every change:
+   * - rotation is disabled (tagged elements snap back to angle 0)
+   * - multi-part shapes (lifelines, class boxes, actors, …) cannot be
+   *   ungrouped: if their group is removed, it is restored
+   */
   const handleChange = useCallback(() => {
     const api = apiRef.current;
     if (api) {
       const els = api.getSceneElements();
-      if (els.some((el) => el.angle !== 0 && el.customData?.umlNoRotate)) {
+      const needsRotationFix = (el: (typeof els)[number]) =>
+        el.angle !== 0 && el.customData?.umlNoRotate;
+      const needsGroupFix = (el: (typeof els)[number]) =>
+        typeof el.customData?.umlGroup === "string" &&
+        el.groupIds.length === 0;
+      if (els.some((el) => needsRotationFix(el) || needsGroupFix(el))) {
         api.updateScene({
-          elements: els.map((el) =>
-            el.angle !== 0 && el.customData?.umlNoRotate
-              ? newElementWith(el, { angle: 0 as typeof el.angle })
-              : el,
-          ),
+          elements: els.map((el) => {
+            let out = el;
+            if (needsRotationFix(out)) {
+              out = newElementWith(out, { angle: 0 as typeof el.angle });
+            }
+            if (needsGroupFix(out)) {
+              out = newElementWith(out, {
+                groupIds: [out.customData!.umlGroup as string],
+              });
+            }
+            return out;
+          }),
           captureUpdate: CaptureUpdateAction.NEVER,
         });
       }
@@ -289,7 +306,7 @@ export default function App() {
       };
       const scene = viewportCoordsToSceneCoords(viewport, appState);
       const { width, height } = skeletonBounds(stencil.elements);
-      const inserted = prepareUmlElements(
+      let inserted = prepareUmlElements(
         convertToExcalidrawElements(
           translateSkeleton(
             stencil.elements,
@@ -299,6 +316,25 @@ export default function App() {
           { regenerateIds: true },
         ),
       );
+      // Multi-part stencils (lifeline, class box, actor, …) move as a single
+      // shape: put every part into one fresh group (bound labels follow
+      // their containers automatically). If a part carries a group from its
+      // skeleton definition, the fresh id replaces it so two insertions of
+      // the same stencil never share a group.
+      if (stencil.elements.length > 1) {
+        const gid = `uml${Date.now().toString(36)}${Math.random()
+          .toString(36)
+          .slice(2, 7)}`;
+        inserted = inserted.map((el) =>
+          (el as { containerId?: string | null }).containerId
+            ? el
+            : ({
+                ...el,
+                groupIds: [gid],
+                customData: { ...el.customData, umlGroup: gid },
+              } as (typeof inserted)[number]),
+        );
+      }
       api.updateScene({
         elements: [...api.getSceneElements(), ...inserted],
         appState: {

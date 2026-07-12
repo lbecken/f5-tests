@@ -74,6 +74,21 @@ export const label = (t: string, opts: Record<string, unknown> = {}) => ({
   ...opts,
 });
 
+/**
+ * Puts skeleton elements into one Excalidraw group so they move as a single
+ * unit. customData.umlGroup lets the app restore the group if it gets
+ * ungrouped (multi-part UML shapes must stay whole).
+ */
+export const grouped = (gid: string, els: Skeleton[]): Skeleton[] =>
+  els.map(
+    (el) =>
+      ({
+        ...(el as object),
+        groupIds: [gid],
+        customData: { umlGroup: gid },
+      }) as unknown as Skeleton,
+  );
+
 export const ROUNDED = { roundness: { type: 3 } };
 export const DASHED = { strokeStyle: "dashed" };
 export const FILLED = { backgroundColor: STROKE };
@@ -91,7 +106,8 @@ export const actor = (name: string, dx = 0, dy = 0): Skeleton[] => [
 /**
  * A three-compartment UML class. `id` (when given) names the middle
  * compartment `<id>` plus `<id>-header` / `<id>-methods`, so template arrows
- * can bind to it.
+ * can bind to it — and the compartments are grouped so the class moves as
+ * one shape.
  */
 export const classBox = (
   x: number,
@@ -100,20 +116,23 @@ export const classBox = (
   attrs: string,
   methods: string,
   id?: string,
-): Skeleton[] => [
-  rect(x, y, 220, 44, {
-    backgroundColor: BLUE,
-    label: label(name),
-    ...(id ? { id: `${id}-header` } : {}),
-  }),
-  rect(x, y + 44, 220, 52, {
-    backgroundColor: WHITE,
-    label: label(attrs, { fontSize: 14 }),
-    ...(id ? { id } : {}),
-  }),
-  rect(x, y + 96, 220, 52, {
-    backgroundColor: WHITE,
-    label: label(methods, { fontSize: 14 }),
-    ...(id ? { id: `${id}-methods` } : {}),
-  }),
-];
+): Skeleton[] => {
+  const parts: Skeleton[] = [
+    rect(x, y, 220, 44, {
+      backgroundColor: BLUE,
+      label: label(name),
+      ...(id ? { id: `${id}-header` } : {}),
+    }),
+    rect(x, y + 44, 220, 52, {
+      backgroundColor: WHITE,
+      label: label(attrs, { fontSize: 14 }),
+      ...(id ? { id } : {}),
+    }),
+    rect(x, y + 96, 220, 52, {
+      backgroundColor: WHITE,
+      label: label(methods, { fontSize: 14 }),
+      ...(id ? { id: `${id}-methods` } : {}),
+    }),
+  ];
+  return id ? grouped(`grp-${id}`, parts) : parts;
+};

@@ -13,6 +13,7 @@ import {
   rect,
   ellipse,
   diamond,
+  grouped,
   label,
 } from "./stencils/builders";
 import type { Skeleton } from "./stencils/types";
@@ -643,18 +644,18 @@ export function modelToSkeletons(model: SceneModel): Skeleton[] {
       ? `«${c.stereotype}»\n${c.name}`
       : c.name;
     const hasBody = c.attrs.length + c.methods.length > 0;
-    out.push(
+    const parts: Skeleton[] = [
       rect(x, yy, p.width, hasBody ? headerH : headerH + 16, {
         id: c.id,
         backgroundColor: BLUE,
         label: label(headerLabel),
       }),
-    );
+    ];
     const segs: Segment[] = [{ id: c.id, cy: yy + headerH / 2 }];
     if (hasBody) {
       const attrsH = c.attrs.length > 0 ? c.attrs.length * 21 + 16 : 30;
       const methodsH = c.methods.length > 0 ? c.methods.length * 21 + 16 : 30;
-      out.push(
+      parts.push(
         rect(x, yy + headerH, p.width, attrsH, {
           id: `${c.id}-attrs`,
           backgroundColor: WHITE,
@@ -675,6 +676,7 @@ export function modelToSkeletons(model: SceneModel): Skeleton[] {
         { id: `${c.id}-methods`, cy: yy + headerH + attrsH + methodsH / 2 },
       );
     }
+    out.push(...(parts.length > 1 ? grouped(`grp-${c.id}`, parts) : parts));
     segments.set(c.id, segs);
   }
 
