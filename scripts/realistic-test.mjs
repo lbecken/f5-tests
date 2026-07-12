@@ -296,7 +296,11 @@ await page.click('.text-export-actions button:has-text("Import")');
 await page.waitForTimeout(1200);
 s = await getScene();
 const seqArrows = s.els.filter((e) => e.type === "arrow");
-const seqLines = s.els.filter((e) => e.type === "line" && e.gid);
+const isLifelineLine = (e) =>
+  e.type === "line" && e.gid && e.points &&
+  Math.abs(e.points.at(-1)[0] - e.points[0][0]) < 5 &&
+  Math.abs(e.points.at(-1)[1] - e.points[0][1]) > 80;
+const seqLines = s.els.filter(isLifelineLine);
 report(
   "seq-import",
   seqLines.length === 5 && seqArrows.length >= 8 ? "OK" : "BUG",
@@ -369,9 +373,7 @@ await page.screenshot({ path: `${shots}/rt-05-seq-stretched.png` });
 // --- 2b. add another call between Service and Repository, connect, slide
 await deselect();
 s = await getScene();
-const linesLR = s.els
-  .filter((e) => e.type === "line" && e.gid && e.points && Math.abs(e.points.at(-1)[0]) < 5)
-  .sort((a, b) => a.x - b.x);
+const linesLR = s.els.filter(isLifelineLine).sort((a, b) => a.x - b.x);
 const svcLine = linesLR[2];
 const repoLine = linesLR[3];
 const bottomY = Math.min(
@@ -448,12 +450,16 @@ const endpointsFollow = affected.every((a) => {
   const ex = e.x + e.points.at(-1)[0];
   return Math.abs(sx - cx) <= 3 || Math.abs(ex - cx) <= 3;
 });
+const heightsStable = affected.every((a) => {
+  const e = s.els.find((x) => x.id === a.id);
+  return Math.abs(e.y - a.y) <= 3;
+});
 report(
   "seq-move-lifeline",
-  stillBound && endpointsFollow ? "OK" : "BUG",
-  stillBound && endpointsFollow
-    ? `moving the Service lifeline kept ${affected.length} bound messages attached and straight`
-    : `after moving Service: bound=${stillBound}, endpointsFollow=${endpointsFollow} (${affected.length} messages)`,
+  stillBound && endpointsFollow && heightsStable ? "OK" : "BUG",
+  stillBound && endpointsFollow && heightsStable
+    ? `moving the lifeline kept ${affected.length} bound messages attached, straight, at their heights`
+    : `after moving lifeline: bound=${stillBound}, endpointsFollow=${endpointsFollow}, heightsStable=${heightsStable} (${affected.length} messages)`,
 );
 await page.screenshot({ path: `${shots}/rt-07-seq-moved.png` });
 

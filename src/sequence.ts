@@ -313,6 +313,8 @@ export function seqToSkeletons(model: SeqModel): Skeleton[] {
     activations.push(
       rect(cx.get(pid)! - 7, start - 8, 14, atY - start + 20, {
         backgroundColor: VIOLET,
+        // lets the scene guard keep the bar centered on its lifeline
+        customData: { umlActivationOf: `part-${pid}` },
       }),
     );
   };

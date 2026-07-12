@@ -126,6 +126,44 @@ export function fixUmlScene(
     }
   }
 
+  // --- Class compartment re-stacking ---------------------------------------
+  // Editing a compartment's text makes Excalidraw grow that container, which
+  // would overlap the compartment below: keep grouped same-width rect stacks
+  // gapless by pushing lower compartments down (labels move along).
+  {
+    const byGroup = new Map<string, El[]>();
+    for (const el of elements) {
+      const gid = el.customData?.umlGroup;
+      if (typeof gid !== "string" || el.type !== "rectangle" || isStrip(el)) {
+        continue;
+      }
+      if (!byGroup.has(gid)) byGroup.set(gid, []);
+      byGroup.get(gid)!.push(el);
+    }
+    for (const rects of byGroup.values()) {
+      if (rects.length < 2) continue;
+      const sorted = [...rects].sort((a, b) => a.y - b.y);
+      const head = sorted[0];
+      if (!sorted.every((r) => Math.abs(r.width - head.width) <= 2 && Math.abs(r.x - head.x) <= 2)) {
+        continue;
+      }
+      let expectedY = head.y + head.height;
+      for (const r of sorted.slice(1)) {
+        if (!near(r.y, expectedY)) {
+          const dy = expectedY - r.y;
+          update(r, { y: expectedY });
+          const label = elements.find(
+            (t) =>
+              t.type === "text" &&
+              (t as ExcalidrawTextElement).containerId === r.id,
+          );
+          if (label) update(label, { y: label.y + dy });
+        }
+        expectedY += r.height;
+      }
+    }
+  }
+
   // --- Message-arrow normalization ----------------------------------------
   // Skipped while an endpoint is being dragged so endpoints stay free to
   // re-target. (Body drags of fully-bound messages never reach Excalidraw:
@@ -135,10 +173,29 @@ export function fixUmlScene(
     for (const el of elements) {
       const parts = messageParts(elements, el, strips, stripById, true);
       if (!parts) continue;
+      // The intended height is stored on the arrow: endpoint positions are
+      // NOT a reliable source (Excalidraw recomputes them from binding focus
+      // when a lifeline moves, and its focus semantics differ from ours).
+      const stored = parts.arrow.customData?.umlMsgY;
       const pts = parts.arrow.points;
       const endpointMidY =
         (el.y + pts[0][1] + el.y + pts[pts.length - 1][1]) / 2;
-      applyMessageGeometry(update, current, parts, endpointMidY);
+      applyMessageGeometry(
+        update,
+        current,
+        parts,
+        typeof stored === "number" ? stored : endpointMidY,
+      );
+    }
+
+    // Activation bars imported from sequence text follow their lifeline.
+    for (const el of elements) {
+      const of = el.customData?.umlActivationOf;
+      if (typeof of !== "string" || el.type !== "rectangle") continue;
+      const strip = strips.find((st) => st.customData?.umlGroup === of);
+      if (!strip) continue;
+      const targetX = strip.x + strip.width / 2 - el.width / 2;
+      if (!near(el.x, targetX)) update(el, { x: targetX });
     }
   }
 
@@ -179,8 +236,9 @@ function applyMessageGeometry(
   const bindOk =
     arrow.startBinding?.elementId === sStrip.id &&
     arrow.endBinding?.elementId === eStrip.id;
+  const storedOk = arrow.customData?.umlMsgY === targetY;
 
-  if (!geomOk || !bindOk) {
+  if (!geomOk || !bindOk || !storedOk) {
     const focusOn = (s: El) =>
       clamp((targetY - (s.y + s.height / 2)) / (s.height / 2), -1, 1);
     update(arrow, {
@@ -194,6 +252,7 @@ function applyMessageGeometry(
       ],
       startBinding: { elementId: sStrip.id, focus: focusOn(sStrip), gap: 1 },
       endBinding: { elementId: eStrip.id, focus: focusOn(eStrip), gap: 1 },
+      customData: { ...arrow.customData, umlMsgY: targetY },
     } as unknown as Parameters<typeof newElementWith>[1]);
     // The strips must list the arrow in boundElements, otherwise Excalidraw
     // won't move the endpoint when the lifeline moves.

@@ -29,7 +29,7 @@ lifelines, add and connect a new call, slide it, move a lifeline.
 
 ## Bugs / TODO (priority order)
 
-### 1. Moving a lifeline horizontally scrambles message heights — HIGH
+### 1. Moving a lifeline horizontally scrambles message heights — ✅ FIXED
 After dragging a lifeline sideways, its bound messages ended up at wrong
 vertical positions (order visibly shuffled: "render page" jumped above
 "submit form"). Cause: when Excalidraw moves a bound shape it recomputes
@@ -38,30 +38,29 @@ arrow endpoints from the binding `focus` value, and the focus we write in
 does not match Excalidraw's `determineFocusDistance` semantics — the
 endpoint jumps vertically, and the normalizer then re-straightens the
 message at the *wrong* midpoint.
-**Fix idea:** stop deriving the message height from endpoint positions.
-Store the intended height on the arrow (`customData.umlMsgY`), set it in
-`slideMessageTo`/import/binding, and have the normalizer always restore
-that stored y (shifting it only when both lifelines move vertically).
-Screenshot: `rt-07-seq-moved.png`.
+**Fixed:** the intended height is stored on the arrow
+(`customData.umlMsgY`, written by `applyMessageGeometry`) and the
+normalizer restores it instead of trusting endpoint positions. Verified:
+realistic test now reports "messages attached, straight, at their
+heights" and `rt-07-seq-moved.png` shows the correct order.
 
-### 2. Class compartments don't re-stack when text grows — HIGH
+### 2. Class compartments don't re-stack when text grows — ✅ FIXED
 Adding attribute lines makes Excalidraw grow that compartment downward, and
 it overlaps/clips into the methods compartment below (observed 28px
 overlap; 4th line hidden). Screenshot: `rt-01-class-edited.png`.
-**Fix idea:** add a "class stack layout" rule to `fixUmlScene`
-(src/umlGuards.ts): for grouped same-width rect stacks, keep each rect's y
-= previous rect's bottom (re-stack after any height change). Also re-stack
-after the S-edge stretch of a middle compartment.
+**Fixed:** `fixUmlScene` now re-stacks grouped same-width rect stacks
+(each compartment's y = previous compartment's bottom, labels move along).
+Verified: "attrs compartment grew without overlapping".
 
-### 3. Activation bars are not part of the lifeline group — MEDIUM
+### 3. Activation bars are not part of the lifeline group — ✅ FIXED
 Moving a lifeline leaves its activation bars behind (visible in
 `rt-07-seq-moved.png`, bar left of JSFController). They are standalone
 rects (src/sequence.ts `seqToSkeletons` pushes them ungrouped) so they can
 be repositioned freely — but they should follow the lifeline horizontally.
-**Fix idea:** either add activations to the participant group at import, or
-add a guard that keeps bars centered on the lifeline x whose group they
-overlap (a `customData.umlActivationOf: <participant gid>` tag at import
-would make this trivial).
+**Fixed:** import tags bars with `customData.umlActivationOf` and the
+guard keeps them centered on their lifeline's strip. Verified visually in
+`rt-07-seq-moved.png` (bar follows the moved Service lifeline). Bars stay
+independently movable vertically.
 
 ### 4. Editing a grouped shape's label needs an extra double-click — MEDIUM
 The first double-click on a class header (grouped) selects the group /
