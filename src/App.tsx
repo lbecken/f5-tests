@@ -26,9 +26,12 @@ import { TextImportDialog } from "./components/TextImportDialog";
 import { seqToSkeletons } from "./sequence";
 import { modelToSkeletons, parseDiagramText } from "./textImport";
 import {
+  edgeAt,
   findBoundMessageAt,
   fixUmlScene,
+  selectedUmlGroup,
   slideMessageTo,
+  stretchUmlGroup,
 } from "./umlGuards";
 import { Toolbar } from "./components/Toolbar";
 import { ALL_STENCILS } from "./stencils";
@@ -477,6 +480,68 @@ export default function App() {
         { clientX: e.clientX, clientY: e.clientY },
         appState,
       );
+
+      // Side-handle stretch of a selected UML group: one axis only, text
+      // never scaled. Corner handles keep Excalidraw's proportional resize.
+      const group = selectedUmlGroup(
+        api.getSceneElements(),
+        appState.selectedElementIds,
+      );
+      if (group) {
+        const edge = edgeAt(
+          group.bounds,
+          scene.x,
+          scene.y,
+          appState.zoom.value,
+        );
+        if (edge) {
+          e.preventDefault();
+          e.stopPropagation();
+          const memberIds = new Set(group.memberIds);
+          const horizontal = edge === "e" || edge === "w";
+          let last = horizontal ? scene.x : scene.y;
+          const onMove = (ev: PointerEvent) => {
+            const a = apiRef.current;
+            if (!a) return;
+            const sc = viewportCoordsToSceneCoords(
+              { clientX: ev.clientX, clientY: ev.clientY },
+              a.getAppState(),
+            );
+            const pos = horizontal ? sc.x : sc.y;
+            const delta = pos - last;
+            if (delta === 0) return;
+            last = pos;
+            const out = stretchUmlGroup(
+              a.getSceneElements(),
+              memberIds,
+              edge,
+              delta,
+            );
+            if (out) {
+              a.updateScene({
+                elements: out,
+                captureUpdate: CaptureUpdateAction.NEVER,
+              });
+            }
+          };
+          const onUp = () => {
+            window.removeEventListener("pointermove", onMove);
+            window.removeEventListener("pointerup", onUp);
+            const a = apiRef.current;
+            if (a) {
+              // one undo checkpoint for the whole stretch
+              a.updateScene({
+                elements: a.getSceneElements(),
+                captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+              });
+            }
+          };
+          window.addEventListener("pointermove", onMove);
+          window.addEventListener("pointerup", onUp);
+          return;
+        }
+      }
+
       const hit = findBoundMessageAt(api.getSceneElements(), scene.x, scene.y);
       if (!hit) return;
       e.preventDefault();
