@@ -242,10 +242,8 @@
     el.canvas.style.width = state.canvas.width + 'px';
     el.canvas.style.height = state.canvas.height + 'px';
     el.canvas.classList.toggle('show-grid', mode === 'edit' && !!state.canvas.grid);
-    el.scaler.style.transform = 'scale(' + zoom + ')';
-    el.scaler.style.width = 'fit-content';
-    el.canvasWrap.style.setProperty('--zw', (el.frame.offsetWidth * zoom) + 'px');
     renderChrome();
+    syncScaler();
 
     let html = '';
     state.components.forEach((c, i) => {
@@ -624,6 +622,7 @@
       el.canvas.style.height = state.canvas.height + 'px';
       el.canvas.classList.toggle('show-grid', mode === 'edit' && !!state.canvas.grid);
       renderChrome();
+      syncScaler();
     } else {
       const c = selected()[0];
       if (!c) return;
@@ -685,11 +684,49 @@
     renderAll();
     setStatus(m === 'render' ? 'Rendered with PrimeFaces components — press Esc to edit' : '');
   }
-  function setZoom(z) {
-    zoom = clamp(Math.round(z * 20) / 20, 0.4, 2);
-    el.zoomLabel.textContent = Math.round(zoom * 100) + '%';
-    renderAll();
+
+  /* Give the scaled page a matching layout footprint so the scroll area
+   * shrinks when zooming out (a CSS transform alone doesn't affect layout,
+   * which is what used to leave phantom scrollbars). */
+  function syncScaler() {
+    el.scaler.style.transform = 'scale(' + zoom + ')';
+    el.scaler.style.width = (el.frame.offsetWidth * zoom) + 'px';
+    el.scaler.style.height = (el.frame.offsetHeight * zoom) + 'px';
   }
+  /* zoom at which the whole page (frame included) fits the work area */
+  function fitZoom() {
+    const padX = el.scaler.offsetLeft * 2, padY = el.scaler.offsetTop * 2;
+    const availW = el.canvasWrap.clientWidth - padX;
+    const availH = el.canvasWrap.clientHeight - padY;
+    const fw = el.frame.offsetWidth, fh = el.frame.offsetHeight;
+    if (!fw || !fh || availW <= 0 || availH <= 0) return 0.4;
+    return clamp(Math.min(availW / fw, availH / fh), 0.05, 2);
+  }
+  function setZoom(z, exact) {
+    if (!exact) z = Math.round(z * 20) / 20;
+    /* never allow zooming out past "whole page visible" */
+    zoom = clamp(z, Math.min(1, fitZoom()), 2);
+    el.zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    syncScaler();
+  }
+  function zoomToFit() {
+    setZoom(fitZoom(), true);
+    el.canvasWrap.scrollTo(0, 0);
+    setStatus('Fitted the page to the work area');
+  }
+
+  /* Ctrl/Cmd + mouse wheel zooms the mockup, anchored at the pointer */
+  el.canvasWrap.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const oz = zoom;
+    const wrap = el.canvasWrap, rect = wrap.getBoundingClientRect();
+    const ux = (e.clientX - rect.left + wrap.scrollLeft - el.scaler.offsetLeft) / oz;
+    const uy = (e.clientY - rect.top + wrap.scrollTop - el.scaler.offsetTop) / oz;
+    setZoom(oz * (e.deltaY < 0 ? 1.1 : 1 / 1.1), true);
+    wrap.scrollLeft += ux * (zoom - oz);
+    wrap.scrollTop += uy * (zoom - oz);
+  }, { passive: false });
 
   function updateToolbar() {
     $('#btnUndo').disabled = !history.length;
@@ -705,6 +742,7 @@
   $('#btnRedo').addEventListener('click', redo);
   $('#btnZoomIn').addEventListener('click', () => setZoom(zoom + 0.1));
   $('#btnZoomOut').addEventListener('click', () => setZoom(zoom - 0.1));
+  $('#btnZoomFit').addEventListener('click', zoomToFit);
   $('#zoomLabel').addEventListener('click', () => setZoom(1));
   $('#btnNew').addEventListener('click', newLayout);
   $('#btnOpen').addEventListener('click', openDialog);
@@ -713,6 +751,22 @@
   $('#btnPng').addEventListener('click', exportPng);
   $('#btnImport').addEventListener('click', () => el.fileInput.click());
   $('#btnHelp').addEventListener('click', helpDialog);
+
+  /* -------------- collapsible component palette -------------- */
+  const LS_UI = 'pfmb.ui.v1';
+  function uiPrefs() {
+    try { return JSON.parse(localStorage.getItem(LS_UI)) || {}; } catch (e) { return {}; }
+  }
+  function setPaletteCollapsed(collapsed) {
+    document.body.classList.toggle('pal-collapsed', collapsed);
+    try {
+      const u = uiPrefs();
+      u.paletteCollapsed = collapsed;
+      localStorage.setItem(LS_UI, JSON.stringify(u));
+    } catch (e) { /* storage blocked — keep in-memory only */ }
+  }
+  $('#btnPalToggle').addEventListener('click', () => setPaletteCollapsed(true));
+  $('#palExpand').addEventListener('click', () => setPaletteCollapsed(false));
 
   /* ==================== SAVE / LOAD ==================== */
   function autosave() {
@@ -934,6 +988,8 @@
       `<tr><td>Resize</td><td>drag the handles (single selection)</td></tr>` +
       `<tr><td>Duplicate / Delete</td><td>Ctrl/Cmd+D · Del</td></tr>` +
       `<tr><td>Undo / Redo</td><td>Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z</td></tr>` +
+      `<tr><td>Zoom</td><td>Ctrl/Cmd+wheel over the page · − / + buttons · ⛶ fits the whole page · click the % to reset — zoom-out stops when the page fully fits</td></tr>` +
+      `<tr><td>Palette</td><td>« collapses it to give the page more room · » brings it back</td></tr>` +
       `<tr><td>Containers</td><td>drop onto a Panel / Card / Fieldset / TabView / Dialog / Sidebar — it nests and moves with it (Detach in the inspector)</td></tr>` +
       `<tr><td>Save</td><td>Ctrl/Cmd+S (browser) · Export = portable .json</td></tr>` +
       `<tr><td>Export image</td><td>🖼 PNG exports the current mode (rendered or wireframe) at 2× resolution</td></tr>` +
@@ -988,6 +1044,8 @@
       /* first visit: open the demo so the app doesn't start empty */
       state = { canvas: Object.assign(defaultState().canvas, window.SAMPLE_LAYOUT.canvas), components: window.SAMPLE_LAYOUT.components.slice() };
     }
+    if (uiPrefs().paletteCollapsed) document.body.classList.add('pal-collapsed');
+    renderAll();
     setZoom(1);
     setStatus('');
   })();

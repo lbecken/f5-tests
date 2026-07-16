@@ -22,7 +22,8 @@ No build step, no server, no dependencies — **just open `index.html` in a brow
   - **Save/Open**: named layouts in browser `localStorage`
   - **Export/Import**: portable `*.mock.json` files
   - **Autosave**: every change is autosaved; reopening the page restores your work
-- **Editing comfort** — undo/redo (100 steps), zoom 40–200%, page frame chrome (browser / window / none), configurable page size, demo layout on first run, help dialog with all shortcuts.
+- **Editing comfort** — undo/redo (100 steps), page frame chrome (browser / window / none), configurable page size, collapsible palette (« / » to give the page more room), demo layout on first run, help dialog with all shortcuts.
+- **Zoom** — Ctrl/Cmd + mouse wheel over the page (anchored at the pointer), − / + buttons, ⛶ fit-to-view, click the % to reset. Zoom-out is capped exactly at the level where the whole page fits the work area, so you can always see the entire mock without scrollbars.
 
 ## Rendered components (palette → PrimeFaces mapping)
 
@@ -49,6 +50,7 @@ No build step, no server, no dependencies — **just open `index.html` in a brow
 | Move | drag · arrows (1px) · Shift+arrows (10px) |
 | Duplicate / Delete | Ctrl/Cmd+D · Del |
 | Undo / Redo | Ctrl/Cmd+Z · Ctrl/Cmd+Shift+Z |
+| Zoom | Ctrl/Cmd+wheel · − / + · ⛶ fit page · click % to reset |
 | Save to browser | Ctrl/Cmd+S |
 | Render ⇄ Edit | ▶ Render button · Esc |
 

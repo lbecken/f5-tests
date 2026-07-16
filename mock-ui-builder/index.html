@@ -34,6 +34,7 @@
       <button id="btnZoomOut" class="btn" title="Zoom out">−</button>
       <button id="zoomLabel" class="btn btn-zoom" title="Reset zoom to 100%">100%</button>
       <button id="btnZoomIn" class="btn" title="Zoom in">+</button>
+      <button id="btnZoomFit" class="btn" title="Fit the whole page in the work area">⛶</button>
     </div>
     <div class="tb-spacer"></div>
     <button id="btnRender" class="btn btn-render" title="Preview with PrimeFaces components">▶ Render</button>
@@ -43,11 +44,19 @@
   <div id="main">
     <!-- ======= left: component palette ======= -->
     <aside id="paletteWrap">
+      <div class="pal-head">
+        <span class="pal-head-title">Components</span>
+        <button id="btnPalToggle" class="pal-toggle" title="Collapse the palette to give the page more room">«</button>
+      </div>
       <div class="pal-search">
         <input id="paletteSearch" type="search" placeholder="Search components…" spellcheck="false">
       </div>
       <div id="palette"></div>
       <div class="pal-footer">placeholders map to PrimeFaces components</div>
+      <button id="palExpand" class="pal-expand" title="Expand the component palette">
+        <span class="pal-expand-arrow">»</span>
+        <span class="pal-expand-label">Components</span>
+      </button>
     </aside>
 
     <!-- ======= center: canvas ======= -->

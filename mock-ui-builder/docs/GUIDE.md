@@ -152,6 +152,7 @@ except the handles, so it never blocks canvas clicks.
 | Named layouts (Save/Open) | `localStorage` `pfmb.layouts.v1` | on demand |
 | Export/Import | `*.mock.json` file download / file picker | on demand |
 | PNG export | `*.png` download (2× resolution) | on demand |
+| UI preferences (collapsed palette) | `localStorage` `pfmb.ui.v1` | on toggle |
 
 The first three share the same JSON recipe format. PNG export re-renders the layout
 into an SVG `<foreignObject>` together with the page's collected CSS, rasterizes it

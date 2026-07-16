@@ -72,7 +72,62 @@ input, select, textarea { font: inherit; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+  transition: width .15s ease;
+  overflow: hidden;
 }
+.pal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 8px 9px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #64748b;
+}
+.pal-toggle {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  color: #475569;
+  width: 24px;
+  height: 22px;
+  line-height: 1;
+  padding: 0;
+}
+.pal-toggle:hover { background: #e2e8f0; }
+
+/* collapsed palette: thin strip with an expand tab */
+.pal-expand { display: none; }
+body.pal-collapsed #paletteWrap { width: 32px; }
+body.pal-collapsed .pal-head,
+body.pal-collapsed .pal-search,
+body.pal-collapsed #palette,
+body.pal-collapsed .pal-footer { display: none; }
+body.pal-collapsed .pal-expand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 0;
+  background: #fff;
+  border: none;
+  color: #64748b;
+}
+body.pal-collapsed .pal-expand:hover { background: #eff6ff; color: #1d4ed8; }
+.pal-expand-arrow { font-size: 15px; line-height: 1; }
+.pal-expand-label {
+  writing-mode: vertical-rl;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+}
+
 .pal-search { padding: 10px; border-bottom: 1px solid #e5e7eb; }
 .pal-search input {
   width: 100%;
@@ -137,6 +192,7 @@ input, select, textarea { font: inherit; }
 
 /* ------------------------ canvas ------------------------ */
 #canvasWrap {
+  position: relative;
   flex: 1;
   overflow: auto;
   padding: 28px;
