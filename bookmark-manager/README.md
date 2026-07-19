@@ -9,15 +9,30 @@ Built to fix the pain of managing a *large* bookmark collection in Chrome:
 instead of scrolling a cramped folder list every time you save a page, you get
 instant search over your whole folder tree and a keyboard-driven folder picker.
 
-## Getting started
+## Getting started (recommended: with the Node server)
+
+```bash
+cd bookmark-manager
+npm start          # = node server.js  →  http://localhost:3000
+```
+
+Then:
 
 1. In Chrome/Edge: **Bookmarks manager → ⋮ → Export bookmarks** → saves an HTML file.
-2. Open `bookmark-manager/index.html` in your browser (double-click, or serve it —
-   see *Hosting* below).
+2. Open **http://localhost:3000** in your browser.
 3. Click **Import** (or just drag the exported file onto the page) and choose
    **Replace everything** (first time) or **Add as new folder**.
 4. Browse, search, reorganize. When you want the result back in Chrome:
    **Export → Export HTML**, then in Chrome **Bookmarks manager → ⋮ → Import bookmarks**.
+
+With the server running, everything is saved to **`bookmark-manager/bookmarks.json`**
+on disk (plus `bookmarks.backup.json`, the previous version, kept on every write).
+Stop/restart the server whenever you like — the data is in the file, not in memory.
+The server has **zero npm dependencies** (that's why there is no `node_modules`);
+`PORT=8080 npm start` changes the port, `BOOKMARKS_FILE=/path/data.json` the file.
+
+You can also skip the server entirely and open `index.html` directly (double-click)
+— the app then stores data in that browser's localStorage instead (see below).
 
 A `sample-bookmarks.html` file is included if you want to try the import without
 touching your real bookmarks.
@@ -61,16 +76,36 @@ touching your real bookmarks.
 
 ## Where is my data?
 
-In your browser's localStorage under the key `bmm.state.v1`, saved automatically
-on every change. That means:
+The footer always tells you which mode you are in.
 
-- It stays on your machine; nothing is sent anywhere.
-- It is **per browser + per address** — if you open the app from a different
-  path or browser, it starts empty (just import your latest export).
-- Clearing the browser's site data deletes it — **export to a file now and then**
-  as a backup (JSON keeps tags; HTML is what Chrome re-imports).
-- If storage fills up (huge collections with many embedded favicons), the app
-  drops favicons first and warns you before anything is lost.
+**Server mode** (opened via `node server.js`): everything lives in
+`bookmark-manager/bookmarks.json` — a plain, human-readable JSON file you can
+back up, sync, or version yourself. Every save first copies the previous
+version to `bookmarks.backup.json`, then writes atomically. Both files are
+gitignored so your personal bookmarks never end up in a commit. If the server
+goes down mid-session, the app keeps an emergency copy in localStorage and
+warns you.
+
+The very first time you open the app through the server, anything previously
+saved in that browser's localStorage is automatically copied into
+`bookmarks.json`.
+
+**localStorage mode** (opened as `file://…` or from a static host with no
+`/api/bookmarks`): data is saved in the browser under the key `bmm.state.v1`.
+⚠ localStorage is **per origin** — scheme + host + **port**. These are all
+*different, independent* stores:
+
+- `file:///…/index.html`
+- `http://localhost:8080`
+- `http://127.0.0.1:8080`  (yes, different from `localhost`!)
+- `http://localhost:8081`
+
+So if your bookmarks "disappear", you almost certainly opened the app from a
+different address than last time — reopen the exact same URL and they're back
+(then export, or switch to server mode and they'll be migrated into the file).
+Clearing browser site data deletes localStorage — export now and then. If
+storage fills up (embedded favicons), the app drops favicons first and warns
+you before anything is lost.
 
 ## Hosting (optional, enables the bookmarklet)
 
@@ -85,4 +120,8 @@ Any static hosting works, e.g.:
 | File | Purpose |
 |---|---|
 | `index.html` | The whole app (HTML + CSS + JS, no dependencies) |
+| `server.js` | Optional zero-dependency Node server: serves the app + persists `bookmarks.json` |
+| `package.json` | `npm start` convenience (no dependencies to install) |
 | `sample-bookmarks.html` | Small Chrome-format export for trying the import |
+| `bookmarks.json` | **Your data** (created at runtime in server mode; gitignored) |
+| `bookmarks.backup.json` | Previous version of your data, refreshed on every save (gitignored) |

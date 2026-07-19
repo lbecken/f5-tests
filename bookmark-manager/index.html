@@ -291,7 +291,7 @@
   <footer>
     <span id="stats"></span>
     <span class="spacer"></span>
-    <span>Saved locally in this browser · <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</span>
+    <span><span id="storage-mode">Saved locally in this browser</span> · <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</span>
   </footer>
 </div>
 
@@ -393,6 +393,8 @@
 
 const $ = s => document.querySelector(s);
 const STORE_KEY = "bmm.state.v1";
+const API_URL = "api/bookmarks"; // provided by server.js; missing on file:// or static hosting
+let serverMode = false;          // true → persist to bookmarks.json via the server
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -428,6 +430,15 @@ function load() {
 }
 
 const save = debounce(() => {
+  if (serverMode) {
+    fetch(API_URL, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state) })
+      .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); })
+      .catch(() => {
+        try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {}
+        toast("⚠ Could not save to the server — kept a copy in this browser. Is server.js still running?");
+      });
+    return;
+  }
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -1372,19 +1383,44 @@ document.addEventListener("drop", e => {
 /* =====================================================================
    Init
    ===================================================================== */
-load();
-const theme = state.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-document.documentElement.dataset.theme = theme;
-// expand first level by default
-for (const c of state.root.children || []) if (c.type === "folder") openFolders.add(c.id);
-render();
+(async function init() {
+  // Prefer the Node server (server.js): bookmarks live in bookmarks.json on disk.
+  try {
+    if (location.protocol === "file:") throw new Error("file:// — no server");
+    const r = await fetch(API_URL, { cache: "no-store" });
+    if (r.status === 200) {
+      const j = await r.json();
+      if (j && j.root) { serverMode = true; state = j; state.recentFolders ||= []; }
+    } else if (r.status === 204) {
+      serverMode = true; // server running, no data file yet
+    }
+  } catch { /* no server (file:// or static hosting) — localStorage mode */ }
 
-// bookmarklet entry: ?add=<url>&title=<title>
-const params = new URLSearchParams(location.search);
-if (params.get("add")) {
-  openBookmarkModal({ prefill: { url: params.get("add"), title: params.get("title") || "" } });
-  history.replaceState(null, "", location.pathname);
-}
+  let migrated = 0;
+  if (!state) {
+    load(); // localStorage or fresh
+    if (serverMode) {
+      // First run against the server: move whatever this browser had into bookmarks.json.
+      migrated = countBookmarks(state.root);
+      save();
+    }
+  }
+  $("#storage-mode").textContent = serverMode ? "Saved to bookmarks.json (server)" : "Saved locally in this browser";
+
+  const theme = state.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  document.documentElement.dataset.theme = theme;
+  // expand first level by default
+  for (const c of state.root.children || []) if (c.type === "folder") openFolders.add(c.id);
+  render();
+  if (migrated) toast(`Copied ${migrated} bookmarks from this browser's local storage into bookmarks.json.`);
+
+  // bookmarklet entry: ?add=<url>&title=<title>
+  const params = new URLSearchParams(location.search);
+  if (params.get("add")) {
+    openBookmarkModal({ prefill: { url: params.get("add"), title: params.get("title") || "" } });
+    history.replaceState(null, "", location.pathname);
+  }
+})();
 </script>
 </body>
 </html>

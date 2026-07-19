@@ -1,0 +1,5 @@
+# user data — never commit personal bookmarks
+bookmarks.json
+bookmarks.backup.json
+bookmarks.json.tmp
+node_modules/

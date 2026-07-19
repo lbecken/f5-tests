@@ -1,0 +1,9 @@
+{
+  "name": "bookmark-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Single-file bookmark manager with an optional zero-dependency Node server that persists to bookmarks.json",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
