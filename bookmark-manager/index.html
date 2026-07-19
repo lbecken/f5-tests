@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bookmark Manager</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c98a2b' d='M6 2h12a2 2 0 0 1 2 2v18l-8-5-8 5V4a2 2 0 0 1 2-2z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --panel: #ffffff;
+    --panel2: #f1ede5;
+    --text: #2b2620;
+    --text-dim: #7a7264;
+    --border: #e0d9cc;
+    --accent: #8a6d1f;
+    --accent-bg: #efe6c9;
+    --accent-strong: #6b5416;
+    --danger: #b3452f;
+    --danger-bg: #f6e0da;
+    --hover: #f3efe6;
+    --sel: #ece4cf;
+    --shadow: 0 10px 30px rgba(60, 50, 30, .18);
+    --radius: 10px;
+  }
+  [data-theme="dark"] {
+    --bg: #191713;
+    --panel: #211e19;
+    --panel2: #2a261f;
+    --text: #eae4d8;
+    --text-dim: #9c9384;
+    --border: #3a352c;
+    --accent: #d4b25a;
+    --accent-bg: #3a331e;
+    --accent-strong: #e6c874;
+    --danger: #e07a60;
+    --danger-bg: #45261e;
+    --hover: #2b2820;
+    --sel: #383223;
+    --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- layout ---------- */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header .logo { font-weight: 700; font-size: 15px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+  header .logo svg { width: 18px; height: 18px; }
+  #search {
+    flex: 1; min-width: 180px; max-width: 560px;
+    padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel2); color: var(--text);
+    outline: none;
+  }
+  #search:focus { border-color: var(--accent); }
+  .btn {
+    padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel); cursor: pointer; white-space: nowrap;
+  }
+  .btn:hover { background: var(--hover); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  [data-theme="dark"] .btn.primary { color: #191713; }
+  .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+  .btn.danger { color: var(--danger); }
+  .btn.small { padding: 4px 9px; font-size: 12.5px; }
+
+  main { display: flex; flex: 1; min-height: 0; }
+
+  /* ---------- sidebar / tree ---------- */
+  #sidebar {
+    width: 300px; min-width: 200px; max-width: 50vw;
+    overflow: auto; padding: 8px 6px 20px;
+    border-right: 1px solid var(--border);
+    background: var(--panel);
+    resize: horizontal;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 6px; border-radius: 7px; cursor: pointer;
+    user-select: none;
+  }
+  .tree-row:hover { background: var(--hover); }
+  .tree-row.selected { background: var(--sel); font-weight: 600; }
+  .tree-row.drop-target { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-bg); }
+  .tree-row .twisty {
+    width: 16px; height: 16px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: none; background: none; cursor: pointer; padding: 0;
+    color: var(--text-dim); font-size: 9px;
+  }
+  .tree-row .ficon { flex: none; opacity: .75; }
+  .tree-row .tname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-row .count { font-size: 11px; color: var(--text-dim); flex: none; }
+
+  /* ---------- main panel ---------- */
+  #content { flex: 1; overflow: auto; padding: 14px 18px 40px; min-width: 0; }
+  #crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; color: var(--text-dim); font-size: 13px; }
+  #crumbs a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  #crumbs a:hover { text-decoration: underline; }
+  #folder-title { display: flex; align-items: center; gap: 10px; margin: 2px 0 12px; flex-wrap: wrap; }
+  #folder-title h2 { margin: 0; font-size: 19px; }
+  #folder-title .meta { color: var(--text-dim); font-size: 12.5px; }
+  #folder-title select {
+    margin-left: auto; padding: 5px 8px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  }
+
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 9px;
+    border: 1px solid transparent;
+  }
+  .item:hover { background: var(--panel); border-color: var(--border); }
+  [data-theme="dark"] .item:hover { background: var(--panel2); }
+  .item.folder-item { cursor: pointer; }
+  .item .sel-box { flex: none; width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+  .item .fav {
+    flex: none; width: 18px; height: 18px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; overflow: hidden;
+  }
+  .item .fav img { width: 16px; height: 16px; }
+  .item .body { flex: 1; min-width: 0; }
+  .item .title { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .title a { color: var(--text); text-decoration: none; }
+  .item .title a:hover { color: var(--accent); text-decoration: underline; }
+  .item .sub {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 12px; color: var(--text-dim);
+    overflow: hidden; white-space: nowrap;
+  }
+  .item .sub .url { overflow: hidden; text-overflow: ellipsis; max-width: 46ch; }
+  .item .sub .path { flex: none; color: var(--accent); cursor: pointer; }
+  .item .sub .path:hover { text-decoration: underline; }
+  .tag {
+    display: inline-block; padding: 0 7px; margin-left: 4px;
+    border-radius: 999px; background: var(--accent-bg); color: var(--accent-strong);
+    font-size: 11px; line-height: 18px; cursor: pointer;
+  }
+  .item .actions { display: none; gap: 2px; flex: none; }
+  .item:hover .actions { display: flex; }
+  .icon-btn {
+    border: none; background: none; cursor: pointer; padding: 4px 6px;
+    border-radius: 6px; color: var(--text-dim); font-size: 14px;
+  }
+  .icon-btn:hover { background: var(--hover); color: var(--text); }
+  .icon-btn.danger:hover { color: var(--danger); background: var(--danger-bg); }
+
+  .empty {
+    margin: 60px auto; max-width: 460px; text-align: center; color: var(--text-dim);
+  }
+  .empty h3 { color: var(--text); }
+
+  /* ---------- bulk bar ---------- */
+  #bulkbar {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 46px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: var(--shadow);
+    display: none; align-items: center; gap: 8px; padding: 8px 14px; z-index: 40;
+  }
+  #bulkbar.show { display: flex; }
+
+  /* ---------- footer ---------- */
+  footer {
+    padding: 6px 14px; font-size: 12px; color: var(--text-dim);
+    border-top: 1px solid var(--border); background: var(--panel);
+    display: flex; gap: 16px; align-items: center;
+  }
+  footer .spacer { flex: 1; }
+
+  /* ---------- dialogs ---------- */
+  dialog {
+    border: 1px solid var(--border); border-radius: 14px;
+    background: var(--panel); color: var(--text);
+    box-shadow: var(--shadow); padding: 20px;
+    width: min(560px, 92vw);
+  }
+  dialog::backdrop { background: rgba(20, 15, 5, .45); }
+  dialog h3 { margin: 0 0 14px; font-size: 17px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: var(--text-dim); margin-bottom: 4px; }
+  .field input[type=text], .field input[type=url], .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel2); color: var(--text); outline: none; font: inherit;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .dlg-actions .left { margin-right: auto; }
+
+  /* folder picker */
+  .picker { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .picker input {
+    width: 100%; border: none; border-bottom: 1px solid var(--border);
+    padding: 9px 12px; background: var(--panel2); color: var(--text); outline: none; font: inherit;
+  }
+  .picker ul { list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow: auto; }
+  .picker li {
+    padding: 5px 8px; border-radius: 7px; cursor: pointer;
+    display: flex; align-items: center; gap: 7px;
+    white-space: nowrap; overflow: hidden;
+  }
+  .picker li .p-path { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  .picker li.active { background: var(--sel); }
+  .picker li.chosen .p-name { font-weight: 700; color: var(--accent-strong); }
+  .picker .p-section {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--text-dim); padding: 6px 8px 2px; cursor: default;
+  }
+  .picker .p-section:hover { background: none; }
+
+  /* toast */
+  #toast {
+    position: fixed; bottom: 46px; right: 18px; z-index: 60;
+    background: var(--text); color: var(--bg);
+    padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow);
+    display: none; align-items: center; gap: 12px; max-width: 70vw;
+  }
+  #toast.show { display: flex; }
+  #toast button {
+    border: none; background: none; color: var(--accent);
+    font-weight: 700; cursor: pointer; padding: 2px 4px;
+  }
+  [data-theme="dark"] #toast button { color: #8a6d1f; }
+
+  kbd {
+    background: var(--panel2); border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 5px; padding: 0 5px; font-size: 11.5px;
+  }
+  .muted { color: var(--text-dim); font-size: 12.5px; }
+  code.block {
+    display: block; background: var(--panel2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; word-break: break-all; font-size: 12px;
+  }
+  @media (max-width: 720px) {
+    #sidebar { position: fixed; inset: 49px 25% 0 0; z-index: 30; display: none; box-shadow: var(--shadow); }
+    #sidebar.open { display: block; }
+    #menu-btn { display: inline-block; }
+  }
+  #menu-btn { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button id="menu-btn" class="btn small">☰</button>
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path fill="var(--accent)" d="M6 2h12a2 2 0 0 1 2 2v18l-8-5-8 5V4a2 2 0 0 1 2-2z"/></svg>
+      Bookmarks
+    </div>
+    <input id="search" type="text" placeholder="Search bookmarks, folders, tags…  ( / )" autocomplete="off">
+    <button class="btn primary" id="btn-add">＋ Add bookmark</button>
+    <button class="btn" id="btn-new-folder">New folder</button>
+    <button class="btn" id="btn-import">Import</button>
+    <button class="btn" id="btn-export">Export ▾</button>
+    <button class="btn" id="btn-tools">Tools ▾</button>
+    <button class="btn" id="btn-theme" title="Toggle dark / light">◐</button>
+    <input type="file" id="file-input" accept=".html,.htm,.json" hidden>
+  </header>
+
+  <main>
+    <nav id="sidebar"></nav>
+    <section id="content">
+      <div id="crumbs"></div>
+      <div id="folder-title"></div>
+      <div id="list"></div>
+    </section>
+  </main>
+
+  <div id="bulkbar">
+    <span id="bulk-count"></span>
+    <button class="btn small" id="bulk-move">Move to folder…</button>
+    <button class="btn small danger" id="bulk-delete">Delete</button>
+    <button class="btn small" id="bulk-clear">Clear selection</button>
+  </div>
+
+  <footer>
+    <span id="stats"></span>
+    <span class="spacer"></span>
+    <span>Saved locally in this browser · <kbd>/</kbd> search · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo</span>
+  </footer>
+</div>
+
+<!-- ============ bookmark add/edit dialog ============ -->
+<dialog id="dlg-bookmark">
+  <h3 id="dlg-bm-title">Add bookmark</h3>
+  <div class="field"><label>Name</label><input type="text" id="bm-name"></div>
+  <div class="field"><label>URL</label><input type="url" id="bm-url" placeholder="https://…"></div>
+  <div class="field"><label>Tags <span class="muted">(comma separated, optional)</span></label><input type="text" id="bm-tags" placeholder="java, video, retro…"></div>
+  <div class="field">
+    <label>Folder <span class="muted">— type to filter, ↑↓ to move, Enter to choose</span></label>
+    <div id="bm-picker"></div>
+  </div>
+  <div class="dlg-actions">
+    <button class="btn left" id="bm-newsub">＋ New subfolder here</button>
+    <button class="btn" id="bm-cancel">Cancel</button>
+    <button class="btn primary" id="bm-save">Save</button>
+  </div>
+</dialog>
+
+<!-- ============ move dialog ============ -->
+<dialog id="dlg-move">
+  <h3 id="dlg-move-title">Move to folder</h3>
+  <div class="field"><div id="move-picker"></div></div>
+  <div class="dlg-actions">
+    <button class="btn" id="move-cancel">Cancel</button>
+    <button class="btn primary" id="move-ok">Move</button>
+  </div>
+</dialog>
+
+<!-- ============ import choice dialog ============ -->
+<dialog id="dlg-import">
+  <h3>Import bookmarks</h3>
+  <p id="import-summary"></p>
+  <div class="dlg-actions">
+    <button class="btn" id="import-cancel">Cancel</button>
+    <button class="btn" id="import-merge">Add as new folder</button>
+    <button class="btn primary" id="import-replace">Replace everything</button>
+  </div>
+</dialog>
+
+<!-- ============ export dialog ============ -->
+<dialog id="dlg-export">
+  <h3>Export</h3>
+  <p class="muted">HTML is the standard format Chrome, Edge and Firefox can import back. JSON keeps everything (including tags) for backup or re-import here.</p>
+  <div class="dlg-actions">
+    <button class="btn" id="export-cancel">Cancel</button>
+    <button class="btn" id="export-json">Export JSON</button>
+    <button class="btn primary" id="export-html">Export HTML (for Chrome/Edge)</button>
+  </div>
+</dialog>
+
+<!-- ============ tools dialog ============ -->
+<dialog id="dlg-tools">
+  <h3>Tools</h3>
+  <div class="field">
+    <label>Find duplicates</label>
+    <p class="muted" style="margin:4px 0 8px">List bookmarks that share the same URL so you can clean them up.</p>
+    <button class="btn" id="tool-dupes">Show duplicates</button>
+  </div>
+  <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+  <div class="field">
+    <label>Paste a list of URLs</label>
+    <p class="muted" style="margin:4px 0 8px">One URL per line (optionally followed by a space and a title). Great for dumping a window full of tabs into a folder.</p>
+    <button class="btn" id="tool-paste">Paste URLs…</button>
+  </div>
+  <hr style="border:none;border-top:1px solid var(--border);margin:14px 0">
+  <div class="field">
+    <label>Bookmarklet — save the current page from any tab</label>
+    <p class="muted" style="margin:4px 0 8px">Drag this link onto your browser's bookmarks bar. Clicking it on any page opens this app with the Add dialog pre-filled. <b>Note:</b> works when this app is opened from a web address (e.g. GitHub Pages or a local server), not from a <code>file://</code> path.</p>
+    <p><a id="bookmarklet-link" href="#">📌 Save to Bookmarks</a></p>
+  </div>
+  <div class="dlg-actions"><button class="btn" id="tools-close">Close</button></div>
+</dialog>
+
+<!-- ============ paste urls dialog ============ -->
+<dialog id="dlg-paste">
+  <h3>Paste URLs</h3>
+  <div class="field">
+    <label>One per line — <code>https://url</code> or <code>https://url Title of the page</code></label>
+    <textarea id="paste-text" rows="8" spellcheck="false"></textarea>
+  </div>
+  <div class="field"><label>Into folder</label><div id="paste-picker"></div></div>
+  <div class="dlg-actions">
+    <button class="btn" id="paste-cancel">Cancel</button>
+    <button class="btn primary" id="paste-ok">Add bookmarks</button>
+  </div>
+</dialog>
+
+<div id="toast"><span id="toast-msg"></span><button id="toast-undo">Undo</button></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Bookmark Manager — single-file app, no dependencies.
+   Data lives in localStorage; import/export via Netscape bookmark HTML
+   (Chrome / Edge / Firefox compatible) and JSON.
+   ===================================================================== */
+
+const $ = s => document.querySelector(s);
+const STORE_KEY = "bmm.state.v1";
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+/* ---------------- state ---------------- */
+let state = null;
+let selectedFolderId = "root";
+let searchQuery = "";
+let viewMode = "folder";          // folder | search | dupes
+let sortMode = "manual";          // manual | name | date
+let selection = new Set();        // selected bookmark/folder ids (bulk ops)
+let openFolders = new Set(["root"]);
+const undoStack = [];
+
+function freshState() {
+  return {
+    root: { id: "root", type: "folder", title: "All bookmarks", children: [
+      { id: uid(), type: "folder", title: "Bookmarks bar", toolbar: true, children: [] },
+      { id: uid(), type: "folder", title: "Other bookmarks", children: [] },
+    ]},
+    recentFolders: [],
+    theme: null,
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) { state = JSON.parse(raw); if (state && state.root) return; }
+  } catch (e) { console.warn("load failed", e); }
+  state = freshState();
+}
+
+const save = debounce(() => {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // Most likely quota exceeded (favicons are data: URIs). Strip icons and retry.
+    walk(state.root, n => { if (n.type === "bookmark") delete n.icon; });
+    try {
+      localStorage.setItem(STORE_KEY, JSON.stringify(state));
+      toast("Storage was full — favicons were dropped to keep your bookmarks saved.");
+      render();
+    } catch (e2) {
+      toast("⚠ Could not save: browser storage is full. Export to a file to avoid losing changes.");
+    }
+  }
+}, 250);
+
+/* ---------------- tree helpers ---------------- */
+function walk(node, cb) { cb(node); if (node.children) for (const c of node.children) walk(c, cb); }
+
+function findNode(id, node = state.root) {
+  if (node.id === id) return node;
+  if (node.children) for (const c of node.children) { const r = findNode(id, c); if (r) return r; }
+  return null;
+}
+function findParent(id, node = state.root) {
+  if (!node.children) return null;
+  for (const c of node.children) {
+    if (c.id === id) return node;
+    const r = findParent(id, c);
+    if (r) return r;
+  }
+  return null;
+}
+function isDescendantOf(node, ancestorId) {
+  const anc = findNode(ancestorId);
+  if (!anc || !anc.children) return false;
+  let found = false;
+  walk(anc, n => { if (n.id === node.id && n !== anc) found = true; });
+  return found;
+}
+function removeNode(id) {
+  const p = findParent(id);
+  if (!p) return null;
+  const i = p.children.findIndex(c => c.id === id);
+  return i >= 0 ? p.children.splice(i, 1)[0] : null;
+}
+function moveNode(id, folderId) {
+  if (id === folderId) return false;
+  const target = findNode(folderId);
+  const node = findNode(id);
+  if (!node || !target || target.type !== "folder") return false;
+  if (node.type === "folder" && (isDescendantOf(target, id) || target.id === id)) return false;
+  const cur = findParent(id);
+  if (cur && cur.id === folderId) return true;
+  removeNode(id);
+  target.children.push(node);
+  return true;
+}
+function countBookmarks(node) {
+  let n = 0;
+  walk(node, x => { if (x.type === "bookmark") n++; });
+  return n;
+}
+function countFolders(node) {
+  let n = 0;
+  walk(node, x => { if (x.type === "folder") n++; });
+  return n - 1; // exclude self
+}
+function folderPath(id) {
+  const parts = [];
+  let cur = id;
+  while (cur && cur !== "root") {
+    const n = findNode(cur);
+    if (!n) break;
+    parts.unshift(n.title);
+    const p = findParent(cur);
+    cur = p ? p.id : null;
+  }
+  return parts;
+}
+function flattenFolders() {
+  const out = [];
+  (function rec(node, path, depth) {
+    out.push({ id: node.id, title: node.title, path, depth });
+    for (const c of node.children || []) {
+      if (c.type === "folder") rec(c, path ? path + " / " + c.title : c.title, depth + 1);
+    }
+  })(state.root, "", 0);
+  return out;
+}
+function touchRecentFolder(id) {
+  if (id === "root") return;
+  state.recentFolders = [id, ...state.recentFolders.filter(x => x !== id)].slice(0, 8);
+}
+
+/* ---------------- undo ---------------- */
+function pushUndo(label) {
+  undoStack.push({ label, snap: JSON.stringify(state.root) });
+  if (undoStack.length > 25) undoStack.shift();
+}
+function undo() {
+  const u = undoStack.pop();
+  if (!u) { toast("Nothing to undo"); return; }
+  state.root = JSON.parse(u.snap);
+  selection.clear();
+  if (!findNode(selectedFolderId)) selectedFolderId = "root";
+  save(); render();
+  toast("Undid: " + u.label, false);
+}
+
+/* ---------------- toast ---------------- */
+let toastTimer = null;
+function toast(msg, withUndo) {
+  $("#toast-msg").textContent = msg;
+  $("#toast-undo").style.display = withUndo ? "" : "none";
+  $("#toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $("#toast").classList.remove("show"), 6000);
+}
+$("#toast-undo").onclick = () => { $("#toast").classList.remove("show"); undo(); };
+
+/* =====================================================================
+   Import / export
+   ===================================================================== */
+function parseNetscapeHTML(text) {
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const rootDL = doc.querySelector("dl");
+  const root = { id: uid(), type: "folder", title: "Imported", children: [] };
+  if (rootDL) parseDL(rootDL, root);
+  return root;
+
+  function parseDL(dl, parent) {
+    for (const child of dl.children) {
+      if (child.tagName !== "DT") { // some exporters emit bare DLs
+        if (child.tagName === "DL") parseDL(child, parent);
+        continue;
+      }
+      const first = child.firstElementChild;
+      if (!first) continue;
+      if (first.tagName === "H3") {
+        const folder = {
+          id: uid(), type: "folder", title: first.textContent.trim() || "Untitled folder",
+          children: [],
+        };
+        if (first.getAttribute("PERSONAL_TOOLBAR_FOLDER") === "true") folder.toolbar = true;
+        const ad = first.getAttribute("ADD_DATE");
+        if (ad) folder.addDate = +ad;
+        parent.children.push(folder);
+        // Chrome's export leaves <DT> unclosed, so the parser nests the
+        // folder's <DL> inside the same <DT>; some tools put it as a sibling.
+        let sub = child.querySelector(":scope > dl");
+        if (!sub) {
+          const sib = child.nextElementSibling;
+          if (sib && sib.tagName === "DL") sub = sib;
+        }
+        if (sub) parseDL(sub, folder);
+      } else if (first.tagName === "A") {
+        const bm = {
+          id: uid(), type: "bookmark",
+          title: first.textContent.trim() || first.getAttribute("HREF") || "Untitled",
+          url: first.getAttribute("HREF") || "",
+        };
+        const ad = first.getAttribute("ADD_DATE");
+        if (ad) bm.addDate = +ad;
+        const icon = first.getAttribute("ICON");
+        if (icon && icon.startsWith("data:")) bm.icon = icon;
+        const tags = first.getAttribute("TAGS");
+        if (tags) bm.tags = tags.split(",").map(t => t.trim()).filter(Boolean);
+        parent.children.push(bm);
+      }
+    }
+  }
+}
+
+function exportNetscapeHTML() {
+  const L = [];
+  L.push("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
+  L.push("<!-- This is an automatically generated file.");
+  L.push("     It will be read and overwritten.");
+  L.push("     DO NOT EDIT! -->");
+  L.push('<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">');
+  L.push("<TITLE>Bookmarks</TITLE>");
+  L.push("<H1>Bookmarks</H1>");
+  L.push("<DL><p>");
+  for (const c of state.root.children) emit(c, "    ");
+  L.push("</DL><p>");
+  return L.join("\n");
+
+  function emit(node, ind) {
+    const ad = node.addDate ? ` ADD_DATE="${node.addDate}"` : "";
+    if (node.type === "folder") {
+      const tb = node.toolbar ? ' PERSONAL_TOOLBAR_FOLDER="true"' : "";
+      L.push(`${ind}<DT><H3${ad}${tb}>${esc(node.title)}</H3>`);
+      L.push(`${ind}<DL><p>`);
+      for (const c of node.children || []) emit(c, ind + "    ");
+      L.push(`${ind}</DL><p>`);
+    } else {
+      const icon = node.icon ? ` ICON="${node.icon}"` : "";
+      const tags = node.tags && node.tags.length ? ` TAGS="${esc(node.tags.join(","))}"` : "";
+      L.push(`${ind}<DT><A HREF="${esc(node.url)}"${ad}${icon}${tags}>${esc(node.title)}</A>`);
+    }
+  }
+}
+
+function download(filename, text, mime) {
+  const blob = new Blob([text], { type: mime || "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+let pendingImport = null;
+function handleImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result);
+    let importedRoot = null;
+    try {
+      if (/^\s*[{\[]/.test(text)) {
+        const obj = JSON.parse(text);
+        const r = obj.root || obj;
+        if (!r || r.type !== "folder" || !Array.isArray(r.children)) throw new Error("Not a bookmark JSON file");
+        walk(r, n => { n.id = uid(); });  // avoid id collisions with existing data
+        importedRoot = { id: uid(), type: "folder", title: "Imported", children: r.children };
+      } else {
+        importedRoot = parseNetscapeHTML(text);
+      }
+    } catch (e) {
+      toast("Import failed: " + e.message);
+      return;
+    }
+    const nb = countBookmarks(importedRoot), nf = countFolders(importedRoot);
+    if (nb === 0 && nf === 0) { toast("No bookmarks found in that file."); return; }
+    pendingImport = importedRoot;
+    $("#import-summary").innerHTML =
+      `Found <b>${nb}</b> bookmark${nb === 1 ? "" : "s"} in <b>${nf}</b> folder${nf === 1 ? "" : "s"} ` +
+      `(<i>${esc(file.name)}</i>).<br>Replace your current bookmarks, or add them as a new folder?`;
+    $("#dlg-import").showModal();
+  };
+  reader.readAsText(file);
+}
+
+$("#import-cancel").onclick = () => { pendingImport = null; $("#dlg-import").close(); };
+$("#import-replace").onclick = () => {
+  if (!pendingImport) return;
+  pushUndo("import (replace all)");
+  state.root.children = pendingImport.children;
+  finishImport();
+};
+$("#import-merge").onclick = () => {
+  if (!pendingImport) return;
+  pushUndo("import (as folder)");
+  pendingImport.title = "Imported " + new Date().toISOString().slice(0, 10);
+  state.root.children.push(pendingImport);
+  finishImport();
+};
+function finishImport() {
+  const n = countBookmarks(state.root);
+  pendingImport = null;
+  $("#dlg-import").close();
+  selectedFolderId = "root";
+  openFolders = new Set(["root", ...state.root.children.filter(c => c.type === "folder").map(c => c.id)]);
+  selection.clear();
+  save(); render();
+  toast(`Imported — you now have ${n} bookmarks.`, true);
+}
+
+/* =====================================================================
+   Search
+   ===================================================================== */
+function searchBookmarks(q) {
+  q = q.trim().toLowerCase();
+  if (!q) return [];
+  const terms = q.split(/\s+/);
+  const results = [];
+  (function rec(node, path) {
+    for (const c of node.children || []) {
+      if (c.type === "folder") {
+        const hay = (c.title + " " + path).toLowerCase();
+        if (terms.every(t => hay.includes(t))) {
+          results.push({ node: c, path, score: 50 + (c.title.toLowerCase().startsWith(q) ? 20 : 0) });
+        }
+        rec(c, path ? path + " / " + c.title : c.title);
+      } else {
+        const title = (c.title || "").toLowerCase();
+        const url = (c.url || "").toLowerCase();
+        const tags = (c.tags || []).join(" ").toLowerCase();
+        const hay = title + " " + url + " " + tags + " " + path.toLowerCase();
+        if (terms.every(t => hay.includes(t))) {
+          let score = 0;
+          if (title.includes(q)) score += 40;
+          if (title.startsWith(q)) score += 25;
+          if (tags.includes(q)) score += 20;
+          if (url.includes(q)) score += 10;
+          results.push({ node: c, path, score });
+        }
+      }
+    }
+  })(state.root, "");
+  results.sort((a, b) => b.score - a.score || a.node.title.localeCompare(b.node.title));
+  return results.slice(0, 400);
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+const PALETTE = ["#b26536", "#7d8f3e", "#4d7f8f", "#8f5d80", "#a3803a", "#5f7d5a", "#96543f", "#576a94"];
+function letterAvatar(bm) {
+  let ch = "•", color = PALETTE[0];
+  try {
+    const host = new URL(bm.url).hostname.replace(/^www\./, "");
+    ch = (host[0] || "•").toUpperCase();
+    let h = 0;
+    for (const c of host) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    color = PALETTE[h % PALETTE.length];
+  } catch { ch = (bm.title[0] || "•").toUpperCase(); }
+  return `<span class="fav" style="background:${color}">${esc(ch)}</span>`;
+}
+function favicon(bm) {
+  return bm.icon ? `<span class="fav"><img src="${esc(bm.icon)}" alt=""></span>` : letterAvatar(bm);
+}
+
+function render() {
+  renderTree();
+  renderMain();
+  renderFooter();
+  renderBulkbar();
+}
+
+/* ---------- sidebar tree ---------- */
+function renderTree() {
+  const el = $("#sidebar");
+  el.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  addRow(state.root, 0, frag);
+  el.appendChild(frag);
+
+  function addRow(node, depth, frag) {
+    const row = document.createElement("div");
+    row.className = "tree-row" + (node.id === selectedFolderId ? " selected" : "");
+    row.style.paddingLeft = 6 + depth * 16 + "px";
+    row.dataset.id = node.id;
+    const hasSub = (node.children || []).some(c => c.type === "folder");
+    const open = openFolders.has(node.id);
+    row.innerHTML =
+      `<button class="twisty" ${hasSub ? "" : 'style="visibility:hidden"'}>${open ? "▼" : "▶"}</button>` +
+      `<span class="ficon">${open ? "📂" : "📁"}</span>` +
+      `<span class="tname">${esc(node.title)}</span>` +
+      `<span class="count">${countBookmarks(node) || ""}</span>`;
+    row.querySelector(".twisty").onclick = e => {
+      e.stopPropagation();
+      open ? openFolders.delete(node.id) : openFolders.add(node.id);
+      renderTree();
+    };
+    row.onclick = () => {
+      selectedFolderId = node.id;
+      viewMode = "folder"; searchQuery = ""; $("#search").value = "";
+      openFolders.add(node.id);
+      selection.clear();
+      render();
+      if (innerWidth <= 720) $("#sidebar").classList.remove("open");
+    };
+    // drag & drop target
+    row.ondragover = e => { e.preventDefault(); row.classList.add("drop-target"); };
+    row.ondragleave = () => row.classList.remove("drop-target");
+    row.ondrop = e => {
+      e.preventDefault(); row.classList.remove("drop-target");
+      const ids = (e.dataTransfer.getData("text/bmm-ids") || "").split(",").filter(Boolean);
+      if (!ids.length) return;
+      pushUndo(`move ${ids.length} item${ids.length > 1 ? "s" : ""}`);
+      let moved = 0;
+      for (const id of ids) if (moveNode(id, node.id)) moved++;
+      if (moved) { touchRecentFolder(node.id); selection.clear(); save(); render(); toast(`Moved ${moved} item${moved > 1 ? "s" : ""} to “${node.title}”`, true); }
+      else undoStack.pop();
+    };
+    if (node.id !== "root") {
+      row.draggable = true;
+      row.ondragstart = e => e.dataTransfer.setData("text/bmm-ids", node.id);
+    }
+    frag.appendChild(row);
+    if (open) for (const c of node.children || []) if (c.type === "folder") addRow(c, depth + 1, frag);
+  }
+}
+
+/* ---------- main panel ---------- */
+function renderMain() {
+  const crumbs = $("#crumbs"), titleEl = $("#folder-title"), list = $("#list");
+  crumbs.innerHTML = ""; titleEl.innerHTML = ""; list.innerHTML = "";
+
+  if (viewMode === "search") { renderSearchResults(); return; }
+  if (viewMode === "dupes") { renderDupes(); return; }
+
+  const folder = findNode(selectedFolderId) || state.root;
+
+  // breadcrumbs
+  const parts = folderPath(folder.id);
+  const crumbFrag = document.createDocumentFragment();
+  const mk = (label, id) => {
+    const a = document.createElement("a");
+    a.textContent = label;
+    a.onclick = () => { selectedFolderId = id; viewMode = "folder"; render(); };
+    return a;
+  };
+  crumbFrag.appendChild(mk("All bookmarks", "root"));
+  let acc = "root";
+  parts.forEach((p, i) => {
+    crumbFrag.appendChild(document.createTextNode(" › "));
+    // resolve id progressively
+    const n = findByPath(parts.slice(0, i + 1));
+    crumbFrag.appendChild(mk(p, n ? n.id : "root"));
+  });
+  crumbs.appendChild(crumbFrag);
+
+  // title + toolbar
+  const nb = countBookmarks(folder), nf = countFolders(folder);
+  titleEl.innerHTML =
+    `<h2>${esc(folder.title)}</h2>` +
+    `<span class="meta">${nb} bookmark${nb === 1 ? "" : "s"} · ${nf} folder${nf === 1 ? "" : "s"}</span>` +
+    (folder.id !== "root"
+      ? `<button class="icon-btn" id="f-rename" title="Rename folder">✎</button>
+         <button class="icon-btn danger" id="f-delete" title="Delete folder">🗑</button>` : "") +
+    `<select id="sort-select" title="Sort">
+       <option value="manual">Manual order</option>
+       <option value="name">Sort by name</option>
+       <option value="date">Sort by date added</option>
+     </select>`;
+  $("#sort-select").value = sortMode;
+  $("#sort-select").onchange = e => { sortMode = e.target.value; render(); };
+  if (folder.id !== "root") {
+    $("#f-rename").onclick = () => renameFolder(folder);
+    $("#f-delete").onclick = () => deleteItems([folder.id]);
+  }
+
+  // children
+  let kids = (folder.children || []).slice();
+  const folders = kids.filter(c => c.type === "folder");
+  const bms = kids.filter(c => c.type === "bookmark");
+  if (sortMode === "name") {
+    folders.sort((a, b) => a.title.localeCompare(b.title));
+    bms.sort((a, b) => a.title.localeCompare(b.title));
+  } else if (sortMode === "date") {
+    bms.sort((a, b) => (b.addDate || 0) - (a.addDate || 0));
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const f of folders) frag.appendChild(folderRow(f));
+  for (const b of bms) frag.appendChild(bookmarkRow(b, null));
+  list.appendChild(frag);
+
+  if (folder.id === "root" && countBookmarks(state.root) === 0) {
+    list.insertAdjacentHTML("afterbegin",
+      `<div class="empty"><h3>Welcome 👋</h3>
+         <p>Start by importing the bookmarks file exported from Chrome or Edge<br>
+         (<i>Bookmarks manager → ⋮ → Export bookmarks</i>) — or just drag the file onto this page.</p>
+         <p><button class="btn primary" onclick="document.getElementById('file-input').click()">Import bookmarks file</button></p>
+         <p class="muted">or press <b>＋ Add bookmark</b> to add your first one manually.</p></div>`);
+  } else if (!folders.length && !bms.length) {
+    list.innerHTML = `<div class="empty"><p>This folder is empty.</p></div>`;
+  }
+}
+
+function findByPath(parts) {
+  let cur = state.root;
+  for (const p of parts) {
+    cur = (cur.children || []).find(c => c.type === "folder" && c.title === p);
+    if (!cur) return null;
+  }
+  return cur;
+}
+
+function folderRow(f) {
+  const div = document.createElement("div");
+  div.className = "item folder-item";
+  div.dataset.id = f.id;
+  div.innerHTML =
+    `<input type="checkbox" class="sel-box" ${selection.has(f.id) ? "checked" : ""}>` +
+    `<span class="fav" style="background:transparent;font-size:15px">📁</span>` +
+    `<div class="body"><div class="title">${esc(f.title)}</div>
+       <div class="sub">${countBookmarks(f)} bookmarks</div></div>` +
+    `<div class="actions">
+       <button class="icon-btn" data-act="rename" title="Rename">✎</button>
+       <button class="icon-btn" data-act="move" title="Move">📂</button>
+       <button class="icon-btn danger" data-act="del" title="Delete">🗑</button>
+     </div>`;
+  wireRow(div, f, true);
+  return div;
+}
+
+function bookmarkRow(b, path) {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.dataset.id = b.id;
+  const tags = (b.tags || []).map(t => `<span class="tag" data-tag="${esc(t)}">${esc(t)}</span>`).join("");
+  div.innerHTML =
+    `<input type="checkbox" class="sel-box" ${selection.has(b.id) ? "checked" : ""}>` +
+    favicon(b) +
+    `<div class="body">
+       <div class="title"><a href="${esc(b.url)}" target="_blank" rel="noopener noreferrer">${esc(b.title)}</a>${tags}</div>
+       <div class="sub">${path !== null && path !== undefined ? `<span class="path" data-path="1">${esc(path || "All bookmarks")}</span>` : ""}<span class="url">${esc(b.url)}</span></div>
+     </div>` +
+    `<div class="actions">
+       <button class="icon-btn" data-act="edit" title="Edit">✎</button>
+       <button class="icon-btn" data-act="move" title="Move">📂</button>
+       <button class="icon-btn danger" data-act="del" title="Delete">🗑</button>
+     </div>`;
+  wireRow(div, b, false);
+  const pathEl = div.querySelector('[data-path]');
+  if (pathEl) pathEl.onclick = () => {
+    const parent = findParent(b.id);
+    if (parent) { selectedFolderId = parent.id; viewMode = "folder"; searchQuery = ""; $("#search").value = ""; expandTo(parent.id); render(); }
+  };
+  for (const t of div.querySelectorAll(".tag")) {
+    t.onclick = e => { e.preventDefault(); $("#search").value = t.dataset.tag; onSearchInput(); };
+  }
+  return div;
+}
+
+function wireRow(div, node, isFolder) {
+  div.querySelector(".sel-box").onclick = e => {
+    e.stopPropagation();
+    e.target.checked ? selection.add(node.id) : selection.delete(node.id);
+    renderBulkbar();
+  };
+  const acts = div.querySelector(".actions");
+  acts.onclick = e => {
+    const act = e.target.dataset.act;
+    if (!act) return;
+    e.stopPropagation();
+    if (act === "edit") openBookmarkModal({ bookmark: node });
+    if (act === "rename") renameFolder(node);
+    if (act === "move") openMoveModal([node.id]);
+    if (act === "del") deleteItems([node.id]);
+  };
+  if (isFolder) {
+    div.onclick = e => {
+      if (e.target.closest(".actions") || e.target.classList.contains("sel-box")) return;
+      selectedFolderId = node.id; viewMode = "folder"; expandTo(node.id); render();
+    };
+  }
+  div.draggable = true;
+  div.ondragstart = e => {
+    const ids = selection.has(node.id) ? [...selection] : [node.id];
+    e.dataTransfer.setData("text/bmm-ids", ids.join(","));
+  };
+}
+
+function expandTo(id) {
+  let cur = id;
+  while (cur) {
+    openFolders.add(cur);
+    const p = findParent(cur);
+    cur = p ? p.id : null;
+  }
+  openFolders.add("root");
+}
+
+/* ---------- search results ---------- */
+function renderSearchResults() {
+  const results = searchBookmarks(searchQuery);
+  $("#folder-title").innerHTML =
+    `<h2>Search results</h2><span class="meta">${results.length} match${results.length === 1 ? "" : "es"} for “${esc(searchQuery)}”</span>`;
+  const list = $("#list");
+  const frag = document.createDocumentFragment();
+  for (const r of results) {
+    frag.appendChild(r.node.type === "folder" ? searchFolderRow(r) : bookmarkRow(r.node, r.path));
+  }
+  list.appendChild(frag);
+  if (!results.length) list.innerHTML = `<div class="empty"><p>No matches for “${esc(searchQuery)}”.</p></div>`;
+}
+function searchFolderRow(r) {
+  const div = folderRow(r.node);
+  div.querySelector(".sub").innerHTML =
+    `<span class="path">${esc(r.path || "All bookmarks")}</span><span>· ${countBookmarks(r.node)} bookmarks</span>`;
+  return div;
+}
+
+/* ---------- duplicates ---------- */
+function renderDupes() {
+  const byUrl = new Map();
+  (function rec(node, path) {
+    for (const c of node.children || []) {
+      if (c.type === "folder") rec(c, path ? path + " / " + c.title : c.title);
+      else if (c.url) {
+        const key = c.url.replace(/\/+$/, "");
+        if (!byUrl.has(key)) byUrl.set(key, []);
+        byUrl.get(key).push({ node: c, path });
+      }
+    }
+  })(state.root, "");
+  const groups = [...byUrl.values()].filter(g => g.length > 1);
+  $("#folder-title").innerHTML =
+    `<h2>Duplicate bookmarks</h2><span class="meta">${groups.length} URL${groups.length === 1 ? "" : "s"} appear more than once</span>
+     <button class="btn small" id="dupes-back" style="margin-left:auto">← Back</button>`;
+  $("#dupes-back").onclick = () => { viewMode = "folder"; render(); };
+  const list = $("#list");
+  if (!groups.length) { list.innerHTML = `<div class="empty"><p>No duplicates found 🎉</p></div>`; return; }
+  const frag = document.createDocumentFragment();
+  for (const g of groups) {
+    const h = document.createElement("div");
+    h.className = "muted";
+    h.style.cssText = "margin:14px 0 2px;font-weight:600";
+    h.textContent = g[0].node.url;
+    frag.appendChild(h);
+    for (const { node, path } of g) frag.appendChild(bookmarkRow(node, path));
+  }
+  list.appendChild(frag);
+}
+
+/* ---------- footer / bulkbar ---------- */
+function renderFooter() {
+  $("#stats").textContent = `${countBookmarks(state.root)} bookmarks · ${countFolders(state.root)} folders`;
+}
+function renderBulkbar() {
+  const bar = $("#bulkbar");
+  if (selection.size) {
+    $("#bulk-count").textContent = selection.size + " selected";
+    bar.classList.add("show");
+  } else bar.classList.remove("show");
+}
+$("#bulk-clear").onclick = () => { selection.clear(); render(); };
+$("#bulk-delete").onclick = () => deleteItems([...selection]);
+$("#bulk-move").onclick = () => openMoveModal([...selection]);
+
+/* =====================================================================
+   Mutations
+   ===================================================================== */
+function deleteItems(ids) {
+  ids = ids.filter(id => id !== "root" && findNode(id));
+  if (!ids.length) return;
+  let nb = 0, labels = [];
+  for (const id of ids) { const n = findNode(id); nb += n.type === "folder" ? countBookmarks(n) : 1; labels.push(n.title); }
+  const what = ids.length === 1 ? `“${labels[0]}”` : `${ids.length} items`;
+  if (!confirm(`Delete ${what}${nb > 1 ? ` (${nb} bookmarks)` : ""}? You can undo afterwards.`)) return;
+  pushUndo(`delete ${what}`);
+  for (const id of ids) removeNode(id);
+  selection.clear();
+  if (!findNode(selectedFolderId)) selectedFolderId = "root";
+  save(); render();
+  toast(`Deleted ${what}`, true);
+}
+
+function renameFolder(f) {
+  const name = prompt("Folder name:", f.title);
+  if (!name || name.trim() === f.title) return;
+  pushUndo("rename folder");
+  f.title = name.trim();
+  save(); render();
+}
+
+function newFolder(parentId) {
+  const name = prompt("New folder name:");
+  if (!name || !name.trim()) return null;
+  const parent = findNode(parentId) || state.root;
+  const f = { id: uid(), type: "folder", title: name.trim(), children: [], addDate: Math.floor(Date.now() / 1000) };
+  pushUndo("new folder");
+  parent.children.push(f);
+  openFolders.add(parent.id);
+  save(); render();
+  return f;
+}
+
+/* =====================================================================
+   Folder picker component
+   ===================================================================== */
+function createFolderPicker(container, initialId) {
+  container.innerHTML = `<div class="picker"><input type="text" placeholder="Type to filter folders…" autocomplete="off"><ul></ul></div>`;
+  const input = container.querySelector("input");
+  const listEl = container.querySelector("ul");
+  let chosenId = (initialId && findNode(initialId)) ? initialId : "root";
+  let activeIndex = 0;
+  let visible = [];
+
+  function build() {
+    const q = input.value.trim().toLowerCase();
+    const all = flattenFolders();
+    listEl.innerHTML = "";
+    visible = [];
+    const frag = document.createDocumentFragment();
+
+    const addSection = label => {
+      const li = document.createElement("li");
+      li.className = "p-section"; li.textContent = label;
+      frag.appendChild(li);
+    };
+    const addItem = f => {
+      const li = document.createElement("li");
+      const idx = visible.length;
+      li.dataset.id = f.id;
+      if (f.id === chosenId) li.classList.add("chosen");
+      li.style.paddingLeft = q ? "8px" : 8 + f.depth * 14 + "px";
+      li.innerHTML = `<span>${f.id === chosenId ? "✓" : "📁"}</span><span class="p-name">${esc(f.title)}</span>` +
+        (q && f.path ? `<span class="p-path">${esc(f.path)}</span>` : "");
+      li.onmouseenter = () => setActive(idx);
+      li.onclick = () => { choose(f.id); };
+      frag.appendChild(li);
+      visible.push({ id: f.id, el: li });
+    };
+
+    if (!q) {
+      const recents = state.recentFolders.map(id => all.find(f => f.id === id)).filter(Boolean);
+      if (recents.length) {
+        addSection("Recently used");
+        for (const f of recents) addItem({ ...f, depth: 0 });
+        addSection("All folders");
+      }
+      for (const f of all) addItem(f);
+    } else {
+      const terms = q.split(/\s+/);
+      const matches = all
+        .filter(f => { const hay = (f.title + " " + f.path).toLowerCase(); return terms.every(t => hay.includes(t)); })
+        .sort((a, b) => {
+          const as = a.title.toLowerCase().startsWith(q) ? 0 : a.title.toLowerCase().includes(q) ? 1 : 2;
+          const bs = b.title.toLowerCase().startsWith(q) ? 0 : b.title.toLowerCase().includes(q) ? 1 : 2;
+          return as - bs || a.title.localeCompare(b.title);
+        });
+      for (const f of matches) addItem(f);
+      if (!matches.length) addSection("No folders match — press “New subfolder” to create one");
+    }
+    listEl.appendChild(frag);
+    setActive(Math.max(0, visible.findIndex(v => v.id === chosenId)));
+  }
+
+  function setActive(i) {
+    if (!visible.length) return;
+    activeIndex = Math.max(0, Math.min(i, visible.length - 1));
+    visible.forEach((v, j) => v.el.classList.toggle("active", j === activeIndex));
+    const el = visible[activeIndex].el;
+    const box = listEl.getBoundingClientRect(), r = el.getBoundingClientRect();
+    if (r.top < box.top || r.bottom > box.bottom) el.scrollIntoView({ block: "nearest" });
+  }
+  function choose(id) { chosenId = id; build(); }
+
+  input.onkeydown = e => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setActive(activeIndex + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActive(activeIndex - 1); }
+    else if (e.key === "Enter") { e.preventDefault(); if (visible[activeIndex]) choose(visible[activeIndex].id); }
+  };
+  input.oninput = () => build();
+  build();
+
+  return {
+    get value() { return chosenId; },
+    set value(id) { chosenId = id; build(); },
+    focus: () => input.focus(),
+    rebuild: build,
+  };
+}
+
+/* =====================================================================
+   Dialogs
+   ===================================================================== */
+let bmPicker = null, editingBookmark = null;
+
+function openBookmarkModal({ bookmark, folderId, prefill } = {}) {
+  editingBookmark = bookmark || null;
+  $("#dlg-bm-title").textContent = bookmark ? "Edit bookmark" : "Add bookmark";
+  $("#bm-name").value = bookmark ? bookmark.title : (prefill && prefill.title) || "";
+  $("#bm-url").value = bookmark ? bookmark.url : (prefill && prefill.url) || "";
+  $("#bm-tags").value = bookmark && bookmark.tags ? bookmark.tags.join(", ") : "";
+  const startFolder = bookmark
+    ? (findParent(bookmark.id) || state.root).id
+    : (folderId || (state.recentFolders[0] && findNode(state.recentFolders[0]) ? state.recentFolders[0] : selectedFolderId));
+  bmPicker = createFolderPicker($("#bm-picker"), startFolder);
+  $("#dlg-bookmark").showModal();
+  ($("#bm-name").value ? $("#bm-picker input") : $("#bm-name")).focus();
+}
+
+$("#bm-cancel").onclick = () => $("#dlg-bookmark").close();
+$("#bm-newsub").onclick = () => {
+  const f = newFolder(bmPicker.value);
+  if (f) { bmPicker.rebuild(); bmPicker.value = f.id; }
+};
+$("#bm-save").onclick = () => {
+  const title = $("#bm-name").value.trim();
+  let url = $("#bm-url").value.trim();
+  if (!url) { $("#bm-url").focus(); return; }
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
+  const tags = $("#bm-tags").value.split(",").map(t => t.trim()).filter(Boolean);
+  const folderId = bmPicker.value;
+  if (editingBookmark) {
+    pushUndo("edit bookmark");
+    editingBookmark.title = title || url;
+    editingBookmark.url = url;
+    tags.length ? editingBookmark.tags = tags : delete editingBookmark.tags;
+    moveNode(editingBookmark.id, folderId);
+  } else {
+    pushUndo("add bookmark");
+    const bm = { id: uid(), type: "bookmark", title: title || url, url, addDate: Math.floor(Date.now() / 1000) };
+    if (tags.length) bm.tags = tags;
+    (findNode(folderId) || state.root).children.push(bm);
+  }
+  touchRecentFolder(folderId);
+  $("#dlg-bookmark").close();
+  save(); render();
+  toast(editingBookmark ? "Bookmark updated" : "Bookmark added", true);
+  editingBookmark = null;
+};
+// Enter in name/url/tags fields = save
+for (const id of ["bm-name", "bm-url", "bm-tags"]) {
+  $("#" + id).addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("#bm-save").click(); } });
+}
+
+/* ---- move dialog ---- */
+let movePicker = null, moveIds = [];
+function openMoveModal(ids) {
+  moveIds = ids.filter(id => id !== "root");
+  if (!moveIds.length) return;
+  $("#dlg-move-title").textContent = `Move ${moveIds.length === 1 ? `“${findNode(moveIds[0]).title}”` : moveIds.length + " items"} to…`;
+  movePicker = createFolderPicker($("#move-picker"), selectedFolderId);
+  $("#dlg-move").showModal();
+  movePicker.focus();
+}
+$("#move-cancel").onclick = () => $("#dlg-move").close();
+$("#move-ok").onclick = () => {
+  const target = movePicker.value;
+  pushUndo(`move ${moveIds.length} item${moveIds.length > 1 ? "s" : ""}`);
+  let moved = 0;
+  for (const id of moveIds) if (moveNode(id, target)) moved++;
+  if (moved) { touchRecentFolder(target); toast(`Moved ${moved} item${moved > 1 ? "s" : ""}`, true); }
+  else { undoStack.pop(); toast("Nothing was moved (can't move a folder inside itself)."); }
+  selection.clear();
+  $("#dlg-move").close();
+  save(); render();
+};
+
+/* ---- paste urls dialog ---- */
+let pastePicker = null;
+$("#tool-paste").onclick = () => {
+  $("#dlg-tools").close();
+  $("#paste-text").value = "";
+  pastePicker = createFolderPicker($("#paste-picker"), selectedFolderId);
+  $("#dlg-paste").showModal();
+  $("#paste-text").focus();
+};
+$("#paste-cancel").onclick = () => $("#dlg-paste").close();
+$("#paste-ok").onclick = () => {
+  const lines = $("#paste-text").value.split("\n").map(l => l.trim()).filter(Boolean);
+  const folder = findNode(pastePicker.value) || state.root;
+  const items = [];
+  for (const line of lines) {
+    const m = line.match(/^(\S+)(?:\s+(.*))?$/);
+    if (!m) continue;
+    let url = m[1];
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(url)) url = "https://" + url;
+    let title = (m[2] || "").trim();
+    if (!title) { try { title = new URL(url).hostname.replace(/^www\./, "") + new URL(url).pathname.replace(/\/$/, ""); } catch { title = url; } }
+    items.push({ id: uid(), type: "bookmark", title, url, addDate: Math.floor(Date.now() / 1000) });
+  }
+  if (!items.length) { toast("No URLs found."); return; }
+  pushUndo(`add ${items.length} bookmarks`);
+  folder.children.push(...items);
+  touchRecentFolder(folder.id);
+  $("#dlg-paste").close();
+  save(); render();
+  toast(`Added ${items.length} bookmark${items.length > 1 ? "s" : ""} to “${folder.title}”`, true);
+};
+
+/* ---- export / tools dialogs ---- */
+$("#btn-export").onclick = () => $("#dlg-export").showModal();
+$("#export-cancel").onclick = () => $("#dlg-export").close();
+$("#export-html").onclick = () => {
+  download("bookmarks-" + new Date().toISOString().slice(0, 10) + ".html", exportNetscapeHTML(), "text/html");
+  $("#dlg-export").close();
+};
+$("#export-json").onclick = () => {
+  const obj = { app: "bookmark-manager", version: 1, exportedAt: new Date().toISOString(), root: state.root };
+  download("bookmarks-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(obj, null, 2), "application/json");
+  $("#dlg-export").close();
+};
+$("#btn-tools").onclick = () => {
+  // build bookmarklet for current location (strip query/hash)
+  const appUrl = location.origin === "null" || location.protocol === "file:"
+    ? location.href.split(/[?#]/)[0]
+    : location.origin + location.pathname;
+  const js = `javascript:(()=>{window.open(${JSON.stringify(appUrl)}+'?add='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'_blank')})()`;
+  $("#bookmarklet-link").setAttribute("href", js);
+  $("#dlg-tools").showModal();
+};
+$("#tools-close").onclick = () => $("#dlg-tools").close();
+$("#tool-dupes").onclick = () => { $("#dlg-tools").close(); viewMode = "dupes"; render(); };
+
+/* =====================================================================
+   Header buttons / global events
+   ===================================================================== */
+$("#btn-add").onclick = () => openBookmarkModal({ folderId: selectedFolderId });
+$("#btn-new-folder").onclick = () => {
+  const f = newFolder(selectedFolderId);
+  if (f) { selectedFolderId = f.id; render(); }
+};
+$("#btn-import").onclick = () => $("#file-input").click();
+$("#file-input").onchange = e => {
+  if (e.target.files[0]) handleImportFile(e.target.files[0]);
+  e.target.value = "";
+};
+$("#menu-btn").onclick = () => $("#sidebar").classList.toggle("open");
+
+const onSearchInput = () => {
+  searchQuery = $("#search").value;
+  viewMode = searchQuery.trim() ? "search" : "folder";
+  renderMain();
+};
+$("#search").addEventListener("input", debounce(onSearchInput, 120));
+$("#search").addEventListener("keydown", e => {
+  if (e.key === "Escape") { $("#search").value = ""; onSearchInput(); $("#search").blur(); }
+});
+
+$("#btn-theme").onclick = () => {
+  const cur = document.documentElement.dataset.theme;
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  state.theme = next;
+  save();
+};
+
+document.addEventListener("keydown", e => {
+  const inInput = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  const dlgOpen = !!document.querySelector("dialog[open]");
+  if (e.key === "/" && !inInput && !dlgOpen) { e.preventDefault(); $("#search").focus(); $("#search").select(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !inInput && !dlgOpen) { e.preventDefault(); undo(); }
+  if (e.key === "Escape" && selection.size && !dlgOpen && !inInput) { selection.clear(); render(); }
+});
+
+// drag & drop of a bookmarks .html/.json file anywhere on the page = import
+document.addEventListener("dragover", e => { if (e.dataTransfer.types.includes("Files")) e.preventDefault(); });
+document.addEventListener("drop", e => {
+  if (e.dataTransfer.files && e.dataTransfer.files.length) {
+    e.preventDefault();
+    handleImportFile(e.dataTransfer.files[0]);
+  }
+});
+
+/* =====================================================================
+   Init
+   ===================================================================== */
+load();
+const theme = state.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+document.documentElement.dataset.theme = theme;
+// expand first level by default
+for (const c of state.root.children || []) if (c.type === "folder") openFolders.add(c.id);
+render();
+
+// bookmarklet entry: ?add=<url>&title=<title>
+const params = new URLSearchParams(location.search);
+if (params.get("add")) {
+  openBookmarkModal({ prefill: { url: params.get("add"), title: params.get("title") || "" } });
+  history.replaceState(null, "", location.pathname);
+}
+</script>
+</body>
+</html>
