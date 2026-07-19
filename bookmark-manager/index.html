@@ -405,6 +405,7 @@ let viewMode = "folder";          // folder | search | dupes
 let sortMode = "manual";          // manual | name | date
 let selection = new Set();        // selected bookmark/folder ids (bulk ops)
 let openFolders = new Set(["root"]);
+let pendingTreeReveal = false;    // scroll the sidebar to the selected folder on next render
 const undoStack = [];
 
 function freshState() {
@@ -765,6 +766,15 @@ function renderTree() {
   addRow(state.root, 0, frag);
   el.appendChild(frag);
 
+  if (pendingTreeReveal) {
+    pendingTreeReveal = false;
+    const sel = el.querySelector(".tree-row.selected");
+    if (sel) {
+      const box = el.getBoundingClientRect(), r = sel.getBoundingClientRect();
+      if (r.top < box.top || r.bottom > box.bottom) sel.scrollIntoView({ block: "center" });
+    }
+  }
+
   function addRow(node, depth, frag) {
     const row = document.createElement("div");
     row.className = "tree-row" + (node.id === selectedFolderId ? " selected" : "");
@@ -828,7 +838,7 @@ function renderMain() {
   const mk = (label, id) => {
     const a = document.createElement("a");
     a.textContent = label;
-    a.onclick = () => { selectedFolderId = id; viewMode = "folder"; render(); };
+    a.onclick = () => { selectedFolderId = id; viewMode = "folder"; expandTo(id); pendingTreeReveal = true; render(); };
     return a;
   };
   crumbFrag.appendChild(mk("All bookmarks", "root"));
@@ -937,7 +947,7 @@ function bookmarkRow(b, path) {
   const pathEl = div.querySelector('[data-path]');
   if (pathEl) pathEl.onclick = () => {
     const parent = findParent(b.id);
-    if (parent) { selectedFolderId = parent.id; viewMode = "folder"; searchQuery = ""; $("#search").value = ""; expandTo(parent.id); render(); }
+    if (parent) { selectedFolderId = parent.id; viewMode = "folder"; searchQuery = ""; $("#search").value = ""; expandTo(parent.id); pendingTreeReveal = true; render(); }
   };
   for (const t of div.querySelectorAll(".tag")) {
     t.onclick = e => { e.preventDefault(); $("#search").value = t.dataset.tag; onSearchInput(); };
@@ -964,7 +974,7 @@ function wireRow(div, node, isFolder) {
   if (isFolder) {
     div.onclick = e => {
       if (e.target.closest(".actions") || e.target.classList.contains("sel-box")) return;
-      selectedFolderId = node.id; viewMode = "folder"; expandTo(node.id); render();
+      selectedFolderId = node.id; viewMode = "folder"; expandTo(node.id); pendingTreeReveal = true; render();
     };
   }
   div.draggable = true;
@@ -1315,7 +1325,7 @@ $("#tool-dupes").onclick = () => { $("#dlg-tools").close(); viewMode = "dupes"; 
 $("#btn-add").onclick = () => openBookmarkModal({ folderId: selectedFolderId });
 $("#btn-new-folder").onclick = () => {
   const f = newFolder(selectedFolderId);
-  if (f) { selectedFolderId = f.id; render(); }
+  if (f) { selectedFolderId = f.id; expandTo(f.id); pendingTreeReveal = true; render(); }
 };
 $("#btn-import").onclick = () => $("#file-input").click();
 $("#file-input").onchange = e => {
