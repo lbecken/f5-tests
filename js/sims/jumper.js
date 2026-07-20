@@ -127,13 +127,15 @@
     const thigh = Figure.SEG.thigh * Hd, shank = Figure.SEG.shank * Hd;
     const upper = Figure.SEG.upperArm * Hd, fore = Figure.SEG.foreArm * Hd;
     const footLen = Figure.SEG.foot * Hd;
-    const inFlight = (phase === 'push' || phase === 'flight');
+    const legsAir = (phase === 'flight');           // feet only leave ground in flight
+    const ascending = vY < 0;                        // moving up (screen y-down)
 
     const J = { pelvis: { x: hipX, y: hipY } };
-    // small trunk lean: forward in flight, upright otherwise
-    const lean = (phase === 'crouch') ? 0.35
-               : (phase === 'flight') ? clamp(vX / ppm * 0.06, -0.2, 0.3) + 0.12
-               : (phase === 'land') ? 0.22 : 0.06;
+    // trunk lean: deep forward in crouch/land, mild in flight/stand
+    const lean = (phase === 'crouch') ? 0.42
+               : (phase === 'land') ? 0.30
+               : (phase === 'flight') ? (ascending ? 0.14 : 0.20)
+               : 0.06;
     const spine = Figure.SEG.spine * Hd;
     const neckX = hipX + sin(lean) * spine * facing, neckY = hipY - cos(lean) * spine;
     J.neck = { x: neckX, y: neckY };
@@ -143,33 +145,37 @@
 
     for (let leg = 0; leg < 2; leg++) {
       const suf = leg === 0 ? 'N' : 'F';
-      const spread = (leg === 0 ? 0.12 : -0.12) * Hd * facing;
-      let ax, ay;
-      if (inFlight) {
-        // tuck: feet drawn up toward the hip, knees bent forward
-        const tuck = phase === 'flight' ? 0.55 : 0.35;
-        ax = hipX + (0.35 + spread / Hd) * Hd * facing;
-        ay = hipY + LrPx * (1 - tuck);
+      const spread = (leg === 0 ? 0.10 : -0.10) * Hd * facing;
+      let ax, ay, footGround;
+      if (legsAir) {
+        // extended-and-reaching while rising, flexed to reach down when falling
+        const ext = ascending ? 0.78 : 0.86;         // fraction of full leg length
+        const fwd = ascending ? 0.05 : 0.22;         // reach forward for landing
+        ax = hipX + spread + fwd * LrPx * facing;
+        ay = hipY + ext * LrPx;
+        footGround = false;
       } else {
-        const surf = surfUnder(hipX);
-        ax = hipX + spread + 0.15 * Hd * facing;
-        ay = surf;
+        // feet planted on the support surface
+        ax = hipX + spread + 0.12 * Hd * facing;
+        ay = surfUnder(hipX);
+        footGround = true;
       }
-      const kn = Figure.solve2(hipX, hipY, ax, ay, thigh, shank, +1 * facing);
+      const kn = Figure.solve2(hipX, hipY, ax, ay, thigh, shank, facing); // knee forward
       J['knee' + suf] = { x: kn.x, y: kn.y };
       J['ankle' + suf] = { x: kn.fx, y: kn.fy };
-      const toeUp = inFlight ? -footLen * 0.2 : footLen * 0.12;
-      J['toe' + suf] = { x: kn.fx + footLen * facing, y: Math.min(surfUnder(kn.fx), kn.fy + toeUp) };
+      const toeY = footGround ? kn.fy : kn.fy - footLen * 0.25; // toe up in air
+      J['toe' + suf] = { x: kn.fx + footLen * facing, y: toeY };
     }
 
-    // arm angles measured from straight-down; +cos points downward.
-    // crouch: swung down-and-back · push/flight: thrown up overhead ·
-    // land: forward for balance · stand: hanging.
+    // arm angles from straight-down (+cos = down, sin*facing = forward):
+    // crouch: swept down-and-back (wind-up) · push/flight-up: thrown overhead ·
+    // flight-down: forward to prepare landing · land: forward for balance · stand: hang.
     let aUp, aFo;
-    if (phase === 'crouch') { aUp = -1.0; aFo = -0.5; }
-    else if (inFlight) { aUp = 2.7; aFo = 2.95; }
-    else if (phase === 'land') { aUp = 1.2; aFo = 1.6; }
-    else { aUp = 0.28; aFo = 0.15; }
+    if (phase === 'crouch') { aUp = -1.15; aFo = -0.6; }
+    else if (phase === 'push' || (phase === 'flight' && ascending)) { aUp = 2.75; aFo = 2.95; }
+    else if (phase === 'flight') { aUp = 1.35; aFo = 1.7; }
+    else if (phase === 'land') { aUp = 1.15; aFo = 1.55; }
+    else { aUp = 0.26; aFo = 0.12; }
     for (let arm = 0; arm < 2; arm++) {
       const suf = arm === 0 ? 'N' : 'F';
       const d = arm === 0 ? 0.13 : -0.13;            // split so arms don't overlap

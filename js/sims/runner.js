@@ -1,159 +1,156 @@
 'use strict';
 
 /* ============================================================
- * Running figure — driven by a Spring-Loaded Inverted Pendulum.
+ * Running figure — a kinematic gait model.
  *
- * The SLIP is the canonical reduced-order model of running in
- * biomechanics: the whole body is a point mass (the centre of
- * mass, ≈ the pelvis) bouncing on a massless linear leg-spring.
- *   · FLIGHT  — the COM is a projectile under gravity only.
- *   · STANCE  — one foot is planted; the leg acts as a spring
- *               F = k(L0 − L) directed from foot to COM, so the
- *               body compresses, stores energy, and rebounds.
- * Touchdown geometry uses Raibert's foot-placement heuristic
- * (plant the foot ahead by an amount set by forward speed), which
- * stabilises the running speed. SLIP is energy-conserving, so once
- * running it settles into a steady periodic bounce — the vertical
- * oscillation of a real runner emerges from the physics, not a
- * scripted animation.
+ * The earlier version derived the legs from a spring-mass (SLIP)
+ * physics model, which is correct dynamically but read as stiff
+ * and "backwards". Natural running is dominated by the joint-angle
+ * trajectories of the gait cycle, so this version drives the figure
+ * directly from measured running kinematics (side / sagittal plane):
  *
- * The skeleton is hung on the physics: the planted foot never
- * skates (it is the real SLIP contact, IK-solved up to the hip);
- * the swing leg follows a raised cycloid to the next footfall;
- * arms counter-swing; the trunk leans forward with speed.
- * 7.5-head proportions, side view (sagittal plane).
+ *   · a single gait phase φ advances at the cadence; the two legs
+ *     are half a cycle out of step. Stance is ~38% of the cycle
+ *     (running has two flight phases per stride — feet off the
+ *     ground when neither leg is in stance).
+ *   · SWING leg is forward-kinematic from real angle curves: the
+ *     thigh swings from behind to in front, while the knee flexes
+ *     to ~100–110° in mid-swing (heel tucked up toward the buttock)
+ *     and re-extends to reach the next foot strike. This heel-up,
+ *     high-knee recovery is the signature of a real running stride.
+ *   · STANCE leg is inverse-kinematic to a PLANTED foot, so the
+ *     contact point never skates; as the hip passes over it the
+ *     knee naturally flexes (impact absorption) then extends
+ *     (push-off). Knees always bend forward.
+ *   · the hip rises and falls twice per stride — lowest at
+ *     mid-stance, highest during flight — the running "bounce".
+ *   · arms counter-swing to the legs with a flexed elbow; the
+ *     trunk leans forward with speed.
+ * 7.5-head proportions, side view.
  * ============================================================ */
 (() => {
   let W, H, ctx, hud;
-  let Hd;                       // pixels per head
-  let ppm;                      // pixels per metre
-  let groundY;
+  let Hd, ppm, groundY;
 
-  // physics (SI)
-  const g = 9.81, m = 70;
-  const Lr = 0.95;              // leg rest length, m (standing hip height)
-  let k = 14000;               // leg stiffness N/m
-  let vDes = 4.5;              // desired forward speed m/s
+  const Lr = 0.95;               // max leg length, m (thigh+shank)
+  const H0 = 0.88;               // mean hip height, m
+  let vDes = 4.2;                // running speed, m/s
+  let bobAmp = 0.045;            // vertical COM oscillation amplitude, m
+  let slowmo = false;
 
-  // COM state
-  let x, y, vx, vy;
-  let phase, foot, stanceLeg;
-  const HOP = 1.05;             // regulated vertical take-off speed (m/s) → low, realistic bounce
+  // gait state
+  let phi = 0;                   // gait phase [0,1)
+  let x = 0;                     // COM world x (m)
+  let camX = 0, dist = 0;
+  const legStance = [false, false];
+  const plantX = [0, 0];         // planted foot world-x while in stance
+  const lastSwingAnkleX = [0, 0];
+  const facing = 1;
 
-  // per-leg gait bookkeeping
-  let plant = [0, 0];           // world-x where each foot last planted (m)
-  let liftT = [0, 0];           // sim-time each foot last lifted off
-  let stepPeriod = 0.34, lastTD = 0;
-  let camX = 0, tSim = 0, strides = 0;
+  const D2R = Math.PI / 180;
+  const smoother = s => s * s * s * (s * (s * 6 - 15) + 10);
+  const cosd = a => Math.cos(a * D2R), sind = a => Math.sin(a * D2R);
 
-  const cos = Math.cos, sin = Math.sin;
+  function dutyFactor() { return clamp(0.44 - 0.022 * vDes, 0.30, 0.42); }
+  function strideTime() {         // seconds per full (two-step) stride
+    const cadence = clamp(150 + 6 * (vDes - 3), 150, 186); // steps/min
+    return 2 * 60 / cadence;
+  }
 
   function reset() {
-    x = 0; y = Lr; vx = vDes; vy = 0;
-    phase = 'flight'; stanceLeg = 1; foot = 0;
-    camX = 0; tSim = 0; strides = 0; lastTD = 0; stepPeriod = 0.34;
-    plant = [-0.3, 0.3]; liftT = [0, 0];
+    phi = 0; x = 0; camX = 0; dist = 0;
+    legStance[0] = legStance[1] = false;
+    plantX[0] = -0.2; plantX[1] = 0.3;
+    lastSwingAnkleX[0] = -0.2; lastSwingAnkleX[1] = 0.3;
   }
 
-  // Raibert forward foot offset for the current speed (m)
-  function footOffset() {
-    const tStance = Math.PI * Math.sqrt(m / k);      // spring half-period
-    return clamp(vx * tStance * 0.5 + 0.06 * (vx - vDes), -0.6 * Lr, 0.6 * Lr);
+  // swing-leg joint angles (degrees) as a function of swing progress s∈[0,1]
+  // thigh: measured from vertical, forward = +   ·   knee: flexion (≥0)
+  function swingThighDeg(s) { return lerp(-20, 25, smoother(s)); }
+  function swingKneeDeg(s) {
+    // big mid-swing flexion (heel to buttock), small at both ends
+    const bump = Math.exp(-((s - 0.42) / 0.30) * ((s - 0.42) / 0.30));
+    return 22 + 88 * bump;
   }
 
-  function stepPhysics(dt) {
-    tSim += dt;
-    if (phase === 'flight') {
-      vy -= g * dt; x += vx * dt; y += vy * dt;
-      const off = footOffset();
-      const yTouch = Math.sqrt(Math.max(0, Lr * Lr - off * off));
-      if (vy < 0 && y <= yTouch) {
-        y = yTouch;
-        foot = x + off;
-        stanceLeg ^= 1;
-        plant[stanceLeg] = foot;
-        liftT[stanceLeg ^ 1] = tSim;                 // other leg begins swing
-        stepPeriod = lerp(stepPeriod, clamp(tSim - lastTD, 0.2, 0.6), 0.3);
-        lastTD = tSim;
-        strides++;
-        phase = 'stance';
-      }
-    } else {
-      const dx = x - foot, dy = y;
-      let L = Math.hypot(dx, dy) || 1e-4;
-      const ux = dx / L, uy = dy / L;
-      const Fs = k * (Lr - L);
-      vx += (ux * Fs / m) * dt;
-      vy += (uy * Fs / m - g) * dt;
-      x += vx * dt; y += vy * dt;
-      if (L >= Lr && (vx * ux + vy * uy) > 0) {
-        phase = 'flight';
-        // decouple hop from speed: regulate vertical take-off to a small fixed value
-        // (keeps the bounce realistic) and nudge horizontal speed toward the target.
-        if (vy > 0) vy = HOP;
-        vx += 0.3 * (vDes - vx);
-      }
-    }
+  // world position of a swing leg's ankle for progress s (m, y-up from ground)
+  function swingAnkle(hipXw, hipYw, s) {
+    const th = swingThighDeg(s) * D2R;
+    const kf = swingKneeDeg(s) * D2R;
+    const thigh = Figure.SEG.thigh / Figure.HIP_HEADS * Lr;
+    const shank = Figure.SEG.shank / Figure.HIP_HEADS * Lr;
+    const kneeX = hipXw + facing * thigh * Math.sin(th);
+    const kneeY = hipYw - thigh * Math.cos(th);
+    const shAng = th - facing * kf;    // shank rotates back from thigh
+    const ankX = kneeX + facing * shank * Math.sin(shAng);
+    const ankY = kneeY - shank * Math.cos(shAng);
+    return { kneeX, kneeY, ankX, ankY };
   }
 
-  // ---- map physics → skeleton joints (pixels) ----
   function pose() {
     const sx = wx => (wx - camX) * ppm + W * 0.42;
     const sy = wy => groundY - wy * ppm;
-    const hipX = sx(x), hipY = sy(y);
-    const lean = clamp(vx * 0.06, 0.05, 0.6);
 
-    const J = { pelvis: { x: hipX, y: hipY } };
-    const spineLen = Figure.SEG.spine * Hd;
-    const neckX = hipX + sin(lean) * spineLen, neckY = hipY - cos(lean) * spineLen;
-    J.neck = { x: neckX, y: neckY };
-    const headExtra = (Figure.SEG.neck + Figure.SEG.headR) * Hd;
-    J.head = { x: neckX + sin(lean) * headExtra, y: neckY - cos(lean) * headExtra };
+    // hip vertical bounce: lowest at mid-stance, highest in flight (2/stride)
+    const D = dutyFactor();
+    const hipYw = H0 + bobAmp * -Math.cos(2 * Math.PI * 2 * (phi - D * 0.5));
+    const hipXw = x;
+    const hipX = sx(hipXw), hipY = sy(hipYw);
+
+    const lean = clamp(0.06 + vDes * 0.03, 0.08, 0.4);
+    const spine = Figure.SEG.spine * Hd;
+    const neckX = hipX + facing * Math.sin(lean) * spine;
+    const neckY = hipY - Math.cos(lean) * spine;
+    const hx = (Figure.SEG.neck + Figure.SEG.headR) * Hd;
+    const J = {
+      pelvis: { x: hipX, y: hipY },
+      neck: { x: neckX, y: neckY },
+      head: { x: neckX + facing * Math.sin(lean) * hx, y: neckY - Math.cos(lean) * hx },
+    };
     J.shoulderN = J.shoulderF = { x: neckX, y: neckY };
 
-    const thigh = Figure.SEG.thigh * Hd, shank = Figure.SEG.shank * Hd;
-    const footLen = Figure.SEG.foot * Hd;
-    let nearLegFore = 0;
+    const thighPx = Figure.SEG.thigh * Hd, shankPx = Figure.SEG.shank * Hd;
+    const footPx = Figure.SEG.foot * Hd;
 
     for (let leg = 0; leg < 2; leg++) {
-      const isStance = (phase === 'stance' && leg === stanceLeg);
-      let ax, ay;
-      if (isStance) {
-        ax = sx(foot); ay = groundY;
-      } else {
-        // swing leg as a hip pendulum whose length shortens mid-swing:
-        // the knee flexes (heel toward buttock) then extends to reach the
-        // next footfall — matching measured swing-phase knee flexion.
-        const prog = clamp((tSim - liftT[leg]) / stepPeriod, 0, 1);
-        const sp = prog * prog * (3 - 2 * prog);
-        const offA = Math.asin(footOffset() / Lr);
-        const theta = lerp(-0.6, offA, sp);              // sweep back → front
-        const legLen = Lr * (1 - 0.45 * Math.sin(prog * Math.PI)); // knee flex
-        const fxW = x + legLen * sin(theta);
-        const fyW = y - legLen * cos(theta);             // world height of foot
-        ax = sx(fxW); ay = groundY - fyW * ppm;
-      }
-      const kn = Figure.solve2(hipX, hipY, ax, ay, thigh, shank, +1);
+      const p = (phi + leg * 0.5) % 1;
       const suf = leg === 0 ? 'N' : 'F';
-      J['knee' + suf] = { x: kn.x, y: kn.y };
-      J['ankle' + suf] = { x: kn.fx, y: kn.fy };
-      J['toe' + suf] = { x: kn.fx + footLen, y: Math.min(groundY, kn.fy + footLen * 0.12) };
-      if (leg === 0) nearLegFore = (kn.fx - hipX) / (thigh + shank);
+      const stance = p < D;
+      if (stance) {
+        // pinned foot → IK; knee bulges forward (+facing)
+        const fxW = plantX[leg];
+        const ankScreenX = sx(fxW), ankScreenY = groundY;
+        const kn = Figure.solve2(hipX, hipY, ankScreenX, ankScreenY, thighPx, shankPx, facing);
+        J['knee' + suf] = { x: kn.x, y: kn.y };
+        J['ankle' + suf] = { x: kn.fx, y: kn.fy };
+        // foot flat on ground, pointing forward
+        J['toe' + suf] = { x: kn.fx + facing * footPx, y: groundY };
+      } else {
+        const s = clamp((p - D) / (1 - D), 0, 1);
+        const a = swingAnkle(hipXw, hipYw, s);
+        lastSwingAnkleX[leg] = a.ankX;
+        J['knee' + suf] = { x: sx(a.kneeX), y: sy(a.kneeY) };
+        const ankX = sx(a.ankX), ankY = sy(a.ankY);
+        J['ankle' + suf] = { x: ankX, y: ankY };
+        // dorsiflexed foot (toe up) to clear the ground, pointing forward
+        J['toe' + suf] = { x: ankX + facing * footPx * 0.95, y: ankY - footPx * 0.25 };
+      }
     }
 
-    // arms counter-swing to legs; elbow flexed
-    const amp = clamp(0.55 + vx * 0.05, 0.4, 1.1);
+    // arms: counter-swing to the legs, elbow flexed ~90°
+    const armAmp = clamp(0.5 + vDes * 0.05, 0.4, 0.95);
     const upper = Figure.SEG.upperArm * Hd, fore = Figure.SEG.foreArm * Hd;
     for (let arm = 0; arm < 2; arm++) {
       const suf = arm === 0 ? 'N' : 'F';
-      const dir = arm === 0 ? -1 : 1;
-      const swing = dir * nearLegFore * amp * 1.4;
-      const shX = neckX, shY = neckY;
-      const aUp = lean + swing;
-      const ex = shX + sin(aUp) * upper, ey = shY + cos(aUp) * upper * 0.9;
-      const aFo = aUp + 1.45;
+      // near arm opposite to near leg: near leg thigh forwardness ~ +cos(2πφ)
+      const dir = arm === 0 ? 1 : -1;
+      const swing = dir * armAmp * Math.cos(2 * Math.PI * phi);   // shoulder angle (rad from vertical, forward+)
+      const sh = lean * 0.5 + swing;
+      const ex = neckX + facing * Math.sin(sh) * upper;
+      const ey = neckY + Math.cos(sh) * upper;                    // arm hangs down (+y)
+      const fa = sh + facing * (1.5 - 0.3 * Math.cos(2 * Math.PI * phi) * dir); // flexed, swinging
       J['elbow' + suf] = { x: ex, y: ey };
-      J['wrist' + suf] = { x: ex + sin(aFo) * fore, y: ey + cos(aFo) * fore * 0.7 };
+      J['wrist' + suf] = { x: ex + facing * Math.sin(fa) * fore, y: ey + Math.cos(fa) * fore };
     }
     return J;
   }
@@ -161,20 +158,22 @@
   const sim = {
     name: 'Running Figure',
     icon: '🏃',
-    info: 'Driven by a Spring-Loaded Inverted Pendulum — the standard physics model '
-        + 'of running. The centre of mass bounces on a massless leg-spring: ballistic '
-        + 'in flight, spring-loaded in stance, with Raibert foot placement setting the '
-        + 'speed. The planted foot never skates; the vertical bounce is emergent. '
-        + '7.5-head proportions, side view.',
+    info: 'A kinematic gait model built from measured running joint angles (side view). '
+        + 'The swing leg flexes the knee to ~100° mid-swing — heel tucked up, high knee — '
+        + 'then extends to reach the next foot strike; the stance foot is pinned so it '
+        + 'never skates while the hip passes over it. The body bounces twice per stride. '
+        + '7.5-head proportions.',
 
     controls: [
       { name: 'Speed (m/s)', min: 2, max: 7.5, step: 0.1,
-        get: () => vDes, set: v => { vDes = v; E0 = 0.5 * m * vDes * vDes + m * g * (Lr * 1.07) + 0.5 * m * 1.15 * 1.15; },
-        fmt: v => v.toFixed(1) },
-      { name: 'Leg stiffness (kN/m)', min: 8, max: 22, step: 0.5,
-        get: () => k / 1000, set: v => { k = v * 1000; }, fmt: v => v.toFixed(1) },
+        get: () => vDes, set: v => { vDes = v; }, fmt: v => v.toFixed(1) },
+      { name: 'Bounce (cm)', min: 2, max: 9, step: 0.5,
+        get: () => bobAmp * 100, set: v => { bobAmp = v / 100; }, fmt: v => v.toFixed(1) },
     ],
-    actions: [{ name: 'Reset', fn: () => reset() }],
+    actions: [
+      { name: 'Slow-mo', fn: () => { slowmo = !slowmo; }, isOn: () => slowmo },
+      { name: 'Reset', fn: () => reset() },
+    ],
 
     init(env) {
       ({ ctx, w: W, h: H, hud } = env);
@@ -185,14 +184,31 @@
     },
 
     frame(dt) {
-      let acc = dt; const hs = 1 / 240; let guard = 0;
-      while (acc > 0 && guard++ < 80) { const s = Math.min(hs, acc); stepPhysics(s); acc -= s; }
-      camX = lerp(camX, x, 0.15);
+      const d = slowmo ? dt * 0.28 : dt;
+      const D = dutyFactor();
+      // advance gait phase & detect stance transitions to plant feet
+      const dphi = d / strideTime();
+      const prevPhi = phi;
+      phi = (phi + dphi) % 1;
+      x += vDes * d;
+      for (let leg = 0; leg < 2; leg++) {
+        const p = (phi + leg * 0.5) % 1;
+        const pPrev = (prevPhi + leg * 0.5) % 1;
+        const stance = p < D, wasStance = pPrev < D;
+        if (stance && !wasStance) plantX[leg] = lastSwingAnkleX[leg]; // foot strike
+        legStance[leg] = stance;
+      }
+      camX = lerp(camX, x, 0.2);
+      dist = x;
       render();
+
+      const cadence = Math.round(120 / strideTime());
+      const stepLen = vDes * strideTime() / 2;
       hud.textContent =
-        `SLIP  ·  speed ${vx.toFixed(2)} m/s  (${(vx * 3.6).toFixed(1)} km/h)\n` +
-        `COM height ${y.toFixed(2)} m   ${phase}\n` +
-        `distance ${x.toFixed(1)} m   cadence ~${(60 / stepPeriod) | 0} steps/min   strides ${strides}`;
+        `speed ${vDes.toFixed(1)} m/s  (${(vDes * 3.6).toFixed(1)} km/h)` + (slowmo ? '  · slow-mo' : '') + '\n' +
+        `cadence ${cadence} steps/min   step ${stepLen.toFixed(2)} m\n` +
+        `distance ${dist.toFixed(1)} m   ` +
+        `phase ${(legStance[0] || legStance[1]) ? 'stance' : 'flight'}`;
     },
   };
 
@@ -216,11 +232,13 @@
     }
 
     const J = pose();
-    if (phase === 'stance') {
-      const fx = (foot - camX) * ppm + W * 0.42;
-      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    // contact shadow under any planted foot
+    for (let leg = 0; leg < 2; leg++) {
+      if (!legStance[leg]) continue;
+      const fx = (plantX[leg] - camX) * ppm + W * 0.42;
+      ctx.fillStyle = 'rgba(0,0,0,0.26)';
       ctx.beginPath();
-      ctx.ellipse(fx, groundY + 3, Hd * 0.7, Hd * 0.18, 0, 0, Math.PI * 2);
+      ctx.ellipse(fx, groundY + 3, Hd * 0.6, Hd * 0.16, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     Figure.draw(ctx, J, Hd, { near: '#eef2f8', far: '#808b9c' });

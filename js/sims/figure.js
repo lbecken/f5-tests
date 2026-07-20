@@ -29,10 +29,13 @@ const Figure = (() => {
   // standing hip height (pelvis above sole) in heads → used to scale physics
   const HIP_HEADS = SEG.thigh + SEG.shank;   // 3.45
 
-  /* two-link inverse kinematics: given root A and target B and two
-   * segment lengths, return the middle joint. `side` (+1/-1) picks
-   * which of the two elbow/knee solutions (bend direction). */
-  function solve2(ax, ay, bx, by, l1, l2, side) {
+  /* two-link inverse kinematics: given root A (hip/shoulder) and target
+   * B (foot/hand target) plus two segment lengths, return the middle
+   * joint (knee/elbow). `bulgeX` is the desired horizontal direction of
+   * the joint: +1 makes the knee/elbow bulge toward +x, -1 toward -x.
+   * (Knee bulges forward = +facing; elbow bulges backward = -facing.)
+   * Returns the joint plus the reach-clamped end point (fx,fy). */
+  function solve2(ax, ay, bx, by, l1, l2, bulgeX) {
     let dx = bx - ax, dy = by - ay;
     let d = Math.hypot(dx, dy);
     const dmin = Math.abs(l1 - l2) + 1e-4, dmax = l1 + l2 - 1e-4;
@@ -42,10 +45,16 @@ const Figure = (() => {
     const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
     const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
     const mx = ax + ux * a, my = ay + uy * a;
-    // perpendicular
-    return { x: mx + side * (-uy) * h, y: my + side * (ux) * h,
-             // also return the clamped foot so caller can avoid overreach artefacts
-             fx: ax + ux * d, fy: ay + uy * d };
+    // the two IK solutions sit on either side of the A→B chord
+    const nx = -uy, ny = ux;
+    const j1x = mx + nx * h, j2x = mx - nx * h;
+    // pick the solution whose horizontal offset matches the desired bulge
+    const use1 = (j1x - mx) * bulgeX >= (j2x - mx) * bulgeX;
+    return {
+      x: use1 ? j1x : mx - nx * h,
+      y: use1 ? my + ny * h : my - ny * h,
+      fx: ax + ux * d, fy: ay + uy * d,
+    };
   }
 
   /* Draw a capsule-style bone. */
