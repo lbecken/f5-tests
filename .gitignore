@@ -1,0 +1,5 @@
+# Intermediate build products: raw API output and the generation cache.
+# The finished assets in game/assets/ are committed; these are not.
+.build/
+__pycache__/
+*.pyc
