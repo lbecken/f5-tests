@@ -122,10 +122,15 @@ def build_simple(cid, line_id, tape, bed, sources, speakers):
     return build_composite(cid, spec, sources, speakers)
 
 
+# Transport sounds the interface plays directly, so the console feels like a
+# machine rather than a web page.
+UI_SOUNDS = ["tr_reel_start", "tr_switch", "safe_open"]
+
+
 def export_library(foley, sources):
     """The Foley object cards. Same source files the montages use."""
     out = {}
-    for aid in list(foley) + ["crash"]:
+    for aid in list(foley) + ["crash"] + [u for u in UI_SOUNDS if u in sources]:
         dst = os.path.join(AUDIO, aid + ".mp3")
         sig = digest("lib-v2", sources[aid], os.path.getsize(sources[aid]))
         if not cached("lib_" + aid, sig, dst):

@@ -295,6 +295,7 @@ function loadCard(card) {
   if (AC.state === "suspended") AC.resume();
   if (!card.audio) { showRef(card); return; }
   stopSource();
+  playCue("tr_reel_start", 0.3);        // the transport threading a new reel
   T.offset = 0; T.A = T.B = null;
   $("npTitle").textContent = card.title;
   $("npSub").textContent = "loading…";
@@ -464,6 +465,7 @@ function solveLock(L, sheetBody, verdictNode) {
     S.tab = L.unlocks_reel;
   }
   save();
+  if (L.id === "lock4") playCue("safe_open", 0.6);   // the safe, not a switch
   playCue("tape_sys_lock_open");
   renderAll();
   verdictNode.className = "verdict ok";
@@ -490,14 +492,14 @@ function failLock(readout, verdictNode) {
   verdictNode.textContent = "No. Try the tape again.";
 }
 
-function playCue(id) {
+function playCue(id, vol) {
   // short console confirmations, played out-of-band so they don't disturb the
   // reel the player has loaded
   if (!AC) return;
   fetchBuffer(id).then(function (e) {
     var s = AC.createBufferSource();
     s.buffer = e.fwd;
-    var g = AC.createGain(); g.gain.value = 0.55;
+    var g = AC.createGain(); g.gain.value = vol == null ? 0.55 : vol;
     s.connect(g); g.connect(AC.destination); s.start();
   }).catch(function () {});
 }

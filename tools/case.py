@@ -598,7 +598,16 @@ LOCKS = [
 # at true speed. 1/0.78 = 1.282 — a tolerance band, not a pixel hunt.
 CODA = dict(
     id="coda", target_speed=1.282, tolerance=0.055,
-    tracks=["tape_arch_open", "tape_arch_accuse", "tape_end_correct"],
+    # Every tape the Archivist speaks on, so the discovery lands wherever the
+    # player happens to try it rather than only on the three we guessed.
+    tracks=sorted(set(
+        [k for k in SIMPLE_TAPES if k.startswith("tape_arch_")]
+        + ["tape_end_correct", "tape_end_wrong", "tape_end_partial"]
+        + ["tape_" + h for hs in
+           [["hint_r1_1", "hint_r1_2", "hint_r1_3"], ["hint_r2_1", "hint_r2_2", "hint_r2_3"],
+            ["hint_r3_1", "hint_r3_2", "hint_r3_3"], ["hint_r4_1", "hint_r4_2", "hint_r4_3"],
+            ["hint_r5_1", "hint_r5_2", "hint_r5_3"]] for h in hs]
+    )),
     reveal="tape_epilogue",
 )
 
