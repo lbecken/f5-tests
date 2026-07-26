@@ -226,7 +226,30 @@ def main():
     check("reel 2 · #17 is present only as transmitted",
           intruder in in_tx and intruder not in in_clean)
 
-    # 8. every lock answer is reachable from cards unlocked at or before it
+    # 8. the voice lineup must be honest: the option the game calls correct has
+    #    to be the same voice that actually reads the last eleven minutes.
+    from script_text import LINES
+    lineup = [L for L in case.LOCKS if L["id"] == "lock5a"]
+    if lineup:
+        L = lineup[0]
+        ref = [o for o in L["options"] if o["id"] == L["answer"]][0]
+        # ref_vera -> tape built from ref_line_vera
+        line_id = case.SIMPLE_TAPES[ref["audio"]][0]
+        ref_voice = LINES[line_id][0]
+        und_voices = {LINES[k][0] for k in LINES if k.startswith("r5_understudy_")}
+        check("reel 5 · lineup answer is the voice on the last eleven minutes",
+              und_voices == {ref_voice}, "%s vs %s" % (ref_voice, und_voices))
+        # ...and the decoys are genuinely different people
+        others = set()
+        for o in L["options"]:
+            if o["id"] == L["answer"]:
+                continue
+            others.add(LINES[case.SIMPLE_TAPES[o["audio"]][0]][0])
+        check("reel 5 · lineup decoys are all different voices",
+              ref_voice not in others and len(others) == len(L["options"]) - 1,
+              ",".join(sorted(others)))
+
+    # 9. every lock answer is reachable from cards unlocked at or before it
     for lock in case.LOCKS:
         reel = lock["reel"]
         avail = [c["id"] for c in case.CARDS if c["reel"] <= reel]

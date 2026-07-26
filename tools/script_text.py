@@ -71,7 +71,8 @@ And what does this one say?
 
 "r1_bcast_L5": ("VERA", """
 [slow, precise] It says: she never left. It says she is still in the wall on the west side
-of the chimney where the plaster is warm, and it has been saying so every night since
+of the chimney where the plaster is warm, and it has been saying so
+[a small intake of breath] every night since
 the third of November, to an empty room, in a voice nobody would —
 [stops]
 """),
@@ -530,6 +531,47 @@ two words is the true one.
 And every time somebody dropped a box on that station for two solid years, Iris Bell was
 on the air, telling four states exactly what happened to her, and not one of us —
 [stops] — not one of us was listening.
+"""),
+
+# ── the voice lineup ───────────────────────────────────────────────────────
+# Four women read the identical line into the identical microphone, so the
+# comparison is about the voice and nothing else. The line contains "every",
+# which is where the tell lives.
+"ref_line_vera": ("VERA", """
+[plain, level, a studio line check] One, two. Reading for level, this is the line they
+gave me. It says she never left, and every night the house repeats it to an empty room.
+"""),
+"ref_line_peggy": ("PEGGY", """
+[plain, level, a studio line check] One, two. Reading for level, this is the line they
+gave me. It says she never left, and every night the house repeats it to an empty room.
+"""),
+"ref_line_iris": ("IRIS", """
+[plain, level, a studio line check] One, two. Reading for level, this is the line they
+gave me. It says she never left, and every night the house repeats it to an empty room.
+"""),
+"ref_line_ruth": ("RUTH", """
+[plain, level, a studio line check] One, two. Reading for level, this is the line they
+gave me. It says she never left, and every night the house repeats it to an empty room.
+"""),
+
+"r5_archivist_lineup": ("ARCHIVIST", """
+Four women, one line, one microphone. The police took these in the November and then
+filed them, because a lineup is only any use to somebody who is prepared to believe the
+answer.
+[quietly] Listen to the breath. Not the voice — anybody can do a voice, I could do yours
+by Thursday. Listen to where she takes her air.
+A performer breathes in the same place every time she says the same word. It is the one
+thing about a person that will not act.
+"""),
+
+# ── station texture ────────────────────────────────────────────────────────
+"r5_station_break": ("ANNOUNCER", """
+[warm, unctuous, period commercial] Friends — the nights are drawing in over Halloway Bay,
+and a prudent man thinks about his family.
+Halloway Savings and Loan. Three and a quarter percent, compounded quarterly, on the
+corner of Ash and Bay since nineteen twenty two.
+[confidential] Your money doesn't sleep. Neither do we.
+[brisk] This is K B L K, eleven twenty on your dial, and it is one minute before the hour.
 """),
 
 "r5_archivist_before_accusation": ("ARCHIVIST", """

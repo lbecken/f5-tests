@@ -141,12 +141,12 @@ COMPOSITES = {
         dict(src="mus_nocturne_bed", at=0.0,  gain=-22, pan=-1.0),
         dict(src="r1_bcast_L1",      at=1.0,  gain=0,   pan=-1.0),
         dict(src="sting_organ",      at="after:r1_bcast_L1+0.3", gain=-8, pan=-1.0),
-        dict(src="fx_train",         at="after:sting_organ+0.4", gain=-14, pan=-1.0),  # #4
+        dict(src="fx_train",         at="after:sting_organ+0.4", gain=-7, pan=-1.0),  # #4
         dict(src="r1_bcast_L2",      at="after:fx_train+0.5",    gain=0,  pan=-1.0),
         dict(src="r1_bcast_L3",      at="after:r1_bcast_L2+0.4", gain=0,  pan=-1.0),
-        dict(src="fx_thunder",       at="after:r1_bcast_L3+0.2", gain=-13, pan=-1.0),  # #9
+        dict(src="fx_thunder",       at="after:r1_bcast_L3+0.2", gain=-6, pan=-1.0),  # #9
         dict(src="r1_bcast_L4",      at="after:fx_thunder+0.3",  gain=0,  pan=-1.0),
-        dict(src="fx_gravel",        at="after:r1_bcast_L4+0.2", gain=-12, pan=-1.0),  # #2
+        dict(src="fx_gravel",        at="after:r1_bcast_L4+0.2", gain=-7, pan=-1.0),  # #2
         dict(src="r1_bcast_L5",      at="after:fx_gravel+0.6",   gain=0,  pan=-1.0),
         dict(src="r1_bcast_L6",      at="after:r1_bcast_L5+1.6", gain=0,  pan=-1.0),
         dict(src="r1_bcast_L7",      at="after:r1_bcast_L6+0.5", gain=0,  pan=-1.0),
@@ -361,6 +361,14 @@ SIMPLE_TAPES = {
     "tape_arch_hiss":       ("r4_archivist_hiss",            "worn",  "mus_reel4"),
     "tape_arch_ledger":     ("r4_archivist_ledger",          "worn",  None),
     "tape_arch_r5":         ("r5_archivist_open",            "worn",  None),
+    "tape_arch_lineup":     ("r5_archivist_lineup",          "worn",  None),
+    "tape_station_break":   ("r5_station_break",             "broadcast", None),
+    # The four lineup references get identical treatment, so the only thing that
+    # differs between them is the woman.
+    "ref_vera":             ("ref_line_vera",                "wire",  None),
+    "ref_peggy":            ("ref_line_peggy",               "wire",  None),
+    "ref_iris":             ("ref_line_iris",                "wire",  None),
+    "ref_ruth":             ("ref_line_ruth",                "wire",  None),
     "tape_arch_accuse":     ("r5_archivist_before_accusation","worn", None),
     "tape_arch_lockhint":   ("r1_lock_hint",                 "worn",  None),
     "tape_end_correct":     ("r5_ending_correct",            "worn",  "mus_finale"),
@@ -392,8 +400,25 @@ def C(id, reel, title, sub, audio, art, kind="tape"):
     return dict(id=id, reel=reel, title=title, sub=sub, audio=audio, art=art, kind=kind)
 
 
-ART = "1950s film noir evidence photograph, high contrast black and white with a single " \
-      "faded amber accent, grainy, dramatic low key lighting, vintage, no text, no letters, "
+# Rendered as genuine period evidence photographs. The deck's amber cast is
+# applied in CSS rather than baked in, so every card stays tonally identical.
+ART = "1957 police evidence photograph, high contrast black and white, grainy 35mm film, " \
+      "dramatic low key lighting, deep shadows, single subject, centred, plain background, "
+
+# The Foley object cards — the Echo deck proper.
+FOLEY_ART = {
+    "fx_door":     ART + "a wooden studio slam box, a miniature hinged door in a frame on a bench",
+    "fx_gravel":   ART + "a shallow wooden tray filled with loose gravel on a studio floor",
+    "fx_glass":    ART + "a wooden crash box full of broken glass shards and scrap metal",
+    "fx_train":    ART + "a brass steam whistle rig mounted on a wooden stand",
+    "fx_rain":     ART + "a snare drum with dried peas scattered across the drum head",
+    "fx_horse":    ART + "two halves of a hollow coconut shell resting on a tray of sand",
+    "fx_wind":     ART + "a hand cranked wooden wind machine, a slatted drum wrapped in canvas",
+    "fx_birdcage": ART + "a small empty wire birdcage with its door hanging open",
+    "fx_thunder":  ART + "a large thin sheet of steel hanging from a studio ceiling frame",
+    "fx_cabbage":  ART + "a heavy kitchen knife and a split cabbage on a wooden board",
+    "crash":       ART + "a large splintered wooden crate lying broken on a concrete floor",
+}
 
 CARDS = [
     # ── reel 1
@@ -469,6 +494,10 @@ CARDS = [
       "tape_kestrel_interview", ART + "an older man in a double breasted suit behind a radio microphone"),
     C("c_dot_final", 5, "D. Vance, forty years later", "'I filed a person'",
       "tape_dot_final", ART + "an elderly woman's hands resting on an old tray of gravel"),
+    C("c_lineup", 5, "Voice lineup", "Four women, one line",
+      "tape_arch_lineup", ART + "four acetate discs laid in a row on a police desk, numbered"),
+    C("c_break", 1, "Station break", "KBLK continuity, 22:59",
+      "tape_station_break", ART + "a lit radio dial and tuning needle glowing in a dark room"),
     C("c_arch_accuse", 5, "Say it", "The Archivist",
       "tape_arch_accuse", ART + "a box of tape reels with the lid beside it, ready to be closed"),
 ]
@@ -527,6 +556,23 @@ LOCKS = [
         prompt="Behind the Nocturne plaque. Dot left the number where she leaves everything: "
                "above where anybody thinks to listen.",
         unlocks_card="c_ledger", unlocks_reel=5,
+    ),
+    dict(
+        id="lock5a", reel=5, type="choice",
+        answer="vera",
+        sample=dict(audio="tape_last11",
+                    label="The questioned recording — the last eleven minutes"),
+        options=[
+            dict(id="peggy", label="Peggy Nash — the understudy", audio="ref_peggy"),
+            dict(id="vera",  label="Vera Lyle",                   audio="ref_vera"),
+            dict(id="iris",  label="Iris Bell",                   audio="ref_iris"),
+            dict(id="ruth",  label="Ruth Kestrel",                audio="ref_ruth"),
+        ],
+        title="The voice lineup",
+        prompt="Four women read the same line into the same microphone. One of them is "
+               "reading Vera Lyle's part in the last eleven minutes. Listen to where she "
+               "takes her breath — a performer breathes in the same place every time she "
+               "says the same word.",
     ),
     dict(
         id="lock5", reel=5, type="accusation",

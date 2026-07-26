@@ -56,7 +56,7 @@ window.CASE = {
    "sub": "31 Oct 1957 \u00b7 22:49 \u00b7 STEREO",
    "audio": "tape_broadcast",
    "kind": "tape",
-   "dur": 118.83,
+   "dur": 122.56,
    "img": "assets/img/c_broadcast.webp"
   },
   {
@@ -196,7 +196,7 @@ window.CASE = {
    "sub": "Police exhibit 9",
    "audio": "tape_dial",
    "kind": "tape",
-   "dur": 27.37,
+   "dur": 27.4,
    "img": "assets/img/c_dial.webp"
   },
   {
@@ -206,7 +206,7 @@ window.CASE = {
    "sub": "Three conversations, one wire",
    "audio": "tape_partyline",
    "kind": "tape",
-   "dur": 58.16,
+   "dur": 58.2,
    "img": "assets/img/c_partyline.webp"
   },
   {
@@ -348,6 +348,26 @@ window.CASE = {
    "kind": "tape",
    "dur": 74.03,
    "img": "assets/img/c_dot_final.webp"
+  },
+  {
+   "id": "c_lineup",
+   "reel": 5,
+   "title": "Voice lineup",
+   "sub": "Four women, one line",
+   "audio": "tape_arch_lineup",
+   "kind": "tape",
+   "dur": 45.79,
+   "img": "assets/img/c_lineup.webp"
+  },
+  {
+   "id": "c_break",
+   "reel": 1,
+   "title": "Station break",
+   "sub": "KBLK continuity, 22:59",
+   "audio": "tape_station_break",
+   "kind": "tape",
+   "dur": 30.16,
+   "img": "assets/img/c_break.webp"
   },
   {
    "id": "c_arch_accuse",
@@ -532,6 +552,40 @@ window.CASE = {
    "unlocks_reel": 5
   },
   {
+   "id": "lock5a",
+   "reel": 5,
+   "type": "choice",
+   "answer": "vera",
+   "sample": {
+    "audio": "tape_last11",
+    "label": "The questioned recording \u2014 the last eleven minutes"
+   },
+   "options": [
+    {
+     "id": "peggy",
+     "label": "Peggy Nash \u2014 the understudy",
+     "audio": "ref_peggy"
+    },
+    {
+     "id": "vera",
+     "label": "Vera Lyle",
+     "audio": "ref_vera"
+    },
+    {
+     "id": "iris",
+     "label": "Iris Bell",
+     "audio": "ref_iris"
+    },
+    {
+     "id": "ruth",
+     "label": "Ruth Kestrel",
+     "audio": "ref_ruth"
+    }
+   ],
+   "title": "The voice lineup",
+   "prompt": "Four women read the same line into the same microphone. One of them is reading Vera Lyle's part in the last eleven minutes. Listen to where she takes her breath \u2014 a performer breathes in the same place every time she says the same word."
+  },
+  {
    "id": "lock5",
    "reel": 5,
    "type": "accusation",
@@ -663,7 +717,7 @@ window.CASE = {
   ]
  },
  "durations": {
-  "tape_broadcast": 118.83,
+  "tape_broadcast": 122.56,
   "tape_warped": 14.21,
   "tape_eddie": 64.5,
   "tape_halligan": 53.76,
@@ -673,9 +727,9 @@ window.CASE = {
   "tape_iris_audition": 30.9,
   "tape_dot_interview": 52.95,
   "tape_dot_seventeen": 32.81,
-  "tape_dial": 27.37,
+  "tape_dial": 27.4,
   "tape_answering": 68.28,
-  "tape_partyline": 58.16,
+  "tape_partyline": 58.2,
   "tape_backward": 86.0,
   "tape_blank": 25.13,
   "tape_ledger": 67.34,
@@ -694,6 +748,12 @@ window.CASE = {
   "tape_arch_hiss": 40.59,
   "tape_arch_ledger": 42.03,
   "tape_arch_r5": 60.71,
+  "tape_arch_lineup": 45.79,
+  "tape_station_break": 30.16,
+  "ref_vera": 11.76,
+  "ref_peggy": 10.32,
+  "ref_iris": 11.12,
+  "ref_ruth": 10.08,
   "tape_arch_accuse": 35.89,
   "tape_arch_lockhint": 38.24,
   "tape_end_correct": 152.82,

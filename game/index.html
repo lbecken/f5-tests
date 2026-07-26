@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Nocturne Tapes</title>
+<meta name="description" content="An audio-only mystery in five reels.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23e0a33c' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e0a33c'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══ title ══════════════════════════════════════════════════════════ -->
+<section id="title" class="overlay">
+  <div class="title-inner">
+    <p class="kicker">KBLK · Halloway Bay · 1120 on your dial</p>
+    <h1>The Nocturne<span>Tapes</span></h1>
+    <p class="tagline">An audio investigation in five reels</p>
+
+    <div class="preflight">
+      <p><strong>Wear headphones.</strong> Half the evidence in this game is in one
+         ear and not the other. On speakers you will lose it.</p>
+      <p>There is nothing to look at. There are eleven reels of tape, a restoration
+         console, and a woman who walked out of a locked studio in 1957.</p>
+    </div>
+
+    <div class="title-actions">
+      <button id="btnStart" class="big">Thread the first reel</button>
+      <button id="btnResume" class="ghost" hidden>Resume the case</button>
+    </div>
+    <p class="fineprint">Runtime about 90 minutes · headphone stereo · <span id="assetCount"></span></p>
+  </div>
+</section>
+
+<!-- ══ app ════════════════════════════════════════════════════════════ -->
+<div id="app" hidden>
+
+  <header id="bar">
+    <div class="brand" title="The Nocturne Tapes">
+      <span class="rec" id="recLamp"></span>
+      <span class="brandname">NOCTURNE TAPES</span>
+    </div>
+    <nav id="reelTabs" aria-label="Reels"></nav>
+    <div class="bar-actions">
+      <button id="btnNotes" class="ghost sm">Case notes</button>
+      <button id="btnHint" class="ghost sm">Ask the Archivist</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── the console ── -->
+    <section id="console" aria-label="Restoration console">
+      <div class="console-head">
+        <div class="nowplaying">
+          <p class="np-label">LOADED</p>
+          <h2 id="npTitle">— no reel threaded —</h2>
+          <p id="npSub" class="np-sub">Choose an item from the evidence tray.</p>
+        </div>
+        <div class="vu" aria-hidden="true">
+          <canvas id="spectrum" width="300" height="70"></canvas>
+          <p class="vu-label">SPECTRUM</p>
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="btnPlay" class="play" aria-label="Play or pause" disabled>
+          <span class="tri"></span>
+        </button>
+        <div class="scrubwrap">
+          <input id="scrub" type="range" min="0" max="1000" value="0" step="1"
+                 aria-label="Position" disabled>
+          <div id="loopBand" class="loopband" hidden></div>
+          <div class="times"><span id="tNow">0:00</span><span id="tEnd">0:00</span></div>
+        </div>
+        <div class="loopctl">
+          <button id="btnA" class="chip" disabled>Set A</button>
+          <button id="btnB" class="chip" disabled>Set B</button>
+          <button id="btnLoopClr" class="chip ghost" disabled>Clear</button>
+        </div>
+      </div>
+
+      <div class="knobs">
+        <div class="knob">
+          <label for="kSpeed">SPEED</label>
+          <input id="kSpeed" type="range" min="50" max="200" value="100" step="1" disabled>
+          <output id="oSpeed">1.00&times;</output>
+          <p class="hintline">Pitch follows speed, exactly like tape.</p>
+        </div>
+        <div class="knob">
+          <label for="kFilter">FILTER</label>
+          <input id="kFilter" type="range" min="-100" max="100" value="0" step="1" disabled>
+          <output id="oFilter">off</output>
+          <p class="hintline">Cut the top off, or cut the bottom out.</p>
+        </div>
+        <div class="knob">
+          <label for="kBalance">BALANCE</label>
+          <input id="kBalance" type="range" min="-100" max="100" value="0" step="1" disabled>
+          <output id="oBalance">centre</output>
+          <p class="hintline">A broadcast tape is two recordings, not one.</p>
+        </div>
+        <div class="knob knob-dir">
+          <label>DIRECTION</label>
+          <div class="dirbtns">
+            <button id="btnFwd" class="dir on" disabled>&#9654; FWD</button>
+            <button id="btnRev" class="dir" disabled>REV &#9664;</button>
+          </div>
+          <output id="oDir">forward</output>
+          <p class="hintline">Some people rely on you forgetting this exists.</p>
+        </div>
+        <button id="btnReset" class="ghost sm resetknobs" disabled>Reset console</button>
+      </div>
+    </section>
+
+    <!-- ── evidence tray ── -->
+    <section id="tray" aria-label="Evidence tray">
+      <div class="tray-head">
+        <h3>Evidence tray <span id="trayCount" class="count"></span></h3>
+        <div id="lockSlot"></div>
+      </div>
+      <div id="cards" class="cards"></div>
+
+      <div id="foleyWrap" hidden>
+        <div class="tray-head">
+          <h3>The Foley room <span class="count">objects on the shelf</span></h3>
+        </div>
+        <div id="foley" class="cards foley"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ══ modals ═════════════════════════════════════════════════════════ -->
+<div id="modal" class="overlay" hidden>
+  <div class="sheet">
+    <button class="x" id="modalX" aria-label="Close">&times;</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
